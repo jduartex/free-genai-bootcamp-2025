@@ -30,6 +30,7 @@ The formatted output will generally contain three parts:
 - do not provide particles in the sentence structure
 - do not provide tenses or conjugations in the sentence structure
 - remember to consider beginner level sentence structures
+- reference the <file>examples.xml</file> for good structure examples.
 
 Here are examples of simple sentence structures
 I will go to the movies tomorrow. → [Time] [Subject] [Verb] [Location].

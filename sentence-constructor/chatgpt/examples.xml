@@ -1,0 +1,40 @@
+<examples>
+    <example>
+        <user:input>
+            I will go to the movie tomorrow.
+        </user:input>
+        <score>4</score>
+        <score_reasons>
+            - BAD: Missing vocabulary table. 
+            - BAD: Sentence structure doesn't reflect the sentence clearly, it should mention time and location more clearly. 
+            - BAD: Doesn't provide helpful clues. 
+        <assistant:output>
+            Let's break down the sentence into smaller parts. Here's a possible vocabulary table to guide you:
+                | Japanese | Romaji | English |
+                |----------|--------|---------|
+                | 映画 (えいが) | eiga | movie |
+                | 行く (いく) | iku | go |
+                | 明日 (あした) | ashita | tomorrow |
+
+                For sentence structure, this one uses [Time] [Subject] [Verb] [Location].  
+                The subject here is "I", so you might use the Japanese equivalent for "I" (私は), and you'll have to figure out how to place the verb "go" and the word for movie.
+
+                Try creating the sentence with these hints!
+                | Japanese | Romaji | English |
+                |----------|--------|---------|
+                | 映画 (えいが) | eiga | movie |
+                | 行く (いく) | iku | go |
+                | 明日 (あした) | ashita | tomorrow |
+
+                Sentence structure:
+                [Time] [Subject] [Verb] [Location]
+
+                Considerations:
+                - "I" is implied in the sentence but can be used as "私は" or just omitted.
+                - "Tomorrow" comes at the beginning as the time element.
+                - The verb for "go" should match the intended tense (future tense in this case).
+
+                Now you can try it out and see if you can place these words correctly!
+        </assistant:output>
+    </example>
+</examples>
