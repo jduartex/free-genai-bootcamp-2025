@@ -8,48 +8,88 @@ def load(app):
   @cross_origin()
   def create_study_session():
     try:
-      # Parse the JSON request body
+      # Validate request data
       data = request.get_json()
+      if not data:
+        return jsonify({
+          "success": False,
+          "error": "Request body is required",
+        }), 400
 
-      # Extract the group_id from the request
-      group_id = data.get('group_id')
-      study_activity_id = data.get('study_activity_id')
+      # Validate required fields
+      required_fields = ['group_id', 'study_activity_id']
+      if not all(field in data for field in required_fields):
+        return jsonify({
+          "success": False,
+          "error": "Missing required fields",
+          "required": required_fields
+        }), 400
 
-      # Validate that group_id is provided
-      if not group_id:
-        return jsonify({"error": "group_id is required"}), 400
+      # Get database connection using app context
+      db = app.get_db()
+      cursor = db.cursor()
 
-      # Validate that study_id is provided
-      if not study_activity_id:
-        return jsonify({"error": "study_activity_id is required"}), 400
+      try:
+        # Validate group exists using parameterized query
+        cursor.execute(
+          'SELECT id FROM groups WHERE id = ?', 
+          (data['group_id'],)
+        )
+        group = cursor.fetchone()
+        if not group:
+          return jsonify({
+            "success": False,
+            "error": "Group not found"
+          }), 404
 
-      # Check if the group exists
-      cursor = app.db.cursor()
-      cursor.execute('SELECT id FROM groups WHERE id = ?', (group_id,))
-      group = cursor.fetchone()
-      if not group:
-        return jsonify({"error": "Group not found"}), 404
+        # Validate study activity exists
+        cursor.execute(
+          'SELECT id FROM study_activities WHERE id = ?', 
+          (data['study_activity_id'],)
+        )
+        study_activity = cursor.fetchone()
+        if not study_activity:
+          return jsonify({
+            "success": False,
+            "error": "Study activity not found"
+          }), 404
 
-      # Check if the study_activity exists
-      cursor.execute('SELECT id FROM study_activities WHERE id = ?', (study_activity_id,))
-      study_activity = cursor.fetchone()
-      if not study_activity:
-        return jsonify({"error": "Study activity not found"}), 404
+        # Insert the study session with parameterized query
+        cursor.execute('''
+          INSERT INTO study_sessions (
+            group_id, 
+            study_activity_id, 
+            created_at
+          ) VALUES (?, ?, ?)
+        ''', (
+          data['group_id'], 
+          data['study_activity_id'], 
+          datetime.now()
+        ))
+        
+        # Commit transaction
+        db.commit()
+        
+        # Get the id of the newly created session
+        session_id = cursor.lastrowid
 
-      # Insert the study session
-      cursor.execute('''
-        INSERT INTO study_sessions (group_id, study_activity_id, created_at)
-        VALUES (?, ?, ?)
-      ''', (group_id, study_activity_id, datetime.now()))
-      
-      app.db.commit()
-      
-      # Get the id of the newly created session
-      session_id = cursor.lastrowid
+        return jsonify({
+          "success": True,
+          "message": "Study session created successfully",
+          "session_id": session_id
+        }), 201
 
-      return jsonify({"session_id": session_id}), 201
+      except Exception as e:
+        # Rollback on error
+        db.rollback()
+        raise e
+
     except Exception as e:
-      return jsonify({"error": str(e)}), 500
+      return jsonify({
+        "success": False,
+        "error": "Failed to create study session",
+        "details": str(e)
+      }), 500
 
   @app.route('/api/study-sessions', methods=['GET'])
   @cross_origin()
