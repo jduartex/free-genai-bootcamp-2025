@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   postgres:
     image: postgres:14
@@ -10,19 +9,6 @@ services:
       POSTGRES_DB: words
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
-  api:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/words
-      NODE_ENV: development
-    depends_on:
-      - postgres
-    volumes:
-      - .:/app
-      - /app/node_modules
 
 volumes:
   postgres_data: 

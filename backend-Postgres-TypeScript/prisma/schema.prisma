@@ -79,4 +79,4 @@ model WordReviewItem {
   createdAt       DateTime      @default(now()) @map("created_at")
 
   @@map("word_review_items")
-} 
+}
