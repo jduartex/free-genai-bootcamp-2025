@@ -4,11 +4,9 @@
   "description": "Language Learning Portal Backend",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "start": "node dist/server.js",
-    "test": "vitest",
-    "migrate": "prisma migrate deploy",
     "generate": "prisma generate"
   },
   "dependencies": {
