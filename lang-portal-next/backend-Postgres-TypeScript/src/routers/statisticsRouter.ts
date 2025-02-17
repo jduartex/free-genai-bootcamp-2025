@@ -81,9 +81,17 @@ import { router, publicProcedure } from '../trpc';
  *                   type: string
  */
 export const statisticsRouter = router({
-  dashboard: publicProcedure
+  getDashboard: publicProcedure
     .query(async ({ ctx }) => {
-      return ctx.services.statistics.getDashboardStats();
+      const [totalWords, studiedWords] = await Promise.all([
+        ctx.prisma.word.count(),
+        ctx.prisma.wordReviewItem.count(),
+      ]);
+
+      return {
+        total_words_studied: studiedWords,
+        total_available_words: totalWords,
+      };
     }),
 
   quickStats: publicProcedure

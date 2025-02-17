@@ -1,3 +1,4 @@
+version: '3.8'
 services:
   postgres:
     image: postgres:14
@@ -9,16 +10,6 @@ services:
       POSTGRES_DB: words
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    command: >
-      bash -c "
-        echo 'CREATE DATABASE words_test;' > /docker-entrypoint-initdb.d/init.sql &&
-        docker-entrypoint.sh postgres
-      "
 
   redis:
     image: redis:7
@@ -29,4 +20,4 @@ services:
 
 volumes:
   postgres_data:
-  redis_data: 
+  redis_data:

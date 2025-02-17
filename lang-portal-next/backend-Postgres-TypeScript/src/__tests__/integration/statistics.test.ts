@@ -13,11 +13,12 @@ describe('Statistics Router Integration', () => {
   it('should get dashboard statistics', async () => {
     const caller = appRouter.createCaller(await createContext({} as any));
     
-    const result = await caller.statistics.dashboard();
+    const result = await caller.statistics.getDashboard();
 
     expect(result).toHaveProperty('total_words_studied');
     expect(result).toHaveProperty('total_available_words');
-    expect(result.total_available_words).toBe(2); // From our test data
+    expect(result.total_available_words).toBe(2); // Exactly 2 words from setup
+    expect(result.total_words_studied).toBe(1); // Exactly 1 review from setup
   });
 
   it('should get quick stats', async () => {

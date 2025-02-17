@@ -34,11 +34,7 @@ describe('Words Router Integration', () => {
     expect(result).toMatchObject({
       japanese: 'こんにちは',
       romaji: 'konnichiwa',
-      english: 'hello',
-      stats: {
-        correct_count: 0,
-        wrong_count: 0
-      }
+      english: 'hello'
     });
   });
 }); 

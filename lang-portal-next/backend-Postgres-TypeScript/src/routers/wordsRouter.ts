@@ -4,6 +4,15 @@ import { cacheMiddleware, clearCache } from '../middleware/cacheMiddleware';
 import { env } from '../config/env';
 import { rateLimits } from '../config/rateLimit';
 
+// Add the missing schema
+const wordCreateSchema = z.object({
+  japanese: z.string().min(1),
+  romaji: z.string().min(1),
+  english: z.string().min(1),
+  parts: z.object({}).passthrough().optional(),
+  groupId: z.number().optional()
+});
+
 /**
  * @swagger
  * /api/trpc/words.list:
@@ -60,7 +69,8 @@ export const wordsRouter = router({
     }))
     .use(cacheMiddleware(env.REDIS_CACHE_DURATION))
     .query(async ({ ctx, input }) => {
-      return ctx.services.words.listWords(input.page, input.limit);
+      const words = await ctx.services.words.listWords(input.page, input.limit);
+      return words;
     }),
   
   getById: publicProcedure
@@ -70,7 +80,13 @@ export const wordsRouter = router({
     }),
 
   create: publicProcedure
-    .input(wordCreateSchema)
+    .input(z.object({
+      japanese: z.string().min(1),
+      romaji: z.string().min(1),
+      english: z.string().min(1),
+      parts: z.object({}).passthrough().optional(),
+      groupId: z.number().optional()
+    }))
     .mutation(async ({ ctx, input }) => {
       const result = await ctx.services.words.createWord(input);
       await clearCache('words*');

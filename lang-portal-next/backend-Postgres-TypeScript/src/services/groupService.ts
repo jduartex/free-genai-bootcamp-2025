@@ -53,47 +53,29 @@ export class GroupService {
     };
   }
 
-  async getGroupWords(groupId: number, page: number, limit: number) {
-    const skip = (page - 1) * limit;
+  async getGroupWords(groupId: number) {
     const group = await this.prisma.group.findUnique({
       where: { id: groupId },
-      include: {
-        words: {
-          include: {
-            word: {
-              include: {
-                reviews: true
-              }
-            }
-          },
-          skip,
-          take: limit
-        }
-      }
     });
 
     if (!group) {
-      throw new AppError('Group not found', 404);
+      throw new Error('Group not found');
     }
 
-    const total = await this.prisma.wordsGroups.count({
+    const total = await this.prisma.wordGroup.count({
       where: { groupId }
     });
 
-    return {
-      items: group.words.map(({ word }) => ({
-        japanese: word.japanese,
-        romaji: word.romaji,
-        english: word.english,
-        correct_count: word.reviews.filter(r => r.correct).length,
-        wrong_count: word.reviews.filter(r => !r.correct).length
-      })),
-      pagination: {
-        current_page: page,
-        total_pages: Math.ceil(total / limit),
-        total_items: total,
-        items_per_page: limit
+    const words = await this.prisma.wordGroup.findMany({
+      where: { groupId },
+      include: {
+        word: true
       }
+    });
+
+    return {
+      items: words.map(wg => wg.word),
+      total
     };
   }
 } 

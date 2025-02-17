@@ -13,18 +13,16 @@ describe('Study Sessions Router Integration', () => {
   it('should create and submit a word review', async () => {
     const caller = appRouter.createCaller(await createContext({} as any));
     
-    // Create a study session first
     const session = await caller.studySessions.submitReview({
-      sessionId: 1,
+      sessionId: testData.sessions[0].id,
       wordId: testData.words[0].id,
       correct: true
     });
 
-    expect(session).toMatchObject({
-      success: true,
-      word_id: testData.words[0].id,
-      correct: true
-    });
+    expect(session).toBeDefined();
+    expect(session.reviews).toBeDefined();
+    expect(session.reviews.length).toBeGreaterThan(0);
+    expect(session.reviews[0].correct).toBe(true);
   });
 
   it('should list study sessions with pagination', async () => {

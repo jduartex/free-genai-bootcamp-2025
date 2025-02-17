@@ -92,10 +92,21 @@ export const studySessionsRouter = router({
       correct: z.boolean()
     }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.services.studySessions.createReview(
-        input.sessionId,
-        input.wordId,
-        input.correct
-      );
+      const session = await ctx.prisma.studySession.update({
+        where: { id: input.sessionId },
+        data: {
+          reviews: {
+            create: {
+              wordId: input.wordId,
+              correct: input.correct
+            }
+          }
+        },
+        include: {
+          reviews: true
+        }
+      });
+
+      return session;
     })
 }); 

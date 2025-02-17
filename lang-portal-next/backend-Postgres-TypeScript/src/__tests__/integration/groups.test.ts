@@ -29,14 +29,16 @@ describe('Groups Router Integration', () => {
     const caller = appRouter.createCaller(await createContext({} as any));
     
     const result = await caller.groups.getGroupWords({
-      groupId: testData.group.id,
+      groupId: testData.groups[0].id,
       page: 1,
       limit: 10
     });
 
     expect(result.items).toHaveLength(2);
-    expect(result.items[0]).toHaveProperty('japanese');
-    expect(result.items[0]).toHaveProperty('romaji');
-    expect(result.items[0]).toHaveProperty('english');
+    expect(result.items[0]).toMatchObject({
+      japanese: 'こんにちは',
+      romaji: 'konnichiwa',
+      english: 'hello'
+    });
   });
 }); 

@@ -8,75 +8,75 @@ datasource db {
 }
 
 model Word {
-  id        Int      @id @default(autoincrement())
-  japanese  String
-  romaji    String
-  english   String
-  parts     Json?
-  groups    WordsGroups[]
-  reviews   WordReviewItem[]
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id            Int              @id @default(autoincrement())
+  japanese      String
+  romaji        String
+  english       String
+  parts         Json?
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  reviews       WordReviewItem[]
+  groups        WordGroup[]
 
   @@map("words")
 }
 
 model Group {
-  id        Int      @id @default(autoincrement())
-  name      String
-  words     WordsGroups[]
-  sessions  StudySession[]
-  activities StudyActivity[]
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id          Int              @id @default(autoincrement())
+  name        String
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  words       WordGroup[]
+  sessions    StudySession[]
+  activities  StudyActivity[]
 
   @@map("groups")
 }
 
-model WordsGroups {
+model WordGroup {
   id        Int      @id @default(autoincrement())
-  word      Word     @relation(fields: [wordId], references: [id])
   wordId    Int      @map("word_id")
-  group     Group    @relation(fields: [groupId], references: [id])
   groupId   Int      @map("group_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  word      Word    @relation(fields: [wordId], references: [id])
+  group     Group   @relation(fields: [groupId], references: [id])
 
-  @@map("words_groups")
+  @@map("word_groups")
   @@unique([wordId, groupId])
 }
 
 model StudySession {
-  id          Int       @id @default(autoincrement())
-  group       Group     @relation(fields: [groupId], references: [id])
-  groupId     Int       @map("group_id")
+  id          Int              @id @default(autoincrement())
+  groupId     Int              @map("group_id")
+  group       Group            @relation(fields: [groupId], references: [id])
+  createdAt   DateTime         @default(now()) @map("created_at")
+  endedAt     DateTime?        @map("ended_at")
   activities  StudyActivity[]
   reviews     WordReviewItem[]
-  createdAt   DateTime  @default(now()) @map("created_at")
-  endedAt     DateTime? @map("ended_at")
 
   @@map("study_sessions")
 }
 
 model StudyActivity {
   id              Int           @id @default(autoincrement())
-  studySession    StudySession  @relation(fields: [studySessionId], references: [id])
   studySessionId  Int           @map("study_session_id")
-  group           Group         @relation(fields: [groupId], references: [id])
   groupId         Int           @map("group_id")
   createdAt       DateTime      @default(now()) @map("created_at")
+  studySession    StudySession  @relation(fields: [studySessionId], references: [id])
+  group           Group         @relation(fields: [groupId], references: [id])
 
   @@map("study_activities")
 }
 
 model WordReviewItem {
   id              Int           @id @default(autoincrement())
-  word            Word          @relation(fields: [wordId], references: [id])
   wordId          Int           @map("word_id")
-  studySession    StudySession  @relation(fields: [studySessionId], references: [id])
   studySessionId  Int           @map("study_session_id")
   correct         Boolean
   createdAt       DateTime      @default(now()) @map("created_at")
+  word            Word          @relation(fields: [wordId], references: [id])
+  studySession    StudySession  @relation(fields: [studySessionId], references: [id])
 
   @@map("word_review_items")
 }

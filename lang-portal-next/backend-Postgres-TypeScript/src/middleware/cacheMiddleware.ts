@@ -1,51 +1,48 @@
-import { Request, Response, NextFunction } from 'express';
-import { redisClient } from '../config/redis';
+import { TRPCError } from '@trpc/server';
+import { getRedisClient } from '../config/redis';
 import { logger } from '../utils/logger';
+import { t } from '../trpc';  // Import the t object from trpc
 
 const DEFAULT_EXPIRATION = 3600; // 1 hour in seconds
 
-export const cacheMiddleware = (duration = DEFAULT_EXPIRATION) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    if (req.method !== 'GET') {
+export const cacheMiddleware = (duration: number = DEFAULT_EXPIRATION) => {
+  return t.middleware(async ({ ctx, next, path }) => {
+    // Skip caching for non-query operations
+    if (ctx.req?.method !== 'GET') {
       return next();
     }
 
-    const key = `cache:${req.originalUrl}`;
+    const redis = await getRedisClient();
+    const cacheKey = `cache:${path}`;
 
     try {
-      const cachedData = await redisClient.get(key);
-      
-      if (cachedData) {
-        logger.debug('Cache hit', { key });
-        return res.json(JSON.parse(cachedData));
+      // Try to get from cache
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        logger.debug('Cache hit', { key: cacheKey });
+        return JSON.parse(cached);
       }
 
-      // Store the original res.json function
-      const originalJson = res.json.bind(res);
+      // If not in cache, execute the procedure
+      const result = await next();
 
-      // Override res.json to cache the response
-      res.json = ((data: any) => {
-        redisClient.setEx(key, duration, JSON.stringify(data))
-          .catch(err => logger.error('Cache set error', { key, err }));
-        return originalJson(data);
-      }) as any;
+      // Cache the result
+      await redis.setEx(cacheKey, duration, JSON.stringify(result));
 
-      next();
+      return result;
     } catch (error) {
-      logger.error('Cache middleware error', error);
-      next();
+      // If redis fails, just continue without caching
+      logger.error('Cache middleware error:', error);
+      return next();
     }
-  };
+  });
 };
 
 export const clearCache = async (pattern: string) => {
-  try {
-    const keys = await redisClient.keys(`cache:${pattern}`);
-    if (keys.length > 0) {
-      await redisClient.del(keys);
-      logger.info('Cache cleared', { pattern, count: keys.length });
-    }
-  } catch (error) {
-    logger.error('Clear cache error', error);
+  const redis = await getRedisClient();
+  const keys = await redis.keys(`cache:${pattern}`);
+  if (keys.length > 0) {
+    await redis.del(keys);
+    logger.info('Cache cleared', { pattern, count: keys.length });
   }
 }; 
