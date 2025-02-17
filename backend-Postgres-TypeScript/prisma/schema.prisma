@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Word {
+  id        Int      @id @default(autoincrement())
+  japanese  String
+  romaji    String
+  english   String
+  parts     Json?
+  groups    WordsGroups[]
+  reviews   WordReviewItem[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("words")
+}
+
+model Group {
+  id        Int      @id @default(autoincrement())
+  name      String
+  words     WordsGroups[]
+  sessions  StudySession[]
+  activities StudyActivity[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("groups")
+}
+
+model WordsGroups {
+  id        Int      @id @default(autoincrement())
+  word      Word     @relation(fields: [wordId], references: [id])
+  wordId    Int      @map("word_id")
+  group     Group    @relation(fields: [groupId], references: [id])
+  groupId   Int      @map("group_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("words_groups")
+  @@unique([wordId, groupId])
+}
+
+model StudySession {
+  id          Int       @id @default(autoincrement())
+  group       Group     @relation(fields: [groupId], references: [id])
+  groupId     Int       @map("group_id")
+  activities  StudyActivity[]
+  reviews     WordReviewItem[]
+  createdAt   DateTime  @default(now()) @map("created_at")
+  endedAt     DateTime? @map("ended_at")
+
+  @@map("study_sessions")
+}
+
+model StudyActivity {
+  id              Int           @id @default(autoincrement())
+  studySession    StudySession  @relation(fields: [studySessionId], references: [id])
+  studySessionId  Int           @map("study_session_id")
+  group           Group         @relation(fields: [groupId], references: [id])
+  groupId         Int           @map("group_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@map("study_activities")
+}
+
+model WordReviewItem {
+  id              Int           @id @default(autoincrement())
+  word            Word          @relation(fields: [wordId], references: [id])
+  wordId          Int           @map("word_id")
+  studySession    StudySession  @relation(fields: [studySessionId], references: [id])
+  studySessionId  Int           @map("study_session_id")
+  correct         Boolean
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@map("word_review_items")
+} 
