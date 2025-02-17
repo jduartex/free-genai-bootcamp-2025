@@ -9,4 +9,4 @@ export const appRouter = router({
   groups: groupsRouter,
   studySessions: studySessionsRouter,
   statistics: statisticsRouter,
-}); 
+});
