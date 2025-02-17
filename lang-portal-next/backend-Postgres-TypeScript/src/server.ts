@@ -9,6 +9,14 @@ import { healthCheckRouter } from './routes/healthCheck';
 import { setupSecurity } from './middleware/securityMiddleware';
 import { env } from './config/env';
 import { setupSwagger } from './config/swagger';
+import compression from 'compression';
+import { RequestHandler } from 'express';
+import { securityConfig } from './config/security';
+import { monitoringRouter } from './routes/monitoringRouter';
+import { errorLogger } from './middleware/loggingMiddleware';
+import { metricsRouter } from './routes/metricsRouter';
+import { metricsMiddleware } from './middleware/metricsMiddleware';
+import { rateLimits } from './config/rateLimit';
 
 const app = express();
 
@@ -16,15 +24,25 @@ const app = express();
 setupSecurity(app);
 
 // Basic middleware
-app.use(cors({
-  origin: env.CORS_ORIGIN,
-  credentials: true
-}));
-app.use(express.json({ limit: '10mb' }));
+app.use(cors(securityConfig.cors));
+app.use(express.json({ limit: securityConfig.bodyLimit }));
+app.use((compression() as unknown) as RequestHandler);
 app.use(requestLogger);
+
+// Add metrics middleware early to capture all requests
+app.use(metricsMiddleware);
 
 // Health check route
 app.use('/api', healthCheckRouter);
+
+// Monitoring routes
+app.use('/api', monitoringRouter);
+
+// Metrics endpoint (should be before other routes)
+app.use('/api', metricsRouter);
+
+// Apply general rate limit to all routes
+app.use(rateLimits.api);
 
 // tRPC router
 app.use(
@@ -40,7 +58,8 @@ if (env.NODE_ENV !== 'production') {
   setupSwagger(app);
 }
 
-// Error handling middleware should be last
+// Error logging should come before error handling
+app.use(errorLogger);
 app.use(errorHandler);
 
 app.listen(env.PORT, () => {
