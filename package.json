@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "dependencies": {
     "@prisma/client": "^6.3.1",
     "@trpc/server": "^10.45.2",
@@ -21,5 +22,8 @@
     "@types/winston": "^2.4.4",
     "ts-node-dev": "^2.0.0",
     "vitest-mock-extended": "^2.0.2"
+  },
+  "scripts": {
+    "start:server": "ts-node src/server.ts"
   }
 }

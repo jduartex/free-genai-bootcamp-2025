@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { getRedisClient } from '../config/redis';
+import { createClient } from 'redis';
 import { logger } from '../utils/logger';
 import { t } from '../trpc';  // Import the t object from trpc
 
@@ -12,7 +12,9 @@ export const cacheMiddleware = (duration: number = DEFAULT_EXPIRATION) => {
       return next();
     }
 
-    const redis = await getRedisClient();
+    const redisClient = createClient();
+    await redisClient.connect();
+    const redis = redisClient;
     const cacheKey = `cache:${path}`;
 
     try {
@@ -39,10 +41,12 @@ export const cacheMiddleware = (duration: number = DEFAULT_EXPIRATION) => {
 };
 
 export const clearCache = async (pattern: string) => {
-  const redis = await getRedisClient();
+  const redisClient = createClient();
+  await redisClient.connect();
+  const redis = redisClient;
   const keys = await redis.keys(`cache:${pattern}`);
   if (keys.length > 0) {
     await redis.del(keys);
     logger.info('Cache cleared', { pattern, count: keys.length });
   }
-}; 
+};

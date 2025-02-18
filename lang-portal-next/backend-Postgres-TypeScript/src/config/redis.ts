@@ -25,4 +25,4 @@ export const connectRedis = async () => {
     logger.error('Redis connection failed', error);
     throw error;
   }
-}; 
+};

@@ -65,4 +65,16 @@ export class WordService {
       }))
     };
   }
-} 
+
+  async createWord(input: { japanese: string; romaji: string; english: string; parts?: object; groupId?: number }) {
+    const newWord = await this.prisma.word.create({
+      data: {
+        japanese: input.japanese,
+        romaji: input.romaji,
+        english: input.english,
+        parts: input.parts,
+      },
+    });
+    return newWord;
+  }
+}

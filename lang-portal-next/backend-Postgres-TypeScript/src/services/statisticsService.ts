@@ -79,7 +79,7 @@ export class StatisticsService {
     await this.prisma.wordReviewItem.deleteMany();
     await this.prisma.studyActivity.deleteMany();
     await this.prisma.studySession.deleteMany();
-    await this.prisma.wordsGroups.deleteMany();
+    await this.prisma.wordGroup.deleteMany();
     await this.prisma.word.deleteMany();
     await this.prisma.group.deleteMany();
 
@@ -112,4 +112,4 @@ export class StatisticsService {
       group_name: lastSession.group.name
     };
   }
-} 
+}

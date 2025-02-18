@@ -82,9 +82,7 @@ export const groupsRouter = router({
     }))
     .query(async ({ ctx, input }) => {
       return ctx.services.groups.getGroupWords(
-        input.groupId,
-        input.page,
-        input.limit
+        input.page // Adjust this line to pass the correct number of arguments
       );
     })
-}); 
+});
