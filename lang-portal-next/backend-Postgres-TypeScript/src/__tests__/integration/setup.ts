@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { getTestClient } from '../../prisma/testClient';
 
-let prisma: PrismaClient;
+let prisma: PrismaClient = new PrismaClient();
 
 export async function setupTestData() {
   prisma = await getTestClient();
@@ -12,7 +12,7 @@ export async function setupTestData() {
       prisma.wordReviewItem.deleteMany(),
       prisma.studyActivity.deleteMany(),
       prisma.wordGroup.deleteMany(),
-      prisma.studySession.deleteMany(),
+      prisma.studySession.deleteMany(), // Ensure this is before deleting words and groups
       prisma.word.deleteMany(),
       prisma.group.deleteMany(),
     ]);
@@ -87,7 +87,7 @@ export async function cleanupTestData() {
         prisma.wordReviewItem.deleteMany(),
         prisma.studyActivity.deleteMany(),
         prisma.wordGroup.deleteMany(),
-        prisma.studySession.deleteMany(),
+        prisma.studySession.deleteMany(), // Ensure this is before deleting words and groups
         prisma.word.deleteMany(),
         prisma.group.deleteMany(),
       ]);
@@ -95,4 +95,4 @@ export async function cleanupTestData() {
       await prisma.$disconnect();
     }
   }
-} 
+}

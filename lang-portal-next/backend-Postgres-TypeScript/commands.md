@@ -25,3 +25,5 @@ npm run test:coverage
 
 # Or run in watch mode
 npm run test:watch
+
+npm run test src/__tests__/integration/groups.test.ts

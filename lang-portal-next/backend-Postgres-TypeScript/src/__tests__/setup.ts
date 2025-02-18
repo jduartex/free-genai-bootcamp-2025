@@ -13,50 +13,88 @@ beforeAll(async () => {
     await testClient.$transaction([
       testClient.wordReviewItem.deleteMany(),
       testClient.studyActivity.deleteMany(),
-      testClient.studySession.deleteMany(),
       testClient.wordGroup.deleteMany(),
+      testClient.studySession.deleteMany(),
       testClient.word.deleteMany(),
       testClient.group.deleteMany(),
     ]);
     
     // Add test data
-    const group = await testClient.group.create({
-      data: {
-        name: 'Test Group',
-      },
-    });
+    const { group, words, wordGroups, studySession } = await testClient.$transaction(async (prisma) => {
+      const group = await prisma.group.create({
+        data: {
+          name: 'Test Group',
+        },
+      });
 
-    const word = await testClient.word.create({
-      data: {
-        japanese: 'テスト',
-        romaji: 'tesuto',
-        english: 'test',
-        parts: { type: 'noun' },
-      },
-    });
+      const words = await Promise.all([
+        prisma.word.create({
+          data: {
+            japanese: 'テスト1',
+            romaji: 'tesuto1',
+            english: 'test1',
+            parts: { type: 'noun' },
+          },
+        }),
+        prisma.word.create({
+          data: {
+            japanese: 'テスト2',
+            romaji: 'tesuto2',
+            english: 'test2',
+            parts: { type: 'noun' },
+          },
+        }),
+      ]);
 
-    const wordGroup = await testClient.wordGroup.create({
-      data: {
-        wordId: word.id,
-        groupId: group.id,
-      },
-    });
+      const wordGroups = await Promise.all(
+        words.map(word =>
+          prisma.wordGroup.create({
+            data: {
+              wordId: word.id,
+              groupId: group.id,
+            },
+          })
+        )
+      );
 
-    const studySession = await testClient.studySession.create({
-      data: {
-        groupId: group.id,
-        activities: {
-          create: {
+      interface RetryFunction {
+        (): Promise<any>;
+      }
+
+      const retry = async (fn: RetryFunction, retries: number = 5): Promise<any> => {
+        for (let i = 0; i < retries; i++) {
+          try {
+            return await fn();
+          } catch (error: any) {
+            if (error.code === '40P01' && i < retries - 1) {
+              // Deadlock detected, retry
+              continue;
+            }
+            throw error;
+          }
+        }
+      };
+
+      const studySession = await retry(() =>
+        prisma.studySession.create({
+          data: {
             groupId: group.id,
-          },
-        },
-        reviews: {
-          create: {
-            wordId: word.id,
-            correct: true,
-          },
-        },
-      },
+            activities: {
+              create: {
+                groupId: group.id,
+              },
+            },
+            reviews: {
+              create: words.map(word => ({
+                wordId: word.id,
+                correct: true,
+              })),
+            },
+          }
+        })
+      );
+
+      return { group, words, wordGroups, studySession };
     });
 
   } catch (error) {
@@ -73,8 +111,8 @@ afterAll(async () => {
       await testClient.$transaction([
         testClient.wordReviewItem.deleteMany(),
         testClient.studyActivity.deleteMany(),
-        testClient.studySession.deleteMany(),
         testClient.wordGroup.deleteMany(),
+        testClient.studySession.deleteMany(),
         testClient.word.deleteMany(),
         testClient.group.deleteMany(),
       ]);
@@ -82,4 +120,4 @@ afterAll(async () => {
       await testClient.$disconnect();
     }
   }
-}); 
+});

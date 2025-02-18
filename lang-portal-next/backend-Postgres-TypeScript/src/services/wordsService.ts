@@ -42,7 +42,8 @@ export class WordsService {
           include: {
             group: true
           }
-        }
+        },
+        // parts: true, // Ensure parts are included
       }
     });
 
@@ -89,4 +90,4 @@ export class WordsService {
 
     return word;
   }
-} 
+}

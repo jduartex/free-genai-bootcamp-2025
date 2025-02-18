@@ -1,4 +1,5 @@
 import { router, publicProcedure } from '../trpc';
+import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { cacheMiddleware, clearCache } from '../middleware/cacheMiddleware';
 import { env } from '../config/env';
@@ -76,7 +77,11 @@ export const wordsRouter = router({
   getById: publicProcedure
     .input(z.number())
     .query(async ({ ctx, input }) => {
-      return ctx.services.words.getWordById(input);
+      const word = await ctx.services.words.getWordById(input);
+      if (!word) {
+        throw new TRPCError({ code: 'NOT_FOUND' });
+      }
+      return word;
     }),
 
   create: publicProcedure
@@ -92,4 +97,23 @@ export const wordsRouter = router({
       await clearCache('words*');
       return result;
     })
-}); 
+});
+
+export class WordService {
+  // other methods 
+
+  async createWord(input: { japanese: string; romaji: string; english: string; parts?: object; groupId?: number }) {
+    // Implementation for creating a word
+    const newWord = {
+      japanese: input.japanese,
+      romaji: input.romaji,
+      english: input.english,
+      parts: input.parts,
+      groupId: input.groupId,
+      correct_count: 0,
+      wrong_count: 0
+    };
+    // Save newWord to the database
+    return newWord;
+  }
+}
