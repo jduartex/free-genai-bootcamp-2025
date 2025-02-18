@@ -40,4 +40,31 @@ describe('Study Sessions Router Integration', () => {
       items_per_page: 10
     });
   });
-}); 
+
+  it('should list words by study session id with pagination', async () => {
+    const caller = appRouter.createCaller(await createContext({} as any));
+    
+    const result = await caller.studySessions.getWordsByStudySessionId({
+      id: testData.sessions[0].id,
+      page: 1,
+      limit: 10
+    });
+
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0]).toMatchObject({
+      japanese: 'こんにちは',
+      romaji: 'konnichiwa',
+      english: 'hello',
+      correct_count: 1,
+      wrong_count: 0,
+    });
+    expect(result.items[1]).toMatchObject({
+      japanese: 'さようなら',
+      romaji: 'sayounara',
+      english: 'goodbye',
+      correct_count: 0,
+      wrong_count: 1,
+    });
+    expect(result.pagination.total_items).toBe(2);
+  });
+});

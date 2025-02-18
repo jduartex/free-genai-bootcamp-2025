@@ -108,5 +108,46 @@ export const studySessionsRouter = router({
       });
 
       return session;
+    }),
+
+  getWordsByStudySessionId: publicProcedure
+    .input(z.object({
+      id: z.number(),
+      page: z.number().default(1),
+      limit: z.number().default(100),
+    }))
+    .query(async ({ ctx, input }) => {
+      const { id, page, limit } = input;
+      const offset = (page - 1) * limit;
+
+      const [items, totalItems] = await ctx.prisma.$transaction([
+        ctx.prisma.wordReviewItem.findMany({
+          where: { studySessionId: id },
+          skip: offset,
+          take: limit,
+          include: {
+            word: true,
+          },
+        }),
+        ctx.prisma.wordReviewItem.count({
+          where: { studySessionId: id },
+        }),
+      ]);
+
+      return {
+        items: items.map(item => ({
+          japanese: item.word.japanese,
+          romaji: item.word.romaji,
+          english: item.word.english,
+          correct_count: item.correct ? 1 : 0,
+          wrong_count: item.correct ? 0 : 1,
+        })),
+        pagination: {
+          current_page: page,
+          total_pages: Math.ceil(totalItems / limit),
+          total_items: totalItems,
+          items_per_page: limit,
+        },
+      };
     })
-}); 
+});

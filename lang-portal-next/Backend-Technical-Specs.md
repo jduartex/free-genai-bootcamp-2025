@@ -417,6 +417,54 @@ Returns quick overview statistics.
 }
 ```
 
+### POST /api/study_sessions
+
+#### Request Params
+- group_id integer
+- study_activity_id integer
+
+#### JSON Response
+```json
+{
+  "id": 124,
+  "group_id": 123,
+  "study_activity_id": 456,
+  "created_at": "2025-02-08T17:20:23-05:00"
+}
+```
+
+### POST /api/groups
+
+#### Request Params
+- name string
+
+#### JSON Response
+```json
+{
+  "id": 1,
+  "name": "Basic Greetings"
+}
+```
+
+### POST /api/words
+
+#### Request Params
+- japanese string
+- romaji string
+- english string
+- parts json
+
+#### JSON Response
+```json
+{
+  "id": 1,
+  "japanese": "こんにちは",
+  "romaji": "konnichiwa",
+  "english": "hello",
+  "parts": {}
+}
+```
+
 ### Initialize Database
 This task will initialize the Postgre database called `words.db
 
