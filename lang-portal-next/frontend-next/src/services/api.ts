@@ -1,16 +1,39 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 const api = axios.create({
   baseURL: '/api',
 });
 
+export class APIError extends Error {
+  constructor(
+    message: string,
+    public status?: number,
+    public code?: string
+  ) {
+    super(message);
+    this.name = 'APIError';
+  }
+}
+
 export const fetchData = async (endpoint: string, method: 'GET' | 'POST' = 'GET', data?: any) => {
-  const response = await api.request({
-    method,
-    url: endpoint,
-    data,
-  });
-  return response.data;
+  try {
+    const response = await api.request({
+      method,
+      url: endpoint,
+      data,
+    });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      throw new APIError(
+        axiosError.response?.data?.message || axiosError.message,
+        axiosError.response?.status,
+        axiosError.code
+      );
+    }
+    throw new APIError('An unexpected error occurred');
+  }
 };
 
 export interface StudyStats {
