@@ -113,4 +113,4 @@ export const statisticsRouter = router({
     .mutation(async ({ ctx }) => {
       return ctx.services.statistics.fullReset();
     })
-}); 
+});
