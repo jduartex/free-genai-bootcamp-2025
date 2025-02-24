@@ -1,14 +1,13 @@
 import * as React from "react"
 import { Outlet } from "react-router-dom"
 import AppSidebar from "@/components/Sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar" // Import SidebarProvider
 
 export default function MainLayout() {
   return (
-    <div style={{ display: 'flex' }}>
+    <SidebarProvider> {/* Wrap with SidebarProvider */}
       <AppSidebar />
-      <main style={{ flex: 1, padding: '20px' }}>
-        <Outlet />
-      </main>
-    </div>
+      <Outlet />
+    </SidebarProvider>
   )
 }
