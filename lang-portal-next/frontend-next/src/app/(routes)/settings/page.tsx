@@ -12,6 +12,12 @@ export default function Settings() {
   const [isResetting, setIsResetting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const handleThemeChange = (value: string) => {
+    if (value === 'light' || value === 'dark' || value === 'system') {
+      setTheme(value)
+    }
+  }
+
   const handleReset = async () => {
     if (resetConfirmation.toLowerCase() !== 'reset me') {
       return
@@ -46,20 +52,23 @@ export default function Settings() {
           <div className="flex items-center space-x-4">
             <select
               value={theme}
-              onChange={(e) => setTheme(e.target.value as 'light' | 'dark' | 'system')}
-              className="bg-card border border-input rounded-md px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+              onChange={(e) => handleThemeChange(e.target.value)}
+              className="w-32 bg-background text-foreground border border-input rounded-md px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-primary"
             >
               <option value="light">Light</option>
               <option value="dark">Dark</option>
               <option value="system">System</option>
             </select>
+            <span className="text-sm text-muted-foreground">
+              {theme === 'system' ? 'Using system theme' : `Using ${theme} theme`}
+            </span>
           </div>
         </div>
 
-        {/* Reset Study History */}
+        {/* Reset History */}
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">Reset Study History</h2>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             This will permanently delete all your study session history. This action cannot be undone.
           </p>
           {!showResetDialog ? (
@@ -67,30 +76,25 @@ export default function Settings() {
               onClick={() => setShowResetDialog(true)}
               variant="destructive"
             >
-              Reset Study History
+              Reset History
             </Button>
           ) : (
             <div className="space-y-4">
-              <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
-                <p className="text-yellow-800">
-                  To confirm, type "reset me" in the box below:
-                </p>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Type "reset me" to confirm:</p>
                 <input
                   type="text"
                   value={resetConfirmation}
                   onChange={(e) => setResetConfirmation(e.target.value)}
-                  className="mt-2 w-full border border-gray-300 rounded px-3 py-1"
-                  placeholder="Type 'reset me' to confirm"
+                  className="w-full px-3 py-1.5 text-sm border rounded-md bg-background text-foreground"
+                  placeholder="reset me"
                 />
-                {error && (
-                  <p className="mt-2 text-red-500">{error}</p>
-                )}
               </div>
-              <div className="flex space-x-2">
+              <div className="space-x-2">
                 <Button
                   onClick={handleReset}
-                  disabled={resetConfirmation.toLowerCase() !== 'reset me' || isResetting}
                   variant="destructive"
+                  disabled={resetConfirmation.toLowerCase() !== 'reset me' || isResetting}
                 >
                   {isResetting ? 'Resetting...' : 'Confirm Reset'}
                 </Button>
@@ -98,13 +102,15 @@ export default function Settings() {
                   onClick={() => {
                     setShowResetDialog(false)
                     setResetConfirmation('')
-                    setError(null)
                   }}
                   variant="outline"
                 >
                   Cancel
                 </Button>
               </div>
+              {error && (
+                <p className="text-sm text-destructive">{error}</p>
+              )}
             </div>
           )}
         </div>

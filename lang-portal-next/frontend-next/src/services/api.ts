@@ -125,11 +125,7 @@ export const fetchGroupWords = async (
   sortKey: WordSortKey,
   sortDirection: 'asc' | 'desc'
 ): Promise<PaginatedResponse<Word>> => {
-  return fetchData(`/groups/${groupId}/words`, {
-    page,
-    sort_key: sortKey,
-    sort_direction: sortDirection,
-  });
+  return fetchData(`/groups/${groupId}/words?page=${page}&sort_key=${sortKey}&sort_direction=${sortDirection}`);
 };
 
 export const fetchGroupStudySessions = async (
@@ -138,9 +134,13 @@ export const fetchGroupStudySessions = async (
   sortKey: StudySessionSortKey,
   sortDirection: 'asc' | 'desc'
 ): Promise<PaginatedResponse<StudySession>> => {
-  return fetchData(`/groups/${groupId}/study-sessions`, {
-    page,
-    sort_key: sortKey,
-    sort_direction: sortDirection,
-  });
+  return fetchData(`/groups/${groupId}/study-sessions?page=${page}&sort_key=${sortKey}&sort_direction=${sortDirection}`);
+};
+
+export const fetchTheme = async () => {
+  return fetchData('/settings/theme') as Promise<{ theme: string }>;
+};
+
+export const updateTheme = async (theme: string) => {
+  return fetchData('/settings/theme', 'POST', { theme }) as Promise<{ theme: string }>;
 };

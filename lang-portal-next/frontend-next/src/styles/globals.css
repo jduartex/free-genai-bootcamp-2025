@@ -59,7 +59,15 @@
   }
   
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground min-h-screen;
+  }
+
+  ::selection {
+    @apply bg-primary/20;
+  }
+
+  .dark ::selection {
+    @apply bg-primary/40;
   }
 }
 
