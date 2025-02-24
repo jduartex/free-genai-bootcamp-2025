@@ -1,5 +1,7 @@
+'use client'
+
 import React from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { ChevronUp, ChevronDown } from 'lucide-react'
 import { StudySession } from '../services/api'
 
@@ -44,17 +46,17 @@ export default function StudySessionsTable({
           {sessions.map((session) => (
             <tr key={session.id} className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
               <td className="px-6 py-4 whitespace-nowrap">
-                <Link to={`/sessions/${session.id}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                <Link href={`/sessions/${session.id}`} className="text-blue-600 dark:text-blue-400 hover:underline">
                   {session.id}
                 </Link>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <Link to={`/study-activities/${session.activity_id}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                <Link href={`/study-activities/${session.activity_id}`} className="text-blue-600 dark:text-blue-400 hover:underline">
                   {session.activity_name}
                 </Link>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <Link to={`/groups/${session.group_id}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                <Link href={`/groups/${session.group_id}`} className="text-blue-600 dark:text-blue-400 hover:underline">
                   {session.group_name}
                 </Link>
               </td>

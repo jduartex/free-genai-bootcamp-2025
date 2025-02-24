@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useNavigation } from '@/context/NavigationContext'
-import WordsTable from '@/components/WordsTable'
-import Pagination from '@/components/Pagination'
+import WordsTable from '@/components/wordstable'
+import Pagination from '@/components/pagination'
 import type { Word, WordSortKey } from '@/services/api'
 
 interface StudySession {

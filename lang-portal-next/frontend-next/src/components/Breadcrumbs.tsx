@@ -1,3 +1,7 @@
+'use client'
+
+import { usePathname } from 'next/navigation'
+import Link from 'next/link'
 import { useLocation } from 'react-router-dom'
 import {
   Breadcrumb,
@@ -10,6 +14,11 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useNavigation } from '@/context/NavigationContext'
+
+interface BreadcrumbItem {
+  label: string
+  href: string
+}
 
 // Define route mappings for breadcrumbs
 const routeMappings: { [key: string]: string } = {
@@ -24,52 +33,28 @@ const routeMappings: { [key: string]: string } = {
 }
 
 export default function Breadcrumbs() {
+  const pathname = usePathname()
   const location = useLocation()
   const { currentGroup, currentWord, currentStudyActivity } = useNavigation()
-  const pathnames = location.pathname.split('/').filter((x) => x)
+  const paths = pathname.split('/').filter(Boolean)
   
-  // If we're at root, show dashboard
-  if (pathnames.length === 0) {
-    pathnames.push('')
-  }
-
-  const breadcrumbItems = pathnames.map((name, index) => {
-    let displayName = routeMappings[name] || name
+  const breadcrumbs: BreadcrumbItem[] = paths.map((path, index) => {
+    const href = `/${paths.slice(0, index + 1).join('/')}`
+    let label = routeMappings[path] || path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, ' ')
     
     // Use group, word, or activity name for the last item if available
-    if (index === pathnames.length - 1 || (name !== 'launch' && index === pathnames.length - 2)) {
-      if (currentGroup && name === currentGroup.id.toString()) {
-        displayName = currentGroup.group_name
-      } else if (currentWord && name === currentWord.id.toString()) {
-        displayName = currentWord.kanji
-      } else if (currentStudyActivity && name === currentStudyActivity.id.toString()) {
-        displayName = currentStudyActivity.title
+    if (index === paths.length - 1 || (path !== 'launch' && index === paths.length - 2)) {
+      if (currentGroup && path === currentGroup.id.toString()) {
+        label = currentGroup.group_name
+      } else if (currentWord && path === currentWord.id.toString()) {
+        label = currentWord.kanji
+      } else if (currentStudyActivity && path === currentStudyActivity.id.toString()) {
+        label = currentStudyActivity.title
       }
     }
 
-    const isLast = index === pathnames.length - 1
-    const items = []
-
-    items.push(
-      <BreadcrumbItem key={`item-${name || 'home'}`}>
-        {isLast ? (
-          <BreadcrumbPage>{displayName}</BreadcrumbPage>
-        ) : (
-          <BreadcrumbLink href={`/${pathnames.slice(0, index + 1).join('/')}`}>
-            {displayName}
-          </BreadcrumbLink>
-        )}
-      </BreadcrumbItem>
-    )
-
-    if (!isLast) {
-      items.push(
-        <BreadcrumbSeparator key={`separator-${name || 'home'}`} />
-      )
-    }
-
-    return items
-  }).flat()
+    return { label, href }
+  })
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
@@ -77,7 +62,17 @@ export default function Breadcrumbs() {
       <Separator orientation="vertical" className="mr-2 h-4" />
       <Breadcrumb>
         <BreadcrumbList>
-          {breadcrumbItems}
+          {breadcrumbs.map((item, index) => (
+            <BreadcrumbItem key={item.href}>
+              {index === breadcrumbs.length - 1 ? (
+                <BreadcrumbPage>{item.label}</BreadcrumbPage>
+              ) : (
+                <BreadcrumbLink href={item.href}>
+                  {item.label}
+                </BreadcrumbLink>
+              )}
+            </BreadcrumbItem>
+          ))}
         </BreadcrumbList>
       </Breadcrumb>
     </header>

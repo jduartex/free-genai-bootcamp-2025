@@ -1,13 +1,18 @@
-import * as React from "react"
-import { Outlet } from "react-router-dom"
-import AppSidebar from "@/components/Sidebar"
+'use client'
 
-export default function MainLayout() {
+import * as React from "react"
+import AppSidebar from "@/components/sidebar"
+
+interface MainLayoutProps {
+  children: React.ReactNode
+}
+
+export default function MainLayout({ children }: MainLayoutProps) {
   return (
     <div style={{ display: 'flex' }}>
       <AppSidebar />
       <main style={{ flex: 1, padding: '20px' }}>
-        <Outlet />
+        {children}
       </main>
     </div>
   )

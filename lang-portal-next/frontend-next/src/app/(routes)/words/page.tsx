@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { fetchWords, type Word } from '../services/api'
-import WordsTable, { WordSortKey } from '../components/WordsTable'
+import WordsTable, { WordSortKey } from '../components/wordstable'
 
 export default function Words() {
   const [words, setWords] = useState<Word[]>([])

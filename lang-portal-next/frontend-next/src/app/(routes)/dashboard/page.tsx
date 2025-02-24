@@ -1,5 +1,7 @@
+'use client'
+
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { BookOpen, Trophy, Clock, ArrowRight, Activity } from 'lucide-react'
 import { fetchRecentStudySession, fetchStudyStats, type StudyStats, type RecentSession } from '@/services/api'
 
@@ -31,7 +33,7 @@ export default function Dashboard() {
     const loadDashboardData = async () => {
       try {
         const [sessionData, statsData] = await Promise.all([
-          fetchRecentStudySession(),
+          fetchRecentStudySession('recent'),
           fetchStudyStats()
         ])
         setRecentSession(sessionData)
@@ -51,7 +53,7 @@ export default function Dashboard() {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <Link 
-          to="/study-activities"
+          href="/study-activities"
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
         >
           Start Studying
@@ -81,7 +83,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <Link 
-                to={`/groups/${recentSession.group_id}`}
+                href={`/groups/${recentSession.group_id}`}
                 className="inline-flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600"
               >
                 View Group <ArrowRight className="w-3 h-3" />
@@ -91,7 +93,7 @@ export default function Dashboard() {
             <div className="text-center py-6">
               <p className="text-gray-500 mb-4">No sessions yet</p>
               <Link 
-                to="/study-activities"
+                href="/study-activities"
                 className="text-blue-500 hover:text-blue-600 inline-flex items-center gap-1"
               >
                 Start your first session <ArrowRight className="w-3 h-3" />
@@ -140,7 +142,7 @@ export default function Dashboard() {
                 <div className="text-center py-6">
                   <p className="text-gray-500 mb-4">Start studying to see your progress</p>
                   <Link 
-                    to="/groups"
+                    href="/groups"
                     className="text-blue-500 hover:text-blue-600 inline-flex items-center gap-1"
                   >
                     Browse word groups <ArrowRight className="w-3 h-3" />
@@ -152,7 +154,7 @@ export default function Dashboard() {
             <div className="text-center py-6">
               <p className="text-gray-500 mb-4">Start studying to see your progress</p>
               <Link 
-                to="/groups"
+                href="/groups"
                 className="text-blue-500 hover:text-blue-600 inline-flex items-center gap-1"
               >
                 Browse word groups <ArrowRight className="w-3 h-3" />
@@ -194,7 +196,7 @@ export default function Dashboard() {
                 <div className="text-center py-6">
                   <p className="text-gray-500 mb-4">Complete sessions to see your stats</p>
                   <Link 
-                    to="/study-activities"
+                    href="/study-activities"
                     className="text-blue-500 hover:text-blue-600 inline-flex items-center gap-1"
                   >
                     Try an activity <ArrowRight className="w-3 h-3" />
@@ -206,7 +208,7 @@ export default function Dashboard() {
             <div className="text-center py-6">
               <p className="text-gray-500 mb-4">Complete sessions to see your stats</p>
               <Link 
-                to="/study-activities"
+                href="/study-activities"
                 className="text-blue-500 hover:text-blue-600 inline-flex items-center gap-1"
               >
                 Try an activity <ArrowRight className="w-3 h-3" />

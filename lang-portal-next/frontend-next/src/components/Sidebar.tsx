@@ -1,6 +1,8 @@
+'use client'
+
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/router"
+import { usePathname } from "next/navigation"
 import { WholeWord, Group, Home, Hourglass, BookOpenText, Settings } from "lucide-react"
 
 import {
@@ -14,51 +16,40 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarProvider, // Import SidebarProvider
+  SidebarProvider,
 } from "@/components/ui/sidebar"
 
 const navItems = [
-  { icon: Home, name: 'Dashboard', path: '/dashboard' },
-  { icon: BookOpenText, name: 'Study Activities', path: '/study-activities' },
-  { icon: WholeWord, name: 'Words', path: '/words' },
+  { icon: Home, name: 'Dashboard', path: '/' },
   { icon: Group, name: 'Word Groups', path: '/groups' },
-  { icon: Hourglass, name: 'Sessions', path: '/sessions' },
+  { icon: BookOpenText, name: 'Study Activities', path: '/study-activities' },
+  { icon: Hourglass, name: 'Study History', path: '/history' },
   { icon: Settings, name: 'Settings', path: '/settings' },
 ]
 
 export default function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const router = useRouter()
-  
-  const isActive = (path: string) => {
-    // Handle root path
-    if (path === '/dashboard' && router.pathname === '/') return true
-    // Handle nested routes by checking if the current path starts with the nav item path
-    return router.pathname.startsWith(path)
-  }
-  
+  const pathname = usePathname()
+
   return (
-    <SidebarProvider> {/* Wrap with SidebarProvider */}
+    <SidebarProvider>
       <Sidebar {...props}>
         <SidebarHeader>
-          LangPortal
+          <div className="flex items-center gap-2 px-4">
+            <WholeWord className="h-6 w-6" />
+            <span className="font-semibold">Lang Portal</span>
+          </div>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {navItems.map((item) => (
-                  <SidebarMenuItem key={item.name}>
-                    <SidebarMenuButton isActive={isActive(item.path)}>
-                      <Link href={item.path}>
-                        <item.icon />
-                        <span>{item.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          <SidebarMenu>
+            {navItems.map((item) => (
+              <Link key={item.path} href={item.path} passHref>
+                <SidebarMenuItem data-active={pathname === item.path}>
+                  <item.icon className="h-4 w-4" />
+                  <span>{item.name}</span>
+                </SidebarMenuItem>
+              </Link>
+            ))}
+          </SidebarMenu>
         </SidebarContent>
         <SidebarRail />
       </Sidebar>

@@ -1,12 +1,7 @@
-import React, { createContext, useContext, useState } from 'react'
-import type { GroupDetails, Word } from '../services/api'
+'use client'
 
-interface StudyActivity {
-  id: number
-  title: string
-  launch_url: string
-  preview_url: string
-}
+import React, { createContext, useContext, useState } from 'react'
+import type { GroupDetails, Word, StudyActivity } from '@/services/api'
 
 interface NavigationContextType {
   currentGroup: GroupDetails | null

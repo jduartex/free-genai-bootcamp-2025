@@ -1,5 +1,7 @@
+'use client'
+
 import React from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { ChevronUp, ChevronDown } from 'lucide-react'
 import { Word } from '../services/api'
 

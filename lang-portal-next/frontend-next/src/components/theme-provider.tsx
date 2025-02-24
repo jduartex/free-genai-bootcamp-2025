@@ -1,3 +1,5 @@
+'use client'
+
 import { createContext, useContext, useEffect, useState } from "react"
 
 type Theme = "dark" | "light" | "system"
@@ -20,45 +22,55 @@ const initialState: ThemeProviderState = {
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
+function getSystemTheme(): "light" | "dark" {
+  if (typeof window === "undefined") return "light"
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+}
+
 export function ThemeProvider({
   children,
   defaultTheme = "system",
-  storageKey = "vite-ui-theme",
+  storageKey = "app-theme",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  )
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window === "undefined") return defaultTheme
+    return (localStorage?.getItem(storageKey) as Theme) || defaultTheme
+  })
 
   useEffect(() => {
     const root = window.document.documentElement
-
-    // Remove existing theme classes
     root.classList.remove("light", "dark")
 
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light"
+    const effectiveTheme = theme === "system" ? getSystemTheme() : theme
+    root.classList.add(effectiveTheme)
 
-      root.classList.add(systemTheme)
-    } else {
-      setTimeout(() => {
-        root.classList.add(theme)
-      }, 1)
+    // Handle system theme changes
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
+    const handleChange = () => {
+      if (theme === "system") {
+        root.classList.remove("light", "dark")
+        root.classList.add(getSystemTheme())
+      }
     }
 
+    mediaQuery.addEventListener("change", handleChange)
+    return () => mediaQuery.removeEventListener("change", handleChange)
   }, [theme])
 
   const setTheme = (newTheme: Theme) => {
-    localStorage.setItem(storageKey, newTheme)
+    const root = window.document.documentElement
+    root.classList.remove("light", "dark")
+
+    const effectiveTheme = newTheme === "system" ? getSystemTheme() : newTheme
+    root.classList.add(effectiveTheme)
+
+    localStorage?.setItem(storageKey, newTheme)
     setThemeState(newTheme)
   }
 
-  const value = { theme, setTheme }
-
   return (
-    <ThemeProviderContext.Provider {...props} value={value}>
+    <ThemeProviderContext.Provider {...props} value={{ theme, setTheme }}>
       {children}
     </ThemeProviderContext.Provider>
   )
