@@ -2,11 +2,12 @@ import { TRPCError } from '@trpc/server';
 import { createClient } from 'redis';
 import { logger } from '../utils/logger';
 import { t } from '../trpc';  // Import the t object from trpc
+import { Context } from '../context';  // Import the Context type
 
-const DEFAULT_EXPIRATION = 3600; // 1 hour in seconds
+const DEFAULT_EXPIRATION = 60; // 1 hour in seconds
 
 export const cacheMiddleware = (duration: number = DEFAULT_EXPIRATION) => {
-  return t.middleware(async ({ ctx, next, path }) => {
+  return t.middleware(async ({ ctx, next, path }: { ctx: Context; next: () => Promise<any>; path: string }) => {
     // Skip caching for non-query operations
     if (ctx.req?.method !== 'GET') {
       return next();

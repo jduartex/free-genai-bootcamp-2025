@@ -13,8 +13,9 @@ beforeAll(async () => {
     await testClient.$transaction([
       testClient.wordReviewItem.deleteMany(),
       testClient.studyActivity.deleteMany(),
-      testClient.wordGroup.deleteMany(),
       testClient.studySession.deleteMany(),
+      testClient.wordGroup.deleteMany(),
+      testClient.wordReviewItem.deleteMany(), // Add this line to delete wordReviewItem first
       testClient.word.deleteMany(),
       testClient.group.deleteMany(),
     ]);
@@ -111,8 +112,9 @@ afterAll(async () => {
       await testClient.$transaction([
         testClient.wordReviewItem.deleteMany(),
         testClient.studyActivity.deleteMany(),
-        testClient.wordGroup.deleteMany(),
         testClient.studySession.deleteMany(),
+        testClient.wordGroup.deleteMany(),
+        testClient.wordReviewItem.deleteMany(), // Add this line to delete wordReviewItems first
         testClient.word.deleteMany(),
         testClient.group.deleteMany(),
       ]);

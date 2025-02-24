@@ -51,19 +51,7 @@ export class WordService {
       throw new AppError('Word not found', 404);
     }
 
-    return {
-      japanese: word.japanese,
-      romaji: word.romaji,
-      english: word.english,
-      stats: {
-        correct_count: word.reviews.filter(r => r.correct).length,
-        wrong_count: word.reviews.filter(r => !r.correct).length
-      },
-      groups: word.groups.map(g => ({
-        id: g.group.id,
-        name: g.group.name
-      }))
-    };
+    return word;
   }
 
   async createWord(input: { japanese: string; romaji: string; english: string; parts?: object; groupId?: number }) {

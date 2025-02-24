@@ -90,26 +90,22 @@ export class StatisticsService {
   }
 
   async getLastStudySession() {
-    const lastSession = await this.prisma.studySession.findFirst({
+    const session = await this.prisma.studySession.findFirst({
       orderBy: {
-        createdAt: 'desc'
+        createdAt: 'desc',
       },
       include: {
         group: true,
-        activities: true
-      }
+      },
     });
 
-    if (!lastSession) {
-      return null;
+    if (!session) {
+      throw new Error('No study sessions found');
     }
 
     return {
-      id: lastSession.id,
-      group_id: lastSession.groupId,
-      created_at: lastSession.createdAt,
-      study_activity_id: lastSession.activities[0]?.id,
-      group_name: lastSession.group.name
+      group_id: session.groupId,
+      created_at: session.createdAt,
     };
   }
 }

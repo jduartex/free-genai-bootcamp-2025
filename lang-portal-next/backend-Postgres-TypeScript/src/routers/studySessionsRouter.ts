@@ -92,7 +92,15 @@ export const studySessionsRouter = router({
       correct: z.boolean()
     }))
     .mutation(async ({ ctx, input }) => {
-      const session = await ctx.prisma.studySession.update({
+      const session = await ctx.prisma.studySession.findUnique({
+        where: { id: input.sessionId },
+      });
+
+      if (!session) {
+        throw new Error('StudySession not found');
+      }
+
+      const updatedSession = await ctx.prisma.studySession.update({
         where: { id: input.sessionId },
         data: {
           reviews: {
@@ -107,7 +115,7 @@ export const studySessionsRouter = router({
         }
       });
 
-      return session;
+      return updatedSession;
     }),
 
   getWordsByStudySessionId: publicProcedure

@@ -25,8 +25,8 @@ describe('Words API', () => {
     
     expect(result).toBeDefined();
     expect(Array.isArray(result.items)).toBe(true);
-    expect(result.items.length).toBe(2); // Adjust to match the expected number of items
-    expect(result.pagination.total_items).toBe(2); // Adjust to match the expected total items
+    expect(result.items.length).toBe(testData.words.length); // Adjust to match the expected number of items
+    expect(result.pagination.total_items).toBe(testData.words.length); // Adjust to match the expected total items
     expect(result.items[0]).toHaveProperty('japanese');
   });
 
@@ -50,6 +50,7 @@ describe('Groups API', () => {
     const result = await caller.groups.list(input);
     expect(result).toBeDefined();
     expect(Array.isArray(result.items)).toBe(true);
+    expect(result.items.length).toBe(testData.groups.length); // Adjust to match the expected number of items
   });
 });
 
@@ -62,6 +63,7 @@ describe('Study Sessions API', () => {
     
     const result = await caller.studySessions.list(input);
     expect(result).toBeDefined();
-    expect(Array.isArray(result.items)).toBe(true);
+    expect(Array.isArray(result.items)). toBe(true);
+    expect(result.items.length).toBe(testData.sessions.length); // Adjust to match the expected number of items
   });
 });

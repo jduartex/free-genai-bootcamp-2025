@@ -96,3 +96,136 @@ Configures Docker services for PostgreSQL and Redis.
 
 ### Commands (`commands.md`):
 Contains useful Docker and Prisma commands for development and testing.
+
+Based on the provided Backend-Technical-Specs.md, here are the endpoints that need to be implemented and tested:
+
+### API Endpoints
+
+1. **GET /api/dashboard/last_study_session**
+2. **GET /api/dashboard/study_progress**
+3. **GET /api/dashboard/quick-stats**
+4. **GET /api/study_activities/:id**
+5. **GET /api/study_activities/:id/study_sessions**
+6. **POST /api/study_activities**
+7. **GET /api/words**
+8. **GET /api/words/:id**
+9. **GET /api/groups**
+10. **GET /api/groups/:id**
+11. **GET /api/groups/:id/words**
+12. **GET /api/groups/:id/study_sessions**
+13. **GET /api/study_sessions**
+14. **GET /api/study_sessions/:id**
+15. **GET /api/study_sessions/:id/words**
+16. **POST /api/reset_history**
+17. **POST /api/full_reset**
+18. **POST /api/study_sessions/:id/words/:word_id/review**
+19. **POST /api/study_sessions**
+20. **POST /api/groups**
+21. **POST /api/words**
+
+### Implementation and Testing Checklist
+
+- **GET /api/dashboard/last_study_session**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **GET /api/dashboard/study_progress**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **GET /api/dashboard/quick-stats**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **GET /api/study_activities/:id**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **GET /api/study_activities/:id/study_sessions**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **POST /api/study_activities**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **GET /api/words**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **GET /api/words/:id**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **GET /api/groups**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **GET /api/groups/:id**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **GET /api/groups/:id/words**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **GET /api/groups/:id/study_sessions**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **GET /api/study_sessions**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **GET /api/study_sessions/:id**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **GET /api/study_sessions/:id/words**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **POST /api/reset_history**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **POST /api/full_reset**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **POST /api/study_sessions/:id/words/:word_id/review**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **POST /api/study_sessions**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **POST /api/groups**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
+
+- **POST /api/words**
+  - [x] Implement
+  - [x] Unit Test
+  - [x] Integration Test
