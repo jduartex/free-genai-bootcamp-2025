@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  // Mock study stats data
-  const stats = {
-    totalMinutes: 120,
-    totalSessions: 15,
-    streakDays: 5,
-    wordsLearned: 75
-  };
+  try {
+    const response = await fetch(`${process.env.BACKEND_URL}/api/study/stats`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-  return NextResponse.json(stats);
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Error fetching study stats:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch study stats' },
+      { status: 500 }
+    );
+  }
 }

@@ -4,23 +4,29 @@ import { headers } from 'next/headers'
 import { type StudyStats, type RecentSession, type Group, type StudyActivity, type GroupDetails, type Word, type StudySession, type WordSortKey, type StudySessionSortKey, type PaginatedResponse } from '@/services/api'
 
 async function fetchFromApi(endpoint: string, method: 'GET' | 'POST' = 'GET', data?: any) {
-  const headersList = await headers()
-  const host = await headersList.get('host') || 'localhost:3000'
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
-  
-  const response = await fetch(`${protocol}://${host}/api${endpoint}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: data ? JSON.stringify(data) : undefined,
-  })
+  try {
+    const headersList = await headers()
+    const host = await headersList.get('host') || 'localhost:3000'
+    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
+    
+    const response = await fetch(`${protocol}://${host}/api${endpoint}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: data ? JSON.stringify(data) : undefined,
+    })
 
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`)
+    if (!response.ok) {
+      console.error(`HTTP error! status: ${response.status} for endpoint: ${endpoint}`)
+      throw new Error(`HTTP error! status: ${response.status} for endpoint: ${endpoint}`)
+    }
+
+    return response.json()
+  } catch (error: any) {
+    console.error(`Failed to fetch from API endpoint: ${endpoint}`, error)
+    throw new Error(`Failed to fetch from API: ${error.message}`)
   }
-
-  return response.json()
 }
 
 export async function getStudyStats(): Promise<StudyStats> {
