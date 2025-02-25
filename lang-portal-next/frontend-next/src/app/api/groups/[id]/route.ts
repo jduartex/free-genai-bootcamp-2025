@@ -49,8 +49,17 @@ export async function DELETE(
     const response = await fetch(`${process.env.BACKEND_URL}/api/groups/${params.id}`, {
       method: 'DELETE',
     });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return new NextResponse(null, { status: 204 });
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: `Failed to delete group: ${response.statusText}` },
+        { status: response.status }
+      );
+    }
+    // Option 1: For consistency with GET and PUT
+    return NextResponse.json({ message: 'Group deleted successfully' });
+    
+    // Option 2: Keep current approach but be consistent with error handling
+    // return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error('Error deleting group:', error);
     return NextResponse.json(
