@@ -4,6 +4,10 @@ const api = axios.create({
   baseURL: '/api',
 });
 
+interface APIErrorResponse {
+  message: string;
+}
+
 export class APIError extends Error {
   constructor(
     message: string,
@@ -24,12 +28,11 @@ export const fetchData = async (endpoint: string, method: 'GET' | 'POST' = 'GET'
     });
     return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const axiosError = error as AxiosError;
+    if (error instanceof AxiosError) {
       throw new APIError(
-        axiosError.response?.data?.message || axiosError.message,
-        axiosError.response?.status,
-        axiosError.code
+        (error.response?.data as APIErrorResponse)?.message || error.message,
+        error.response?.status,
+        error.code
       );
     }
     throw new APIError('An unexpected error occurred');
