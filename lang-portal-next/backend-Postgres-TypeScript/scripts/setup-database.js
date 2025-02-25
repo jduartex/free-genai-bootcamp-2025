@@ -47,8 +47,14 @@ async function setupDatabase() {
     if (checkResult.rows.length === 0) {
       // Database doesn't exist, so create it
       console.log(`Creating database "${dbName}"...`);
-      await client.query(`CREATE DATABASE ${dbName}`);
+      // PostgreSQL doesn't support parameters for database names
+      // Use proper escaping for identifiers
+      const escapedDbName = dbName.replace(/"/g, '""');
+      await client.query(`CREATE DATABASE "${escapedDbName}"`);
       console.log(`✅ Database "${dbName}" created successfully`);
+    } else {
+      console.log(`✅ Database "${dbName}" already exists`);
+    }
     } else {
       console.log(`✅ Database "${dbName}" already exists`);
     }
