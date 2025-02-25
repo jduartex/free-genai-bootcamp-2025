@@ -28,7 +28,8 @@ async function createDatabase() {
     if (checkResult.rows.length === 0) {
       // Database doesn't exist, so create it
       console.log(`Creating database "${dbName}"...`);
-      await client.query(`CREATE DATABASE ${dbName}`);
+-     await client.query(`CREATE DATABASE ${dbName}`);
++     await client.query(`CREATE DATABASE "${dbName}"`);
       console.log(`Database "${dbName}" created successfully`);
     } else {
       console.log(`Database "${dbName}" already exists`);
