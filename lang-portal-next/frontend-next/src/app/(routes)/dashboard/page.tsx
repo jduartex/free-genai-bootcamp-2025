@@ -1,5 +1,15 @@
 import Link from 'next/link'
 
+/**
+ * Renders the dashboard page containing the main interface.
+ *
+ * This component displays a dashboard with a header and three informational cards:
+ * - **Last Study Session**: Indicates that no study session has been started and provides a link to the study page.
+ * - **Study Progress**: Encourages initiating study sessions to view progress and includes a link to browse word groups.
+ * - **Quick Stats**: Notifies that statistics become available after completing sessions and offers a link to try an activity.
+ *
+ * The layout uses a responsive grid system to ensure usability across various screen sizes.
+ */
 export default function DashboardPage() {
   return (
     <div className="p-6">

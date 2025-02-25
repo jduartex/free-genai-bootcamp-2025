@@ -8,6 +8,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useTheme } from "@/components/theme-provider"
 
+/**
+ * Renders a dropdown menu that allows the user to select a theme.
+ *
+ * The component displays a button with animated sun and moon icons to indicate the current theme. When activated, the dropdown provides three options—"light", "dark", and "system"—which update the application theme via the theme hook.
+ *
+ * @returns A JSX element representing the theme toggle dropdown menu.
+ */
 export default function ModeToggle() {
   const { setTheme } = useTheme()
 

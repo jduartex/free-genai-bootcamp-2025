@@ -14,6 +14,17 @@ interface WordsTableProps {
   onSort: (key: WordSortKey) => void
 }
 
+/**
+ * Renders a table displaying words with sortable column headers.
+ *
+ * The table shows each word's kanji, romaji, English meaning, correct count, and wrong count.
+ * Clicking on a column header triggers sorting by that column, with an icon indicating the current sort direction.
+ *
+ * @param words - Array of word objects to display. Each object includes properties such as id, kanji, romaji, english, correct_count, and wrong_count.
+ * @param sortKey - The key indicating the currently sorted column. It is one of 'kanji', 'romaji', 'english', 'correct_count', or 'wrong_count'.
+ * @param sortDirection - The current sort direction: 'asc' for ascending or 'desc' for descending.
+ * @param onSort - Callback function invoked when a column header is clicked, receiving the corresponding sort key.
+ */
 export default function WordsTable({ words, sortKey, sortDirection, onSort }: WordsTableProps) {
   return (
     <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">

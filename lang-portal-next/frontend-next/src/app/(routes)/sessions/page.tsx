@@ -3,6 +3,15 @@ import StudySessionsTable, { type StudySessionSortKey } from '../components/stud
 import Pagination from '../components/pagination'
 import { type StudySession, fetchStudySessions } from '../services/api'
 
+/**
+ * Renders the study sessions UI, including a table with sorting capabilities and pagination controls.
+ *
+ * The component fetches study sessions asynchronously when the page changes, handles loading and error states,
+ * and displays the sessions in a sortable table. Users can toggle the sort order by clicking on session columns
+ * and navigate through pages using the provided controls.
+ *
+ * @returns The rendered study sessions component.
+ */
 export default function Sessions() {
   const [sessions, setSessions] = useState<StudySession[]>([])
   const [loading, setLoading] = useState(true)

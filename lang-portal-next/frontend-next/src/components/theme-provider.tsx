@@ -23,11 +23,32 @@ const initialState: ThemeProviderState = {
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
+/**
+ * Determines the system's preferred color scheme.
+ *
+ * In a browser, it returns "dark" if the system prefers dark mode based on the 
+ * "(prefers-color-scheme: dark)" media query; otherwise, it returns "light". When executed 
+ * in a non-browser environment, the function defaults to "light".
+ *
+ * @returns "dark" if the system prefers dark mode, otherwise "light".
+ */
 function getSystemTheme(): "light" | "dark" {
   if (typeof window === "undefined") return "light"
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 }
 
+/**
+ * Provides a context for managing the application's theme.
+ *
+ * This component initializes the theme state by fetching the current theme from an API and applies
+ * the theme as a class on the document's root element. When the theme is set to "system", it listens for
+ * changes in the system's preferred color scheme and updates accordingly. The provider delays context establishment
+ * until after mounting to ensure accurate theme detection.
+ *
+ * @param defaultTheme - Optional initial theme; defaults to "system".
+ *
+ * @returns The ThemeProvider context wrapping its children, or the children directly if the component has not mounted.
+ */
 export function ThemeProvider({
   children,
   defaultTheme = "system",
