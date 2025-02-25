@@ -2,6 +2,7 @@ import '@/styles/globals.css'
 import { Inter } from 'next/font/google'
 import { Providers } from '@/components/providers'
 import { metadata } from './metadata'
+import ApiStatusBanner from '@/components/ApiStatusBanner'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -14,7 +15,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head />
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <ApiStatusBanner />
+        </Providers>
       </body>
     </html>
   )
