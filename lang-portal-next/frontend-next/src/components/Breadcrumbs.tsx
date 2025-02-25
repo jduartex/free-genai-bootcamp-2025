@@ -32,6 +32,18 @@ const routeMappings: { [key: string]: string } = {
   'launch': 'Launch'
 }
 
+/**
+ * Renders the breadcrumb navigation header.
+ *
+ * Constructs a breadcrumb trail based on the current URL path by splitting it into segments, mapping each segment to a
+ * human-readable label, and dynamically substituting the label for the last breadcrumb with the active group, word,
+ * or study activity from the navigation context when available.
+ *
+ * The header includes a sidebar trigger, a vertical separator, and a list of breadcrumb items where the final item
+ * is rendered as a non-clickable page indicator.
+ *
+ * @returns The JSX element representing the breadcrumb navigation header.
+ */
 export default function Breadcrumbs() {
   const pathname = usePathname()
   const location = useLocation()

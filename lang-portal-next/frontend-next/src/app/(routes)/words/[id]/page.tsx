@@ -5,6 +5,13 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { fetchWord, type Word } from '@/services/api'
 
+/**
+ * Displays the details of a word fetched based on the current URL's "id" parameter.
+ *
+ * This component retrieves the word's data via an API call and renders its kanji, readings, meanings, study count, and success rate.
+ * It shows a loading indicator while the data is being fetched and a "Word not found" message if no word is returned.
+ * A "Study Now" link is provided to launch study activities for the word.
+ */
 export default function WordShow() {
   const params = useParams()
   const id = params.id as string

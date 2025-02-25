@@ -37,6 +37,16 @@ type SidebarContext = {
 
 const SidebarContext = React.createContext<SidebarContext | null>(null)
 
+/**
+ * Retrieves the sidebar context.
+ *
+ * This custom hook returns the current sidebar context provided by the SidebarProvider.
+ * It throws an error if no context is available, indicating that it is used outside of a SidebarProvider.
+ *
+ * @returns The sidebar context containing state and utility functions for sidebar management.
+ *
+ * @throws {Error} If the hook is used outside of a SidebarProvider.
+ */
 function useSidebar() {
   const context = React.useContext(SidebarContext)
   if (!context) {

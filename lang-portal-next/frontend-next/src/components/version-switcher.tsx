@@ -13,6 +13,15 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
+/**
+ * Renders a sidebar version switcher for documentation.
+ *
+ * This component displays the current documentation version and provides a dropdown menu to select a different version.
+ * The initially displayed version is set via the `defaultVersion` prop, and the selected version is managed internally.
+ *
+ * @param versions - An array of available version strings.
+ * @param defaultVersion - The version string to display initially.
+ */
 export function VersionSwitcher({
   versions,
   defaultVersion,

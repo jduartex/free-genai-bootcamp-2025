@@ -13,6 +13,18 @@ import {
 } from "@/components/ui/card"
 import { fetchStudyActivity, type StudyActivity } from '@/services/api'
 
+/**
+ * Displays a study activity and provides controls for launching it.
+ *
+ * The component retrieves activity data based on the URL parameter `id` using the asynchronous
+ * function `fetchStudyActivity`. It manages loading, error, and empty states, rendering a loading message,
+ * an error notification, or a "not found" message as needed. When the activity data is successfully loaded,
+ * it presents detailed information including the activity's name, description, type, difficulty, and instructions,
+ * all within a card layout. Users can navigate back or start the activity session using the provided buttons.
+ *
+ * @remarks
+ * The activity is fetched only if the `id` parameter is supplied. Navigation is handled via Next.js routing utilities.
+ */
 export default function LaunchActivity() {
   const params = useParams()
   const router = useRouter()

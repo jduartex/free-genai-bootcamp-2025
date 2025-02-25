@@ -18,6 +18,17 @@ import StudySessionsTable from '@/components/studysessionstable'
 import Pagination from '@/components/pagination'
 import { useNavigation } from '@/context/NavigationContext'
 
+/**
+ * Renders a detailed view of a group.
+ *
+ * This component retrieves the group's details, associated words, and study sessions
+ * using the group ID from the URL. It manages loading, error states, pagination, and sorting
+ * for the words and study sessions, fetching data asynchronously on component mount and whenever
+ * relevant parameters change. A cleanup effect resets the current group in the navigation context on unmount.
+ *
+ * @returns The JSX layout for displaying the group's information, including navigation, statistics,
+ *          words table, and study sessions table with pagination controls.
+ */
 export default function GroupShow() {
   const params = useParams()
   const [group, setGroup] = useState<GroupDetails | null>(null)
