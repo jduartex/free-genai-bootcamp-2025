@@ -14,6 +14,18 @@ interface StudySessionsTableProps {
   onSort: (key: StudySessionSortKey) => void
 }
 
+/**
+ * Renders a table of study sessions with sortable columns.
+ *
+ * The component displays details of study sessions—session ID, activity name, group name, start time, end time, 
+ * and review items count—in a responsive table styled with Tailwind CSS. Clicking on a column header triggers
+ * the sorting callback and visually indicates the active sort column using an ascending or descending chevron icon.
+ *
+ * @param sessions - An array of study session objects to display.
+ * @param sortKey - The currently active key used for sorting the sessions.
+ * @param sortDirection - The sort direction, either 'asc' or 'desc'.
+ * @param onSort - Callback invoked with a sort key when a column header is clicked.
+ */
 export default function StudySessionsTable({ 
   sessions, 
   sortKey, 

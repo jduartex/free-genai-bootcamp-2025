@@ -13,6 +13,14 @@ interface GroupsClientProps {
   totalPages: number
 }
 
+/**
+ * Renders a paginated and sortable table of groups.
+ *
+ * This React component displays a list of groups with functionality to sort by name or word count and navigate between pages. It initializes its state using the provided initial group data and total page count, and updates the list asynchronously based on user interactions.
+ *
+ * @param initialGroups - The initial array of groups to display.
+ * @param totalPages - The total number of pages available for pagination.
+ */
 export function GroupsClient({ initialGroups, totalPages }: GroupsClientProps) {
   const [groups, setGroups] = useState(initialGroups)
   const [sortKey, setSortKey] = useState<SortKey>('name')

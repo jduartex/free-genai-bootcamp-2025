@@ -27,6 +27,13 @@ const navItems = [
   { icon: Settings, name: 'Settings', path: '/settings' },
 ]
 
+/**
+ * Renders the application sidebar with navigation links.
+ *
+ * This component displays a sidebar featuring a header with the "Lang Portal" logo and title, followed by a menu
+ * of navigation items. It determines the current active route using Next.js's pathname hook, and highlights the
+ * corresponding menu item. Additional properties are forwarded to the underlying Sidebar component.
+ */
 export default function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
 

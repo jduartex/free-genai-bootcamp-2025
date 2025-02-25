@@ -1,5 +1,15 @@
 import { NextResponse } from 'next/server';
 
+/**
+ * Handles HTTP GET requests to retrieve recent study sessions.
+ *
+ * Extracts the `type` parameter from the request's URL (defaulting to `'all'` if not provided)
+ * and forwards the request to a backend API endpoint to fetch session data. Returns the API response as JSON.
+ * If the backend response is not successful or any error occurs, logs the error and returns a JSON error response with a 500 status.
+ *
+ * @param request - The incoming HTTP GET request.
+ * @returns A JSON response containing the session data or an error message.
+ */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type');

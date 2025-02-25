@@ -12,6 +12,16 @@ type ActivityProps = {
   }
 }
 
+/**
+ * Renders a styled card displaying details of a study activity.
+ *
+ * This component displays the activity's preview image, title, and provides two buttons:
+ * one for launching the activity and another for viewing its details.
+ *
+ * @param activity - The study activity object containing its id, preview URL, title, and launch URL.
+ *
+ * @returns A JSX element representing the study activity card.
+ */
 export default function StudyActivity({ activity }: ActivityProps) {
   return (
     <div className="bg-sidebar rounded-lg shadow-md overflow-hidden">

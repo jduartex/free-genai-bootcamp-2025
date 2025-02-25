@@ -22,6 +22,11 @@ interface StudyActivity {
   instructions: string
 }
 
+/**
+ * Fetches study activities from the API and displays them in a responsive card grid.
+ *
+ * This React component retrieves study activities from the '/study-activities' endpoint and manages three states: loading, error, and the list of activities. While data is being fetched, a loading message is shown. If an error occurs during the fetch, an error message is displayed. Once the data is loaded, each activity is rendered in a card that highlights its name, type, difficulty, and description, along with a link to launch the activity.
+ */
 export default function StudyActivities() {
   const [activities, setActivities] = useState<StudyActivity[]>([])
   const [loading, setLoading] = useState(true)

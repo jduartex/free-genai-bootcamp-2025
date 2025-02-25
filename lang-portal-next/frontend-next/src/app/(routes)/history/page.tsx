@@ -3,6 +3,17 @@
 import { useEffect, useState } from 'react'
 import { fetchRecentStudySession, type RecentSession } from '@/services/api'
 
+/**
+ * Renders the study history interface.
+ *
+ * When the component mounts, it fetches recent study sessions by invoking
+ * the asynchronous API call `fetchRecentStudySession('all')`. While the data is being loaded,
+ * it displays a loading message. If an error occurs during the fetch, an error message is shown.
+ * Otherwise, it renders a table listing the study sessions with details such as date, duration,
+ * words studied, and accuracy.
+ *
+ * @returns The JSX element representing the study history UI.
+ */
 export default function History() {
   const [sessions, setSessions] = useState<RecentSession[]>([])
   const [loading, setLoading] = useState(true)

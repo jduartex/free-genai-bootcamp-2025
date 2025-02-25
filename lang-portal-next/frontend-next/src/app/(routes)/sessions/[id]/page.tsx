@@ -25,6 +25,14 @@ interface SessionResponse {
   total_pages: number
 }
 
+/**
+ * Renders the study session details, including metadata, a table of reviewed words, and pagination controls.
+ *
+ * The component fetches session data using the session ID from the URL parameters and manages loading, error, and sorting states.
+ * It displays appropriate indicators during data fetching and offers pagination when multiple pages of words are available.
+ *
+ * @returns A JSX element displaying the study session information and reviewed words.
+ */
 export default function StudySessionShow() {
   const { id } = useParams<{ id: string }>()
   const [session, setSession] = useState<StudySession | null>(null)

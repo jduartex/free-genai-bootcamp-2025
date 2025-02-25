@@ -7,6 +7,13 @@ import {
   SidebarInput,
 } from "@/components/ui/sidebar"
 
+/**
+ * Renders a search form with a styled input and embedded search icon.
+ *
+ * This component creates a form that contains a sidebar group with an accessible, visually hidden label,
+ * a search input field with a placeholder ("Search the docs..."), and a search icon positioned within the input.
+ * Extra props are forwarded to the underlying <form> element.
+ */
 export function SearchForm({ ...props }: React.ComponentProps<"form">) {
   return (
     <form {...props}>

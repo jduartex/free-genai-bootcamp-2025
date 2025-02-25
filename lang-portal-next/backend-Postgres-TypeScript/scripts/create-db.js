@@ -13,6 +13,15 @@ const config = {
 
 const dbName = process.env.POSTGRES_DB || 'langportal';
 
+/**
+ * Connects to the PostgreSQL server and ensures the specified database exists.
+ *
+ * This asynchronous function establishes a connection using a configured client, checks for the database's existence 
+ * via a query on PostgreSQL's system catalog, and creates the database if it does not already exist. Errors during 
+ * the process are logged, and the process terminates with an exit code of 1.
+ *
+ * @async
+ */
 async function createDatabase() {
   const client = new Client(config);
   
@@ -28,8 +37,7 @@ async function createDatabase() {
     if (checkResult.rows.length === 0) {
       // Database doesn't exist, so create it
       console.log(`Creating database "${dbName}"...`);
--     await client.query(`CREATE DATABASE ${dbName}`);
-+     await client.query(`CREATE DATABASE "${dbName}"`);
+      await client.query(`CREATE DATABASE ${dbName}`);
       console.log(`Database "${dbName}" created successfully`);
     } else {
       console.log(`Database "${dbName}" already exists`);

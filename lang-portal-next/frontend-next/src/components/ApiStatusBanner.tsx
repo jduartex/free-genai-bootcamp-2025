@@ -3,6 +3,17 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
+/**
+ * Renders a dismissable banner warning about API server unavailability.
+ *
+ * This component checks the API health endpoint immediately on mount and every 30 seconds thereafter.
+ * When the health check fails within a 2000ms timeout, it displays a banner indicating that fallback data is used,
+ * which may limit certain features. Users can dismiss the banner by clicking the provided dismiss button.
+ *
+ * @remarks
+ * The API endpoint is derived from the environment variable NEXT_PUBLIC_API_URL (defaulting to '/api/health'),
+ * and the component ensures proper cleanup by clearing the interval on unmount.
+ */
 export default function ApiStatusBanner() {
   const [isApiAvailable, setIsApiAvailable] = useState(true);
   const [isVisible, setIsVisible] = useState(false);

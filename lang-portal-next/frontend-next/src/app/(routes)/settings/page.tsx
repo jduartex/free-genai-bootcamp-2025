@@ -5,6 +5,17 @@ import { useTheme } from '@/components/theme-provider'
 import { fetchData } from '@/services/api'
 import { Button } from '@/components/ui/button'
 
+/**
+ * Renders the settings interface for managing the application's theme and study history.
+ *
+ * This component offers a dropdown for selecting a theme ("light", "dark", or "system")
+ * and a section to reset study history. To initiate a reset, the user must type "reset me"
+ * into a confirmation input. If the confirmation matches, a POST request is sent to clear
+ * study sessions; on success, the reset dialog is dismissed and the user is alerted, while
+ * errors during the reset process are displayed.
+ *
+ * @returns The settings UI component.
+ */
 export default function Settings() {
   const { theme, setTheme } = useTheme()
   const [showResetDialog, setShowResetDialog] = useState(false)
