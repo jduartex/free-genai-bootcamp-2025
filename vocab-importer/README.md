@@ -47,24 +47,18 @@ vocab-importer/
 
 1. Clone the repository
 2. Install dependencies: `npm install`
-3. Create a `.env` file based on `.env.example` and add your API keys
-4. Start the development server: `npm start`
-5. Access the application at `http://localhost:3000`
+3. Start the development server: `npm start`
+4. Access the application at `http://localhost:3000`
 
 ## Configuration
 
 The application can be configured using environment variables in the `.env` file:
 
 ```
-GROQ_API_KEY=your_groq_api_key_here
 API_KEY=your_api_key_here
 DATABASE_URL=your_database_url
 PORT=3000
 ```
-
-### API Keys Required
-
-- **GROQ API Key**: Used for AI-powered translations and vocabulary assistance. You can obtain a GROQ API key by signing up at [GROQ's website](https://console.groq.com/keys).
 
 ## Development
 
