@@ -6,3 +6,6 @@ sentence-transformers==2.5.1
 flask==2.3.3
 python-dotenv==1.0.0
 requests==2.31.0
+Flask-Limiter==3.5.0
+Flask-Caching==2.1.0
+jsonschema==4.20.0
