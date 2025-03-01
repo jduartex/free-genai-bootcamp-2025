@@ -10,6 +10,13 @@ const config = {
   database: 'postgres' // Connect to default postgres database
 };
 
+/**
+ * Retrieves and displays a list of PostgreSQL databases with their sizes, template statuses, and connection permissions.
+ *
+ * This asynchronous function connects to the PostgreSQL server using a predefined configuration, executes a query
+ * to gather details about all databases, and prints the results in a formatted table. If an error occurs during
+ * connection or query execution, the error is logged and the process terminates.
+ */
 async function listDatabases() {
   const client = new Client(config);
   

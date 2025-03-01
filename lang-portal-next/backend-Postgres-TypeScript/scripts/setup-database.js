@@ -16,6 +16,15 @@ const config = {
 
 const dbName = process.env.POSTGRES_DB || 'langportal';
 
+/**
+ * Executes a shell command asynchronously.
+ *
+ * This function logs the command, executes it, and outputs any returned standard output or errors.
+ * It returns a promise that resolves to true if the command runs successfully, or false if an error occurs.
+ *
+ * @param {string} command - The shell command to execute.
+ * @returns {Promise<boolean>} A promise resolving to true if execution is successful, or false otherwise.
+ */
 async function runCommand(command) {
   try {
     console.log(`Running: ${command}`);
@@ -30,6 +39,19 @@ async function runCommand(command) {
   }
 }
 
+/**
+ * Sets up the PostgreSQL database by ensuring the target database exists and, if necessary, creating it, 
+ * then applying Prisma migrations, generating the Prisma client, and seeding the database with initial data.
+ *
+ * The function connects to the PostgreSQL server using a predefined configuration, checks for the existence 
+ * of the specified database, and creates it if it does not exist. It sequentially runs shell commands to deploy 
+ * migrations, generate the Prisma client, and seed the database. If any of these steps fail, an error is thrown 
+ * and the process exits with a non-zero status.
+ *
+ * @returns {Promise<void>}
+ *
+ * @throws {Error} If applying migrations, generating the Prisma client, or seeding the database fails.
+ */
 async function setupDatabase() {
   const client = new Client(config);
   
@@ -47,14 +69,8 @@ async function setupDatabase() {
     if (checkResult.rows.length === 0) {
       // Database doesn't exist, so create it
       console.log(`Creating database "${dbName}"...`);
-      // PostgreSQL doesn't support parameters for database names
-      // Use proper escaping for identifiers
-      const escapedDbName = dbName.replace(/"/g, '""');
-      await client.query(`CREATE DATABASE "${escapedDbName}"`);
+      await client.query(`CREATE DATABASE ${dbName}`);
       console.log(`✅ Database "${dbName}" created successfully`);
-    } else {
-      console.log(`✅ Database "${dbName}" already exists`);
-    }
     } else {
       console.log(`✅ Database "${dbName}" already exists`);
     }

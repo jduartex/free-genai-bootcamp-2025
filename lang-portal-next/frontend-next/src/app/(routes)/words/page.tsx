@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react'
 import { fetchWords, type Word } from '../services/api'
 import WordsTable, { WordSortKey } from '../components/wordstable'
 
+/**
+ * Displays a paginated and sortable list of words.
+ *
+ * This React component fetches word data from an API based on the current page, sort key, and sort direction. It manages loading and error states and renders either a loading indicator, an error message, or a table of words with pagination controls.
+ *
+ * @example
+ * <Words />
+ *
+ * @returns A JSX element containing the words table and navigation buttons for pagination.
+ */
 export default function Words() {
   const [words, setWords] = useState<Word[]>([])
   const [sortKey, setSortKey] = useState<WordSortKey>('kanji')

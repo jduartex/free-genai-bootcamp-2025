@@ -29,6 +29,16 @@ type PaginatedSessions = {
 
 const ITEMS_PER_PAGE = 10
 
+/**
+ * Renders the details of a specific study activity along with its paginated study sessions.
+ *
+ * The component fetches the study activity using the ID from the URL parameters and displays information such as the title, description, type, difficulty, and instructions. It also retrieves and displays associated study sessions, presenting them in a table with pagination controls if multiple pages are available.
+ *
+ * Additionally, the component manages loading and error states, and it resets the current study activity in the navigation context when unmounted.
+ *
+ * @example
+ * <StudyActivityShow />
+ */
 export default function StudyActivityShow() {
   const params = useParams()
   const { setCurrentStudyActivity } = useNavigation()

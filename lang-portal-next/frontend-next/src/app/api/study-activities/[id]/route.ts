@@ -27,6 +27,15 @@ const activities = {
   }
 };
 
+/**
+ * Handles GET requests for retrieving a study activity by its unique ID.
+ *
+ * Asynchronously looks up the activity corresponding to the provided ID from the predefined activities collection.
+ * If the activity exists, it returns the activity data as a JSON response; otherwise, it returns a 404 response with an "Activity not found" message.
+ *
+ * @param id - The unique identifier extracted from the URL parameters for the desired study activity.
+ * @returns A NextResponse containing the activity data in JSON format if found, or a 404 error message if not.
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
