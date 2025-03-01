@@ -38,6 +38,27 @@ def create_db():
     )
     ''')
     
+    # Create user_progress table for tracking learning progress
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS user_progress (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT,
+        transcript_id INTEGER,
+        questions_attempted INTEGER DEFAULT 0,
+        questions_correct INTEGER DEFAULT 0,
+        last_access TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completion_time INTEGER,
+        jlpt_level TEXT,
+        notes TEXT,
+        FOREIGN KEY (transcript_id) REFERENCES transcripts (id)
+    )
+    ''')
+    
+    # Create indexes for better performance
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_transcripts_date ON transcripts(date_added)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_questions_transcript_id ON questions(transcript_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_progress_user ON user_progress(user_id)')
+    
     conn.commit()
     conn.close()
     
