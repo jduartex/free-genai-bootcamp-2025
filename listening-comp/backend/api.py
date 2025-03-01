@@ -5,6 +5,12 @@ import tempfile
 from youtube_transcript_api import YouTubeTranscriptApi
 import openai
 from dotenv import load_dotenv
+from flask_cors import CORS
+import werkzeug
+
+# Import the new speech recognition components
+from speech_recognition import JapaneseSpeechRecognition
+from pronunciation_analysis import JapanesePronunciationAnalyzer
 
 # Load environment variables
 load_dotenv()
@@ -13,6 +19,11 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
+
+# Initialize speech recognition and pronunciation components
+speech_recognizer = JapaneseSpeechRecognition(use_local_model=False)
+pronunciation_analyzer = JapanesePronunciationAnalyzer()
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -133,6 +144,38 @@ def text_to_speech():
             as_attachment=True
         )
         
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# New routes for speech recognition
+@app.route('/speech-to-text', methods=['POST'])
+def speech_to_text():
+    """Convert spoken Japanese audio to text"""
+    try:
+        if 'audio' not in request.files:
+            return jsonify({"error": "No audio file provided"}), 400
+        
+        audio_file = request.files['audio']
+        
+        # Save audio to a temporary file
+        temp_dir = tempfile.mkdtemp()
+        audio_path = os.path.join(temp_dir, 'audio.webm')
+        audio_file.save(audio_path)
+        
+        # Process audio with ASR
+        transcription = speech_recognizer.process_audio_data(audio_path)
+        
+        # Clean up temp file
+        os.unlink(audio_path)
+        os.rmdir(temp_dir)
+        
+        # Extract relevant data from transcription
+        result = {
+            "transcript": transcription.get("text", "")
+        }
+        
+        return jsonify(result)
+    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

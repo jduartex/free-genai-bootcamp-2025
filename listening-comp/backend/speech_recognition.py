@@ -3,6 +3,16 @@ import asyncio
 from typing import Dict, Any, Optional
 import logging
 from dotenv import load_dotenv
+import tempfile
+import subprocess
+import json
+import time
+import base64
+from typing import Dict, Any, Optional, Union, Tuple, List
+import numpy as np
+import openai
+from pydub import AudioSegment
+import whisper
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -11,226 +21,285 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
-class SpeechRecognizer:
-    """
-    Speech recognition module for Japanese audio processing
-    """
+# Initialize OpenAI client
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if openai_api_key:
+    openai.api_key = openai_api_key
+
+class JapaneseSpeechRecognition:
+    """Class for handling Japanese speech recognition with OpenAI Whisper."""
     
-    def __init__(self):
-        """Initialize the speech recognizer with available engine"""
-        self.whisper_available = False
-        self.openai_available = False
-        self.model = None
-        
-        # Try to import whisper
-        try:
-            import whisper
-            self.whisper_available = True
-            logger.info("Using local Whisper model for speech recognition")
-            # Don't load model here - wait until first use
-        except ImportError:
-            logger.warning("Local Whisper not available. Will attempt to use OpenAI API for speech recognition.")
-            
-        # Check for OpenAI API as fallback
-        try:
-            import openai
-            from dotenv import load_dotenv
-            load_dotenv()
-            
-            api_key = os.getenv("OPENAI_API_KEY")
-            if api_key:
-                self.openai_client = openai.OpenAI(api_key=api_key)
-                self.openai_available = True
-                logger.info("OpenAI API available for speech recognition")
-            else:
-                logger.warning("OpenAI API key not found. Speech recognition will be limited.")
-        except ImportError:
-            logger.warning("OpenAI package not available. Speech recognition will be limited.")
-    
-    async def transcribe(self, audio_path: str, language: str = "ja") -> Dict[str, Any]:
+    def __init__(self, use_local_model: bool = False, model_name: str = "medium"):
         """
-        Transcribe Japanese audio to text
+        Initialize the speech recognition system.
         
         Args:
-            audio_path: Path to the audio file
-            language: Language code (default: 'ja' for Japanese)
+            use_local_model: Whether to use the local Whisper model (True) or the OpenAI API (False)
+            model_name: Model size for local Whisper ('tiny', 'base', 'small', 'medium', 'large')
+        """
+        self.use_local_model = use_local_model
+        self.model_name = model_name
+        
+        # Load the local model if specified
+        if self.use_local_model:
+            self.model = whisper.load_model(self.model_name)
+        else:
+            self.model = None
+    
+    def transcribe_audio_openai(self, audio_file_path: str) -> Dict[str, Any]:
+        """
+        Transcribe audio using OpenAI's Whisper API.
+        
+        Args:
+            audio_file_path: Path to the audio file
             
         Returns:
-            Dictionary with transcription and metadata
+            Dictionary with transcription results
         """
-        if not os.path.exists(audio_path):
-            raise FileNotFoundError(f"Audio file not found: {audio_path}")
-            
-        # Try local Whisper first if available
-        if self.whisper_available:
-            return await self._transcribe_with_local_whisper(audio_path, language)
-            
-        # Fall back to OpenAI API
-        elif self.openai_available:
-            return await self._transcribe_with_openai_api(audio_path, language)
-            
-        # No speech recognition available
-        else:
-            logger.error("No speech recognition engine available")
-            return {
-                "error": "Speech recognition unavailable",
-                "message": "Neither local Whisper nor OpenAI API is available. Please install whisper or configure OpenAI API."
-            }
-    
-    async def _transcribe_with_local_whisper(self, audio_path: str, language: str) -> Dict[str, Any]:
-        """Use local Whisper model for transcription"""
         try:
-            import whisper
-            
-            # Load model on first use
-            if self.model is None:
-                logger.info("Loading Whisper model (this may take a moment)...")
-                self.model = await asyncio.to_thread(whisper.load_model, "base")
-                
-            # Perform transcription
-            result = await asyncio.to_thread(
-                self.model.transcribe,
-                audio_path,
-                language=language,
-                fp16=False  # Avoid GPU-only features for compatibility
-            )
-            
-            # Format result
-            segments = []
-            for segment in result.get("segments", []):
-                segments.append({
-                    "start": segment.get("start", 0),
-                    "end": segment.get("end", 0),
-                    "text": segment.get("text", ""),
-                    "confidence": segment.get("confidence", 0)
-                })
-                
-            return {
-                "text": result.get("text", ""),
-                "segments": segments,
-                "language": result.get("language", language),
-                "engine": "whisper-local"
-            }
-            
-        except Exception as e:
-            logger.error(f"Local Whisper transcription failed: {str(e)}")
-            if self.openai_available:
-                logger.info("Falling back to OpenAI API")
-                return await self._transcribe_with_openai_api(audio_path, language)
-            else:
-                return {"error": str(e)}
-    
-    async def _transcribe_with_openai_api(self, audio_path: str, language: str) -> Dict[str, Any]:
-        """Use OpenAI API for transcription"""
-        try:
-            with open(audio_path, "rb") as audio_file:
-                result = await asyncio.to_thread(
-                    self.openai_client.audio.transcriptions.create,
+            with open(audio_file_path, "rb") as audio_file:
+                response = openai.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
-                    language=language
+                    language="ja",
+                    response_format="verbose_json",
+                    timestamp_granularities=["word"]
                 )
                 
+            # Convert the response to a dictionary
+            if isinstance(response, dict):
+                result = response
+            else:
+                # Handle the case where response might be an object with attributes
+                result = {
+                    "text": response.text if hasattr(response, "text") else "",
+                    "segments": getattr(response, "segments", []),
+                    "language": getattr(response, "language", "ja"),
+                }
+                
+            return result
+            
+        except Exception as e:
+            print(f"Error in OpenAI transcription: {str(e)}")
+            return {"error": str(e)}
+    
+    def transcribe_audio_local(self, audio_file_path: str) -> Dict[str, Any]:
+        """
+        Transcribe audio using the local Whisper model.
+        
+        Args:
+            audio_file_path: Path to the audio file
+            
+        Returns:
+            Dictionary with transcription results
+        """
+        try:
+            # Load audio and convert to the format expected by Whisper
+            audio = whisper.load_audio(audio_file_path)
+            audio = whisper.pad_or_trim(audio)
+            
+            # Make log-Mel spectrogram
+            mel = whisper.log_mel_spectrogram(audio).to(self.model.device)
+            
+            # Detect language (we'll still tell it it's Japanese but this helps with model initialization)
+            _, probs = self.model.detect_language(mel)
+            detected_language = max(probs, key=probs.get)
+            
+            # Decode audio
+            options = whisper.DecodingOptions(
+                language="ja",  # Force Japanese language
+                task="transcribe",
+                fp16=False,
+                without_timestamps=False
+            )
+            result = self.model.decode(mel, options)
+            
+            # Construct a response similar to the OpenAI API
+            segments = []
+            if hasattr(result, "segments"):
+                segments = [
+                    {
+                        "id": i,
+                        "start": segment.start,
+                        "end": segment.end,
+                        "text": segment.text,
+                        "tokens": segment.tokens,
+                        "confidence": float(segment.avg_logprob)
+                    }
+                    for i, segment in enumerate(result.segments)
+                ]
+            
             return {
                 "text": result.text,
-                "segments": [],  # OpenAI API doesn't return segments in basic version
-                "language": language,
-                "engine": "openai-api"
+                "segments": segments,
+                "language": detected_language,
+                "confidence": float(np.exp(result.avg_logprob)) if hasattr(result, "avg_logprob") else None
             }
             
         except Exception as e:
-            logger.error(f"OpenAI API transcription failed: {str(e)}")
+            print(f"Error in local transcription: {str(e)}")
             return {"error": str(e)}
-
-    async def analyze_pronunciation(self, reference_text: str, spoken_audio_path: str) -> Dict[str, Any]:
+    
+    def process_audio_data(self, audio_data: Union[str, bytes], file_format: str = "mp3") -> Dict[str, Any]:
         """
-        Analyze Japanese pronunciation by comparing reference text to spoken audio
+        Process audio data for transcription.
         
         Args:
-            reference_text: The expected Japanese text
-            spoken_audio_path: Path to the audio file containing user's pronunciation
+            audio_data: Base64 encoded audio string or raw bytes
+            file_format: Audio file format (mp3, wav, etc.)
             
         Returns:
-            Dictionary with pronunciation analysis results
+            Transcription results
         """
-        # Get transcription of spoken audio
-        transcription_result = await self.transcribe(spoken_audio_path)
-        
-        if "error" in transcription_result:
-            return {"error": transcription_result["error"]}
+        try:
+            # Create a temporary file for the audio
+            with tempfile.NamedTemporaryFile(suffix=f".{file_format}", delete=False) as temp_audio_file:
+                temp_audio_path = temp_audio_file.name
+                
+                # Handle both base64 encoded strings and raw bytes
+                if isinstance(audio_data, str):
+                    # Assume it's base64 encoded
+                    try:
+                        decoded_audio = base64.b64decode(audio_data)
+                        temp_audio_file.write(decoded_audio)
+                    except Exception:
+                        # If base64 decoding fails, assume it's a file path
+                        if os.path.exists(audio_data):
+                            with open(audio_data, "rb") as audio_file:
+                                temp_audio_file.write(audio_file.read())
+                        else:
+                            raise ValueError(f"Invalid audio data. Not a valid base64 string or file path: {audio_data[:30]}...")
+                else:
+                    # Raw bytes
+                    temp_audio_file.write(audio_data)
+                
+                temp_audio_file.flush()
             
-        spoken_text = transcription_result.get("text", "")
-        
-        # Basic scoring - this would be more sophisticated in a real implementation
-        # using phoneme-level alignment, prosody analysis, etc.
-        similarity_score = self._compute_text_similarity(reference_text, spoken_text)
-        
-        return {
-            "reference_text": reference_text,
-            "transcribed_text": spoken_text,
-            "similarity_score": similarity_score,
-            "feedback": self._generate_pronunciation_feedback(reference_text, spoken_text)
-        }
+            # Choose the transcription method based on configuration
+            if self.use_local_model:
+                result = self.transcribe_audio_local(temp_audio_path)
+            else:
+                result = self.transcribe_audio_openai(temp_audio_path)
+            
+            # Clean up the temporary file
+            os.unlink(temp_audio_path)
+            
+            return result
+            
+        except Exception as e:
+            print(f"Error processing audio: {str(e)}")
+            return {"error": str(e)}
     
-    def _compute_text_similarity(self, reference: str, spoken: str) -> float:
-        """Simple text similarity metric"""
-        # This is a very basic implementation
-        # A real one would use phonetic comparison algorithms
+    def convert_audio_format(self, input_path: str, output_format: str = "mp3") -> str:
+        """
+        Convert audio to a format suitable for the ASR system.
         
-        # Normalize both strings
-        reference = reference.lower().strip()
-        spoken = spoken.lower().strip()
-        
-        # If perfect match
-        if reference == spoken:
-            return 1.0
+        Args:
+            input_path: Path to input audio file
+            output_format: Desired output format
             
-        # Extremely simple scoring based on character overlap
-        # This should be replaced with a proper Japanese phonetic comparison
-        ref_chars = set(reference)
-        spoken_chars = set(spoken)
-        
-        if not ref_chars:
-            return 0.0
+        Returns:
+            Path to the converted audio file
+        """
+        try:
+            # Create output filename
+            output_path = os.path.splitext(input_path)[0] + f".{output_format}"
             
-        overlap = len(ref_chars.intersection(spoken_chars))
-        return overlap / len(ref_chars)
+            # Load with pydub (handles various formats)
+            audio = AudioSegment.from_file(input_path)
+            
+            # Export to new format
+            audio.export(output_path, format=output_format)
+            
+            return output_path
+            
+        except Exception as e:
+            print(f"Error converting audio format: {str(e)}")
+            return input_path  # Return original path on error
     
-    def _generate_pronunciation_feedback(self, reference: str, spoken: str) -> str:
-        """Generate human-readable feedback on pronunciation"""
-        # This would be more sophisticated in a real implementation
-        similarity = self._compute_text_similarity(reference, spoken)
+    def get_pronunciation_confidence(self, transcription_result: Dict[str, Any]) -> float:
+        """
+        Extract pronunciation confidence score from transcription result.
         
-        if similarity > 0.9:
-            return "発音はとても良いです！ (Your pronunciation is very good!)"
-        elif similarity > 0.7:
-            return "発音は良いですが、もう少し練習しましょう。 (Your pronunciation is good, but let's practice a bit more.)"
-        elif similarity > 0.5:
-            return "発音を改善するために練習が必要です。 (Practice is needed to improve your pronunciation.)"
+        Args:
+            transcription_result: Transcription result dictionary
+            
+        Returns:
+            Confidence score between 0 and 1
+        """
+        # If we have a confidence score directly, use it
+        if "confidence" in transcription_result and transcription_result["confidence"] is not None:
+            return float(transcription_result["confidence"])
+        
+        # If we have segments with confidence, calculate average
+        if "segments" in transcription_result and transcription_result["segments"]:
+            segment_confidences = [
+                seg.get("confidence", 0) 
+                for seg in transcription_result["segments"]
+                if isinstance(seg, dict) and "confidence" in seg
+            ]
+            
+            if segment_confidences:
+                return sum(segment_confidences) / len(segment_confidences)
+        
+        # Default moderate confidence when we can't determine
+        return 0.5
+    
+    def transcribe_with_timestamps(self, audio_file_path: str) -> Dict[str, Any]:
+        """
+        Transcribe audio with detailed word-level timestamps.
+        
+        Args:
+            audio_file_path: Path to audio file
+            
+        Returns:
+            Transcription with word-level timing information
+        """
+        if self.use_local_model:
+            # Local model doesn't support the same level of detailed timestamps
+            # We'll use segment-level timestamps instead
+            result = self.transcribe_audio_local(audio_file_path)
+            # Add a note that these are segment-level timestamps only
+            result["timestamp_level"] = "segment"
+            return result
         else:
-            return "もっと練習しましょう。 (Let's practice more.)"
+            try:
+                with open(audio_file_path, "rb") as audio_file:
+                    response = openai.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        language="ja",
+                        response_format="verbose_json",
+                        timestamp_granularities=["word", "segment"]
+                    )
+                
+                if isinstance(response, dict):
+                    result = response
+                else:
+                    # Convert object to dictionary
+                    result = response.__dict__
+                
+                result["timestamp_level"] = "word"
+                return result
+                
+            except Exception as e:
+                print(f"Error getting detailed timestamps: {str(e)}")
+                return {"error": str(e), "timestamp_level": "none"}
 
-    async def prepare_audio(self, audio_path: str) -> str:
-        """
-        Prepare audio for speech recognition (convert format, adjust volume, etc.)
-        This is a placeholder for audio preprocessing
-        """
-        # This would use pydub or ffmpeg-python for audio processing
-        # For now, just return the original path
-        return audio_path
 
-
-# Alternative install instructions to be shown to users when needed
-INSTALL_HELP = """
-Whisper installation issues with Python 3.10:
-
-Option 1: Install from GitHub directly:
-pip install git+https://github.com/openai/whisper.git
-
-Option 2: Use Python 3.10 or 3.11 in a separate virtual environment:
-python3.10 -m venv whisper-venv
-source whisper-venv/bin/activate
-pip install openai-whisper
-
-Option 3: Use the OpenAI API only (requires API key)
-"""
+# Example usage
+if __name__ == "__main__":
+    # Example: Process an audio file
+    asr = JapaneseSpeechRecognition(use_local_model=False)
+    
+    # Example file path - replace with an actual file for testing
+    test_file = "path/to/japanese_audio_sample.mp3"
+    
+    if os.path.exists(test_file):
+        print(f"Transcribing: {test_file}")
+        result = asr.process_audio_data(test_file)
+        print(f"Transcription: {result.get('text', 'No text')}")
+        print(f"Language: {result.get('language', 'unknown')}")
+        print(f"Confidence: {asr.get_pronunciation_confidence(result)}")
+    else:
+        print("Please provide a valid audio file path for testing")
