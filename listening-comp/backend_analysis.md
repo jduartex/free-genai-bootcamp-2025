@@ -49,17 +49,17 @@ While question generation accepts JLPT levels as input, we need:
 Suggested files to create:
 - `backend/jlpt_classifier.py` - For analyzing and classifying Japanese content by JLPT level
 
-## 5. User Management and Progress Tracking
+## 5. Progress Tracking
 
 Currently missing:
 
-- **User Authentication**: Login/registration system
-- **Progress Tracking**: Store and retrieve user progress
+- **Progress Tracking**: Store and retrieve user progress (no need for login or
+authorization code since the app will be single user)
 - **Performance Analytics**: Track improvement over time
 
 Suggested files to create:
-- `backend/user_manager.py` - For user authentication and management
 - `backend/progress_tracker.py` - For tracking learning progress
+- `backend/performance_tracker.py` - For tracking performance analytics
 
 ## 6. Enhanced TTS Features
 
