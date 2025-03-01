@@ -1,1 +1,98 @@
+# Environment variables
 .env
+*.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+venv310/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv
+.venv/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+data/japanese_content.db
+
+# Audio files
+*.mp3
+*.wav
+*.m4a
+*.ogg
+temp_audio/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+.vs/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Log files
+*.log
+logs/
+log/
+
+# Temporary files
+*.tmp
+.temp/
+tmp/
+.tmp/
+
+# Backend specific
+backend/.env
+backend/data/
+backend/logs/
+backend/__pycache__/
+
+# Temporary files created by the TTS endpoint
+speech*.mp3
+*_temp_audio.*
+
+# OpenAI API specific
+openai_api_key.txt
+.openai
+
+# Any port configuration files
+.flask_port
+port.txt
+
+# Any local testing scripts
+test_*.py
+*_test.py
+local_*.py

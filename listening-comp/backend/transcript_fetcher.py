@@ -50,7 +50,7 @@ class YouTubeTranscriptFetcher:
             transcript_data = await asyncio.to_thread(transcript.fetch)
             
             # Process the transcript
-            processed_transcript = await self._process_transcript(transcript_data)
+            processed_transcript = await self._process_transcript(transcript_data, language_code)
             
             # Add metadata
             result = {
@@ -72,12 +72,13 @@ class YouTubeTranscriptFetcher:
         except Exception as e:
             raise Exception(f"Error fetching transcript: {str(e)}")
     
-    async def _process_transcript(self, transcript_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def _process_transcript(self, transcript_data: List[Dict[str, Any]], language_code: str) -> Dict[str, Any]:
         """
         Process raw transcript data to make it more suitable for Japanese language learning
         
         Args:
             transcript_data: Raw transcript data from YouTube API
+            language_code: Preferred language code
             
         Returns:
             Processed transcript with full text and segments

@@ -2,15 +2,18 @@ import os
 import asyncio
 from typing import Dict, Any, Optional
 import logging
+from dotenv import load_dotenv
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Load environment variables
+load_dotenv()
+
 class SpeechRecognizer:
     """
     Speech recognition module for Japanese audio processing
-    with fallback options when Whisper isn't available
     """
     
     def __init__(self):
@@ -71,8 +74,7 @@ class SpeechRecognizer:
             logger.error("No speech recognition engine available")
             return {
                 "error": "Speech recognition unavailable",
-                "message": "Neither local Whisper nor OpenAI API is available. Please install whisper or configure OpenAI API.",
-                "installation_help": "For Python 3.13, try: pip install git+https://github.com/openai/whisper.git"
+                "message": "Neither local Whisper nor OpenAI API is available. Please install whisper or configure OpenAI API."
             }
     
     async def _transcribe_with_local_whisper(self, audio_path: str, language: str) -> Dict[str, Any]:
@@ -140,6 +142,74 @@ class SpeechRecognizer:
             logger.error(f"OpenAI API transcription failed: {str(e)}")
             return {"error": str(e)}
 
+    async def analyze_pronunciation(self, reference_text: str, spoken_audio_path: str) -> Dict[str, Any]:
+        """
+        Analyze Japanese pronunciation by comparing reference text to spoken audio
+        
+        Args:
+            reference_text: The expected Japanese text
+            spoken_audio_path: Path to the audio file containing user's pronunciation
+            
+        Returns:
+            Dictionary with pronunciation analysis results
+        """
+        # Get transcription of spoken audio
+        transcription_result = await self.transcribe(spoken_audio_path)
+        
+        if "error" in transcription_result:
+            return {"error": transcription_result["error"]}
+            
+        spoken_text = transcription_result.get("text", "")
+        
+        # Basic scoring - this would be more sophisticated in a real implementation
+        # using phoneme-level alignment, prosody analysis, etc.
+        similarity_score = self._compute_text_similarity(reference_text, spoken_text)
+        
+        return {
+            "reference_text": reference_text,
+            "transcribed_text": spoken_text,
+            "similarity_score": similarity_score,
+            "feedback": self._generate_pronunciation_feedback(reference_text, spoken_text)
+        }
+    
+    def _compute_text_similarity(self, reference: str, spoken: str) -> float:
+        """Simple text similarity metric"""
+        # This is a very basic implementation
+        # A real one would use phonetic comparison algorithms
+        
+        # Normalize both strings
+        reference = reference.lower().strip()
+        spoken = spoken.lower().strip()
+        
+        # If perfect match
+        if reference == spoken:
+            return 1.0
+            
+        # Extremely simple scoring based on character overlap
+        # This should be replaced with a proper Japanese phonetic comparison
+        ref_chars = set(reference)
+        spoken_chars = set(spoken)
+        
+        if not ref_chars:
+            return 0.0
+            
+        overlap = len(ref_chars.intersection(spoken_chars))
+        return overlap / len(ref_chars)
+    
+    def _generate_pronunciation_feedback(self, reference: str, spoken: str) -> str:
+        """Generate human-readable feedback on pronunciation"""
+        # This would be more sophisticated in a real implementation
+        similarity = self._compute_text_similarity(reference, spoken)
+        
+        if similarity > 0.9:
+            return "発音はとても良いです！ (Your pronunciation is very good!)"
+        elif similarity > 0.7:
+            return "発音は良いですが、もう少し練習しましょう。 (Your pronunciation is good, but let's practice a bit more.)"
+        elif similarity > 0.5:
+            return "発音を改善するために練習が必要です。 (Practice is needed to improve your pronunciation.)"
+        else:
+            return "もっと練習しましょう。 (Let's practice more.)"
+
     async def prepare_audio(self, audio_path: str) -> str:
         """
         Prepare audio for speech recognition (convert format, adjust volume, etc.)
@@ -152,7 +222,7 @@ class SpeechRecognizer:
 
 # Alternative install instructions to be shown to users when needed
 INSTALL_HELP = """
-Whisper installation issues with Python 3.13:
+Whisper installation issues with Python 3.10:
 
 Option 1: Install from GitHub directly:
 pip install git+https://github.com/openai/whisper.git
