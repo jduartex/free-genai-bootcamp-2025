@@ -70,47 +70,144 @@ class TTSService:
     async def synthesize(self, 
                          text: str, 
                          voice_id: str = "Mizuki", 
-                         engine: str = "neural") -> str:
+                         engine: str = "neural",
+                         speed: float = 1.0,
+                         pitch_accent: bool = False) -> Dict[str, Any]:
         """
-        Convert text to speech and return audio file path
+        Convert text to speech with enhanced control options
         
         Args:
             text: Japanese text to convert to speech
-            voice_id: Voice identifier (e.g., "Mizuki", "Takumi")
-            engine: TTS engine type (neural or standard)
+            voice_id: Voice identifier
+            engine: TTS engine type
+            speed: Playback speed (0.5 to 2.0)
+            pitch_accent: Whether to generate pitch accent visualization
             
         Returns:
-            Path to the generated audio file
+            Dictionary containing:
+            - audio_path: Path to the generated audio file
+            - pitch_data: Pitch accent visualization data (if requested)
         """
-        # Select appropriate TTS service
+        # Validate speed parameter
+        speed = max(0.5, min(2.0, speed))
+        
+        # Get pitch accent data if requested
+        pitch_data = None
+        if pitch_accent:
+            pitch_data = await self._analyze_pitch_accent(text)
+        
+        # Select appropriate TTS service and synthesize
+        audio_path = None
         if voice_id in self.voice_mappings["polly"] and self.polly_available:
-            return await self._synthesize_with_polly(text, voice_id, engine)
+            audio_path = await self._synthesize_with_polly(text, voice_id, engine, speed)
         elif voice_id in self.voice_mappings["google"] and self.google_tts_available:
-            return await self._synthesize_with_google(text, voice_id)
+            audio_path = await self._synthesize_with_google(text, voice_id, speed)
         elif voice_id in self.voice_mappings["openai"] and self.openai_tts_available:
-            return await self._synthesize_with_openai(text, voice_id)
-        else:
-            # Fallback to any available service
-            if self.polly_available:
-                fallback_voice = "Mizuki"  # Default Japanese female voice
-                return await self._synthesize_with_polly(text, fallback_voice, engine)
-            elif self.google_tts_available:
-                fallback_voice = "ja-JP-Neural2-B"  # Default Google Japanese voice
-                return await self._synthesize_with_google(text, fallback_voice)
-            elif self.openai_tts_available:
-                fallback_voice = "alloy"  # Default OpenAI voice
-                return await self._synthesize_with_openai(text, fallback_voice)
-            else:
-                raise Exception("No TTS service available")
+            audio_path = await self._synthesize_with_openai(text, voice_id, speed)
+        
+        return {
+            "audio_path": audio_path,
+            "pitch_data": pitch_data
+        }
+
+    async def _analyze_pitch_accent(self, text: str) -> Dict[str, Any]:
+        """
+        Analyze and generate pitch accent visualization data for Japanese text
+        
+        Uses OpenAI API to get pitch accent patterns and generates visualization data
+        """
+        try:
+            # Use OpenAI to analyze pitch accent
+            response = await asyncio.to_thread(
+                self.openai_client.chat.completions.create,
+                model="gpt-4",
+                messages=[{
+                    "role": "system",
+                    "content": "You are a Japanese pitch accent analyzer. For the given text, provide the pitch accent pattern for each word in JSON format. Include mora-by-mora breakdown and accent position."
+                }, {
+                    "role": "user",
+                    "content": f"Analyze pitch accent for: {text}"
+                }],
+                response_format={"type": "json_object"}
+            )
+            
+            pitch_data = json.loads(response.choices[0].message.content)
+            
+            # Process the pitch data into a visualization-friendly format
+            visualization_data = self._process_pitch_data(pitch_data)
+            
+            return {
+                "raw_data": pitch_data,
+                "visualization": visualization_data,
+                "text": text
+            }
+            
+        except Exception as e:
+            logger.error(f"Pitch accent analysis failed: {str(e)}")
+            return None
     
-    async def _synthesize_with_polly(self, text: str, voice_id: str, engine: str) -> str:
-        """Use Amazon Polly for speech synthesis"""
+    def _process_pitch_data(self, pitch_data: Dict) -> Dict[str, Any]:
+        """
+        Process raw pitch accent data into a format suitable for visualization
+        """
+        visualization = {
+            "points": [],  # List of (x, y) coordinates for pitch line
+            "mora_boundaries": [],  # X-coordinates for mora boundaries
+            "word_boundaries": [],  # X-coordinates for word boundaries
+            "labels": []  # Text labels for each mora
+        }
+        
+        x_position = 0
+        for word in pitch_data.get("words", []):
+            word_start = x_position
+            
+            # Process each mora in the word
+            moras = word.get("moras", [])
+            for i, mora in enumerate(moras):
+                # Add mora boundary
+                visualization["mora_boundaries"].append(x_position)
+                
+                # Add pitch point
+                y_position = 1 if i < word.get("accent_pos", len(moras)) else 0
+                visualization["points"].append({"x": x_position, "y": y_position})
+                
+                # Add label
+                visualization["labels"].append({
+                    "x": x_position,
+                    "text": mora.get("text", "")
+                })
+                
+                x_position += 1
+            
+            # Add word boundary
+            visualization["word_boundaries"].append({
+                "x": word_start,
+                "width": len(moras)
+            })
+        
+        return visualization
+
+    async def _synthesize_with_polly(self, text: str, voice_id: str, engine: str, speed: float) -> str:
+        """Use Amazon Polly for speech synthesis with speed control"""
         try:
             filename = f"{self.output_dir}/polly_{voice_id}_{uuid.uuid4().hex}.mp3"
             
+            # Convert speed to Polly's rate format
+            speech_rate = f"{int(100 * speed)}%"
+            
+            # Add SSML tags for speed control
+            ssml_text = f"""
+            <speak>
+                <prosody rate="{speech_rate}">
+                    {text}
+                </prosody>
+            </speak>
+            """
+            
             response = await asyncio.to_thread(
                 self.polly_client.synthesize_speech,
-                Text=text,
+                Text=ssml_text,
+                TextType="ssml",
                 OutputFormat="mp3",
                 VoiceId=voice_id,
                 Engine=engine
@@ -125,47 +222,39 @@ class TTSService:
                 
         except Exception as e:
             logger.error(f"Amazon Polly synthesis failed: {str(e)}")
-            # Try fallback if available
-            if self.google_tts_available:
-                logger.info("Falling back to Google TTS")
-                return await self._synthesize_with_google(text, "ja-JP-Neural2-B")
-            elif self.openai_tts_available:
-                logger.info("Falling back to OpenAI TTS")
-                return await self._synthesize_with_openai(text, "alloy")
-            else:
-                raise Exception(f"TTS synthesis failed: {str(e)}")
-    
-    async def _synthesize_with_google(self, text: str, voice_id: str) -> str:
-        """Use Google Text-to-Speech for synthesis"""
+            return await self._try_fallback_synthesis(text, speed)
+
+    async def _synthesize_with_google(self, text: str, voice_id: str, speed: float) -> str:
+        """Use Google Text-to-Speech for synthesis with speed control"""
         try:
             from google.cloud import texttospeech
             
             filename = f"{self.output_dir}/google_{voice_id}_{uuid.uuid4().hex}.mp3"
             
-            # Set input text and voice parameters
-            input_text = texttospeech.SynthesisInput(text=text)
+            # Add SSML tags for speed control
+            ssml_text = f"""
+            <speak>
+                <prosody rate="{speed}">
+                    {text}
+                </prosody>
+            </speak>
+            """
             
-            # Parse voice ID format (e.g., "ja-JP-Neural2-B")
+            input_text = texttospeech.SynthesisInput(ssml=ssml_text)
+            
+            # Parse voice ID and configure voice
             parts = voice_id.split('-')
-            if len(parts) >= 3:
-                language_code = f"{parts[0]}-{parts[1]}"
-                voice_name = voice_id
-            else:
-                # Default to Japanese
-                language_code = "ja-JP"
-                voice_name = voice_id
-                
+            language_code = f"{parts[0]}-{parts[1]}" if len(parts) >= 3 else "ja-JP"
+            
             voice = texttospeech.VoiceSelectionParams(
                 language_code=language_code,
-                name=voice_name
+                name=voice_id
             )
             
-            # Select audio encoding
             audio_config = texttospeech.AudioConfig(
                 audio_encoding=texttospeech.AudioEncoding.MP3
             )
             
-            # Generate speech
             response = await asyncio.to_thread(
                 self.google_tts_client.synthesize_speech,
                 input=input_text,
@@ -173,7 +262,6 @@ class TTSService:
                 audio_config=audio_config
             )
             
-            # Write response to file
             with open(filename, "wb") as file:
                 file.write(response.audio_content)
                 
@@ -181,48 +269,42 @@ class TTSService:
             
         except Exception as e:
             logger.error(f"Google TTS synthesis failed: {str(e)}")
-            
-            # Try fallback if available
-            if self.polly_available:
-                logger.info("Falling back to Amazon Polly")
-                return await self._synthesize_with_polly(text, "Mizuki", "neural")
-            elif self.openai_tts_available:
-                logger.info("Falling back to OpenAI TTS")
-                return await self._synthesize_with_openai(text, "alloy")
-            else:
-                raise Exception(f"TTS synthesis failed: {str(e)}")
-    
-    async def _synthesize_with_openai(self, text: str, voice_id: str) -> str:
-        """Use OpenAI Text-to-Speech for synthesis"""
+            return await self._try_fallback_synthesis(text, speed)
+
+    async def _synthesize_with_openai(self, text: str, voice_id: str, speed: float) -> str:
+        """Use OpenAI Text-to-Speech for synthesis with speed control"""
         try:
             filename = f"{self.output_dir}/openai_{voice_id}_{uuid.uuid4().hex}.mp3"
             
-            # Generate speech
             response = await asyncio.to_thread(
                 self.openai_client.audio.speech.create,
                 model="tts-1",
                 voice=voice_id,
-                input=text
+                input=text,
+                speed=speed
             )
             
-            # Save to file
             response.stream_to_file(filename)
-                
             return filename
             
         except Exception as e:
             logger.error(f"OpenAI TTS synthesis failed: {str(e)}")
-            
-            # Try fallback if available
-            if self.polly_available:
-                logger.info("Falling back to Amazon Polly")
-                return await self._synthesize_with_polly(text, "Mizuki", "neural")
-            elif self.google_tts_available:
-                logger.info("Falling back to Google TTS")
-                return await self._synthesize_with_google(text, "ja-JP-Neural2-B")
-            else:
-                raise Exception(f"TTS synthesis failed: {str(e)}")
-    
+            return await self._try_fallback_synthesis(text, speed)
+
+    async def _try_fallback_synthesis(self, text: str, speed: float) -> str:
+        """Try fallback TTS services if primary service fails"""
+        if self.polly_available:
+            logger.info("Falling back to Amazon Polly")
+            return await self._synthesize_with_polly(text, "Mizuki", "neural", speed)
+        elif self.google_tts_available:
+            logger.info("Falling back to Google TTS")
+            return await self._synthesize_with_google(text, "ja-JP-Neural2-B", speed)
+        elif self.openai_tts_available:
+            logger.info("Falling back to OpenAI TTS")
+            return await self._synthesize_with_openai(text, "alloy", speed)
+        else:
+            raise Exception("No TTS service available")
+
     async def list_voices(self) -> Dict[str, List[Dict[str, str]]]:
         """
         Get available Japanese voice options from all services
