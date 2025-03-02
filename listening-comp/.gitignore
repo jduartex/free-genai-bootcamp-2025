@@ -96,3 +96,9 @@ port.txt
 test_*.py
 *_test.py
 local_*.py
+
+# Coverage files
+.coverage
+.coverage.*
+coverage_report/
+htmlcov/

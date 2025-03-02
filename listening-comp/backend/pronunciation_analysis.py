@@ -6,6 +6,9 @@ import numpy as np
 from typing import Dict, List, Tuple, Any, Optional
 import openai
 from dotenv import load_dotenv
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .speech_recognition import JapaneseSpeechRecognition
 
@@ -18,22 +21,24 @@ if openai_api_key:
     openai.api_key = openai_api_key
 
 class JapanesePronunciationAnalyzer:
-    """Class for analyzing Japanese pronunciation and providing feedback."""
+    """Analyzes Japanese pronunciation and provides feedback."""
     
     def __init__(self):
         """Initialize the pronunciation analyzer."""
         self.speech_recognition = JapaneseSpeechRecognition(use_local_model=False)
         
-        # Common Japanese pronunciation challenges
+        # Japanese phoneme sets
+        self.vowels = {'a', 'i', 'u', 'e', 'o', 'ā', 'ī', 'ū', 'ē', 'ō'}
+        self.consonants = {'k', 'g', 's', 'z', 't', 'd', 'n', 'h', 'b', 'p', 'm', 'y', 'r', 'w'}
+        self.special = {'っ', 'ん'}  # Small tsu and n
+        
+        # Common pronunciation issues
         self.common_issues = {
-            "長音": "Long vowels (e.g., おかあさん vs おかさん)",
-            "促音": "Glottal stops/small tsu (e.g., きって vs きて)",
-            "撥音": "N sounds (e.g., せんせい vs せせい)",
-            "アクセント": "Pitch accent patterns",
-            "混同母音": "Similar vowels (e.g., e/i, o/u)",
-            "子音強さ": "Consonant strength (e.g., t/d, k/g)",
-            "リズム": "Rhythm and timing",
-            "イントネーション": "Sentence intonation"
+            'r_l': 'Distinction between R and L sounds',
+            'long_vowels': 'Long vowel pronunciation',
+            'pitch_accent': 'Pitch accent patterns',
+            'consonant_gemination': 'Double consonant sounds (っ)',
+            'devoiced_vowels': 'Devoiced vowels between voiceless consonants'
         }
     
     def compare_text(self, expected: str, actual: str) -> Dict[str, Any]:
@@ -447,6 +452,172 @@ class JapanesePronunciationAnalyzer:
             result += f"{high_line}\n{word_line}\n{low_line}\n{connect_line}\n"
         
         return result
+    
+    def analyze_pronunciation(self, 
+                            transcript: str, 
+                            confidence_scores: Dict[str, float],
+                            timing_data: Dict[str, List[float]]) -> Dict[str, Any]:
+        """
+        Analyze pronunciation based on recognition results.
+        
+        Args:
+            transcript: Recognized Japanese text
+            confidence_scores: Word-level confidence scores
+            timing_data: Word timing information
+            
+        Returns:
+            Dictionary containing pronunciation analysis and feedback
+        """
+        try:
+            # Analyze different aspects of pronunciation
+            analysis = {
+                "overall_score": self._calculate_overall_score(confidence_scores),
+                "word_scores": self._analyze_word_scores(transcript, confidence_scores),
+                "timing": self._analyze_timing(timing_data),
+                "issues": self._identify_issues(transcript, confidence_scores),
+                "recommendations": self._generate_recommendations(transcript, confidence_scores)
+            }
+            
+            return analysis
+            
+        except Exception as e:
+            logger.error(f"Error analyzing pronunciation: {str(e)}")
+            return {"error": str(e)}
+    
+    def _calculate_overall_score(self, confidence_scores: Dict[str, float]) -> float:
+        """Calculate overall pronunciation score."""
+        if not confidence_scores:
+            return 0.0
+        return sum(confidence_scores.values()) / len(confidence_scores)
+    
+    def _analyze_word_scores(self, 
+                           transcript: str, 
+                           confidence_scores: Dict[str, float]) -> List[Dict[str, Any]]:
+        """Analyze pronunciation scores for each word."""
+        words = []
+        for word, score in confidence_scores.items():
+            feedback = self._get_word_feedback(word, score)
+            words.append({
+                "word": word,
+                "score": score,
+                "feedback": feedback,
+                "needs_attention": score < 0.7
+            })
+        return words
+    
+    def _analyze_timing(self, timing_data: Dict[str, List[float]]) -> Dict[str, Any]:
+        """Analyze speech timing and rhythm."""
+        if not timing_data:
+            return {}
+            
+        durations = []
+        for start, end in zip(timing_data.get("starts", []), timing_data.get("ends", [])):
+            durations.append(end - start)
+            
+        return {
+            "average_duration": np.mean(durations) if durations else 0,
+            "rhythm_score": self._calculate_rhythm_score(durations),
+            "pace": self._evaluate_pace(durations)
+        }
+    
+    def _identify_issues(self, 
+                        transcript: str, 
+                        confidence_scores: Dict[str, float]) -> List[Dict[str, Any]]:
+        """Identify specific pronunciation issues."""
+        issues = []
+        
+        # Check for common pronunciation patterns
+        for word, score in confidence_scores.items():
+            if score < 0.7:  # Low confidence threshold
+                # Check for specific pronunciation challenges
+                if 'り' in word or 'れ' in word:
+                    issues.append({
+                        "type": "r_l",
+                        "word": word,
+                        "description": "Practice R sound distinction"
+                    })
+                    
+                if 'ー' in word or any(c in word for c in ['ā', 'ī', 'ū', 'ē', 'ō']):
+                    issues.append({
+                        "type": "long_vowels",
+                        "word": word,
+                        "description": "Maintain long vowel length"
+                    })
+                    
+                if 'っ' in word:
+                    issues.append({
+                        "type": "consonant_gemination",
+                        "word": word,
+                        "description": "Hold consonant pause longer"
+                    })
+        
+        return issues
+    
+    def _generate_recommendations(self, 
+                                transcript: str, 
+                                confidence_scores: Dict[str, float]) -> List[Dict[str, str]]:
+        """Generate personalized pronunciation recommendations."""
+        recommendations = []
+        
+        # Analyze patterns in low-confidence words
+        low_confidence_words = [word for word, score in confidence_scores.items() if score < 0.7]
+        
+        if low_confidence_words:
+            # Group similar pronunciation challenges
+            if any('り' in word or 'れ' in word for word in low_confidence_words):
+                recommendations.append({
+                    "focus": "R sound practice",
+                    "exercise": "Practice words with り、れ sounds comparing to L sound"
+                })
+                
+            if any('ー' in word for word in low_confidence_words):
+                recommendations.append({
+                    "focus": "Long vowel distinction",
+                    "exercise": "Practice contrasting short and long vowel pairs"
+                })
+                
+            if any('っ' in word for word in low_confidence_words):
+                recommendations.append({
+                    "focus": "Consonant gemination",
+                    "exercise": "Practice words with っ, focusing on timing"
+                })
+        
+        return recommendations
+    
+    def _get_word_feedback(self, word: str, score: float) -> str:
+        """Generate specific feedback for a word."""
+        if score >= 0.9:
+            return "Excellent pronunciation"
+        elif score >= 0.7:
+            return "Good pronunciation, minor improvements possible"
+        elif score >= 0.5:
+            return "Needs practice, focus on individual sounds"
+        else:
+            return "Significant improvement needed, try breaking down the word"
+    
+    def _calculate_rhythm_score(self, durations: List[float]) -> float:
+        """Calculate rhythm regularity score."""
+        if not durations or len(durations) < 2:
+            return 0.0
+            
+        # Calculate variance in durations
+        variance = np.var(durations)
+        # Convert to a score between 0 and 1 (lower variance = higher score)
+        return 1.0 / (1.0 + variance)
+    
+    def _evaluate_pace(self, durations: List[float]) -> str:
+        """Evaluate speaking pace."""
+        if not durations:
+            return "Unknown"
+            
+        avg_duration = np.mean(durations)
+        
+        if avg_duration < 0.15:
+            return "Too fast"
+        elif avg_duration > 0.3:
+            return "Too slow"
+        else:
+            return "Good pace"
 
 
 # Example usage

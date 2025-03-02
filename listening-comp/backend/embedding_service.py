@@ -53,9 +53,13 @@ class JapaneseEmbeddingService:
         # Load the model - use SentenceTransformer for most cases as it's optimized for embeddings
         self.model = SentenceTransformer(model_path, device=self.device)
         
-        # Initialize Japanese tokenizer using Fugashi (MeCab wrapper)
-        self.tokenizer = fugashi.Tagger('-d', ipadic.DICDIR)
-        
+        # Initialize Japanese tokenizer with fallback
+        try:
+            self.tokenizer = fugashi.Tagger('-Owakati')  # Simpler initialization
+        except RuntimeError:
+            logger.warning("Failed to initialize MeCab tokenizer. Using basic tokenization.")
+            self.tokenizer = None
+            
         logger.info("Japanese embedding service initialized")
     
     def preprocess_japanese_text(self, text: str) -> str:
@@ -88,7 +92,7 @@ class JapaneseEmbeddingService:
     
     def tokenize_japanese(self, text: str) -> List[str]:
         """
-        Tokenize Japanese text using Fugashi (MeCab)
+        Tokenize Japanese text with fallback
         
         Args:
             text: Japanese text to tokenize
@@ -96,13 +100,14 @@ class JapaneseEmbeddingService:
         Returns:
             List of tokenized words
         """
-        # Run the tokenizer
-        words = self.tokenizer.parse(text)
+        if self.tokenizer:
+            try:
+                return self.tokenizer.parse(text).split()
+            except Exception as e:
+                logger.warning(f"MeCab tokenization failed: {str(e)}")
         
-        # Extract surface forms
-        tokens = [word.surface for word in words]
-        
-        return tokens
+        # Fallback: basic whitespace tokenization
+        return text.split()
     
     def generate_embeddings(self, texts: Union[str, List[str]], 
                            batch_size: int = 32,

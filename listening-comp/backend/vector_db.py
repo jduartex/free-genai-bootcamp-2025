@@ -84,7 +84,7 @@ class JapaneseVectorDB:
             )
             ''')
             
-            # Segments table - stores individual segments/sentences
+            # Segments table
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS segments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,14 +98,14 @@ class JapaneseVectorDB:
             )
             ''')
             
-            # Questions table - stores questions for a transcript
+            # Questions table
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS questions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 transcript_id INTEGER,
                 segment_id INTEGER,
                 question TEXT NOT NULL,
-                options TEXT NOT NULL,  # JSON array
+                options TEXT NOT NULL,         -- Options stored as JSON array
                 answer TEXT NOT NULL,
                 explanation TEXT,
                 jlpt_level TEXT,
@@ -316,60 +316,46 @@ class JapaneseVectorDB:
     
     @timer_decorator
     def search_similar_content(self, query: str, limit: int = 5, jlpt_level: Optional[str] = None) -> List[Dict[str, Any]]:
-        """
-        Search for transcript segments similar to the query.
-        
-        Args:
-            query: Query text
-            limit: Maximum results to return
-            jlpt_level: Optional JLPT level filter
-            
-        Returns:
-            List of similar transcript segments with similarity scores
-        """
-        # Generate embedding for the query
+        """Search for similar content."""
         query_embedding = self.generate_embedding(query)
         
         with self._get_connection() as conn:
-            # Custom function for SQLite to calculate cosine similarity
-            conn.create_function("cosine_similarity", 2, self._cosine_similarity_func)
             cursor = conn.cursor()
             
             # Base query
             sql = """
-                SELECT s.id, s.transcript_id, s.text, s.embedding, t.source_url, t.title, t.jlpt_level,
-                       cosine_similarity(s.embedding, ?) as similarity
+                SELECT s.id, s.transcript_id, s.text, s.embedding, t.source_url, t.title, t.jlpt_level
                 FROM segments s
                 INNER JOIN transcripts t ON s.transcript_id = t.id
                 WHERE s.embedding IS NOT NULL
             """
             
-            params = [self._serialize_embedding(query_embedding)]
+            params = []
             
-            # Add JLPT level filter if specified
             if jlpt_level:
                 sql += " AND t.jlpt_level = ?"
                 params.append(jlpt_level)
-                
-            # Add order and limit
-            sql += " ORDER BY similarity DESC LIMIT ?"
-            params.append(limit)
             
             cursor.execute(sql, params)
-            
             results = []
+            
             for row in cursor:
-                results.append({
-                    "id": row["id"],
-                    "transcript_id": row["transcript_id"],
-                    "text": row["text"],
-                    "source_url": row["source_url"],
-                    "title": row["title"],
-                    "jlpt_level": row["jlpt_level"],
-                    "similarity": row["similarity"]
-                })
-        
-        return results
+                embedding = self._deserialize_embedding(row['embedding'])
+                if embedding is not None:
+                    similarity = float(self.embedding_service.cosine_similarity(query_embedding, embedding))
+                    results.append({
+                        "id": row["id"],
+                        "transcript_id": row["transcript_id"],
+                        "text": row["text"],
+                        "source_url": row["source_url"],
+                        "title": row["title"],
+                        "jlpt_level": row["jlpt_level"],
+                        "similarity": similarity
+                    })
+            
+            # Sort by similarity and limit results
+            results.sort(key=lambda x: x['similarity'], reverse=True)
+            return results[:limit]
     
     def _cosine_similarity_func(self, embedding1_bytes: bytes, embedding2_bytes: bytes) -> float:
         """

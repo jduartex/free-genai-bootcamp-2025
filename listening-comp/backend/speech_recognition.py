@@ -27,279 +27,148 @@ if openai_api_key:
     openai.api_key = openai_api_key
 
 class JapaneseSpeechRecognition:
-    """Class for handling Japanese speech recognition with OpenAI Whisper."""
+    """Japanese-specific speech recognition using Whisper."""
     
-    def __init__(self, use_local_model: bool = False, model_name: str = "medium"):
+    def __init__(self, use_local_model: bool = False, model_size: str = "base"):
         """
-        Initialize the speech recognition system.
+        Initialize speech recognition with Whisper model.
         
         Args:
-            use_local_model: Whether to use the local Whisper model (True) or the OpenAI API (False)
-            model_name: Model size for local Whisper ('tiny', 'base', 'small', 'medium', 'large')
+            use_local_model: Whether to use a local model or download from Whisper
+            model_size: Size of the Whisper model to use ("tiny", "base", "small", "medium", "large")
         """
+        self.model_size = model_size
         self.use_local_model = use_local_model
-        self.model_name = model_name
         
-        # Load the local model if specified
-        if self.use_local_model:
-            self.model = whisper.load_model(self.model_name)
-        else:
-            self.model = None
-    
-    def transcribe_audio_openai(self, audio_file_path: str) -> Dict[str, Any]:
-        """
-        Transcribe audio using OpenAI's Whisper API.
-        
-        Args:
-            audio_file_path: Path to the audio file
-            
-        Returns:
-            Dictionary with transcription results
-        """
+        # Initialize Whisper model
         try:
-            with open(audio_file_path, "rb") as audio_file:
-                response = openai.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio_file,
-                    language="ja",
-                    response_format="verbose_json",
-                    timestamp_granularities=["word"]
-                )
-                
-            # Convert the response to a dictionary
-            if isinstance(response, dict):
-                result = response
+            if use_local_model:
+                model_path = os.path.join(os.path.dirname(__file__), "models", f"whisper-{model_size}")
+                if os.path.exists(model_path):
+                    self.model = whisper.load_model(model_path)
+                else:
+                    logger.warning(f"Local model not found at {model_path}. Downloading from Whisper...")
+                    self.model = whisper.load_model(model_size)
             else:
-                # Handle the case where response might be an object with attributes
-                result = {
-                    "text": response.text if hasattr(response, "text") else "",
-                    "segments": getattr(response, "segments", []),
-                    "language": getattr(response, "language", "ja"),
-                }
+                self.model = whisper.load_model(model_size)
                 
-            return result
+            logger.info(f"Initialized Whisper model ({model_size})")
             
         except Exception as e:
-            print(f"Error in OpenAI transcription: {str(e)}")
-            return {"error": str(e)}
+            logger.error(f"Error initializing Whisper model: {str(e)}")
+            raise
     
-    def transcribe_audio_local(self, audio_file_path: str) -> Dict[str, Any]:
+    def process_audio_data(self, audio_path: str) -> Dict[str, Any]:
         """
-        Transcribe audio using the local Whisper model.
+        Process audio file and return transcription.
         
         Args:
-            audio_file_path: Path to the audio file
+            audio_path: Path to the audio file
             
         Returns:
-            Dictionary with transcription results
+            Dictionary containing transcription and metadata
         """
         try:
-            # Load audio and convert to the format expected by Whisper
-            audio = whisper.load_audio(audio_file_path)
-            audio = whisper.pad_or_trim(audio)
+            # Convert audio to WAV format if needed
+            audio_path = self._ensure_wav_format(audio_path)
             
-            # Make log-Mel spectrogram
-            mel = whisper.log_mel_spectrogram(audio).to(self.model.device)
-            
-            # Detect language (we'll still tell it it's Japanese but this helps with model initialization)
-            _, probs = self.model.detect_language(mel)
-            detected_language = max(probs, key=probs.get)
-            
-            # Decode audio
-            options = whisper.DecodingOptions(
+            # Transcribe audio with Japanese-specific settings
+            result = self.model.transcribe(
+                audio_path,
                 language="ja",  # Force Japanese language
                 task="transcribe",
-                fp16=False,
-                without_timestamps=False
+                initial_prompt="以下は日本語の音声です。",  # Hint that input is Japanese
+                word_timestamps=True,  # Get word-level timing
+                no_speech_threshold=0.5,
+                compression_ratio_threshold=2.4
             )
-            result = self.model.decode(mel, options)
             
-            # Construct a response similar to the OpenAI API
-            segments = []
-            if hasattr(result, "segments"):
-                segments = [
+            # Process the result
+            processed_result = {
+                "text": result.get("text", ""),
+                "language": result.get("language", "ja"),
+                "segments": result.get("segments", []),
+                "word_timestamps": [
                     {
-                        "id": i,
-                        "start": segment.start,
-                        "end": segment.end,
-                        "text": segment.text,
-                        "tokens": segment.tokens,
-                        "confidence": float(segment.avg_logprob)
+                        "word": segment.get("text", ""),
+                        "start": segment.get("start", 0),
+                        "end": segment.get("end", 0),
+                        "confidence": segment.get("confidence", 0)
                     }
-                    for i, segment in enumerate(result.segments)
-                ]
-            
-            return {
-                "text": result.text,
-                "segments": segments,
-                "language": detected_language,
-                "confidence": float(np.exp(result.avg_logprob)) if hasattr(result, "avg_logprob") else None
+                    for segment in result.get("segments", [])
+                ],
+                "confidence": self._calculate_average_confidence(result)
             }
             
+            # Clean up temporary WAV file if it was created
+            if audio_path != audio_path and os.path.exists(audio_path):
+                os.remove(audio_path)
+            
+            return processed_result
+            
         except Exception as e:
-            print(f"Error in local transcription: {str(e)}")
-            return {"error": str(e)}
+            logger.error(f"Error processing audio: {str(e)}")
+            raise
     
-    def process_audio_data(self, audio_data: Union[str, bytes], file_format: str = "mp3") -> Dict[str, Any]:
+    def _ensure_wav_format(self, audio_path: str) -> str:
         """
-        Process audio data for transcription.
+        Convert audio file to WAV format if needed.
         
         Args:
-            audio_data: Base64 encoded audio string or raw bytes
-            file_format: Audio file format (mp3, wav, etc.)
+            audio_path: Path to the input audio file
             
         Returns:
-            Transcription results
+            Path to WAV file (either original or converted)
         """
         try:
-            # Create a temporary file for the audio
-            with tempfile.NamedTemporaryFile(suffix=f".{file_format}", delete=False) as temp_audio_file:
-                temp_audio_path = temp_audio_file.name
-                
-                # Handle both base64 encoded strings and raw bytes
-                if isinstance(audio_data, str):
-                    # Assume it's base64 encoded
-                    try:
-                        decoded_audio = base64.b64decode(audio_data)
-                        temp_audio_file.write(decoded_audio)
-                    except Exception:
-                        # If base64 decoding fails, assume it's a file path
-                        if os.path.exists(audio_data):
-                            with open(audio_data, "rb") as audio_file:
-                                temp_audio_file.write(audio_file.read())
-                        else:
-                            raise ValueError(f"Invalid audio data. Not a valid base64 string or file path: {audio_data[:30]}...")
-                else:
-                    # Raw bytes
-                    temp_audio_file.write(audio_data)
-                
-                temp_audio_file.flush()
+            # Check if file is already WAV
+            if audio_path.lower().endswith('.wav'):
+                return audio_path
             
-            # Choose the transcription method based on configuration
-            if self.use_local_model:
-                result = self.transcribe_audio_local(temp_audio_path)
-            else:
-                result = self.transcribe_audio_openai(temp_audio_path)
+            # Load audio file
+            audio = AudioSegment.from_file(audio_path)
             
-            # Clean up the temporary file
-            os.unlink(temp_audio_path)
+            # Create temporary WAV file
+            temp_wav = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+            temp_wav_path = temp_wav.name
+            temp_wav.close()
             
-            return result
+            # Export as WAV
+            audio.export(temp_wav_path, format='wav')
+            
+            return temp_wav_path
             
         except Exception as e:
-            print(f"Error processing audio: {str(e)}")
-            return {"error": str(e)}
+            logger.error(f"Error converting audio format: {str(e)}")
+            raise
     
-    def convert_audio_format(self, input_path: str, output_format: str = "mp3") -> str:
-        """
-        Convert audio to a format suitable for the ASR system.
-        
-        Args:
-            input_path: Path to input audio file
-            output_format: Desired output format
+    def _calculate_average_confidence(self, result: Dict[str, Any]) -> float:
+        """Calculate average confidence score from segments."""
+        segments = result.get("segments", [])
+        if not segments:
+            return 0.0
             
-        Returns:
-            Path to the converted audio file
-        """
-        try:
-            # Create output filename
-            output_path = os.path.splitext(input_path)[0] + f".{output_format}"
-            
-            # Load with pydub (handles various formats)
-            audio = AudioSegment.from_file(input_path)
-            
-            # Export to new format
-            audio.export(output_path, format=output_format)
-            
-            return output_path
-            
-        except Exception as e:
-            print(f"Error converting audio format: {str(e)}")
-            return input_path  # Return original path on error
+        confidences = [segment.get("confidence", 0) for segment in segments]
+        return sum(confidences) / len(confidences)
     
-    def get_pronunciation_confidence(self, transcription_result: Dict[str, Any]) -> float:
-        """
-        Extract pronunciation confidence score from transcription result.
-        
-        Args:
-            transcription_result: Transcription result dictionary
-            
-        Returns:
-            Confidence score between 0 and 1
-        """
-        # If we have a confidence score directly, use it
-        if "confidence" in transcription_result and transcription_result["confidence"] is not None:
-            return float(transcription_result["confidence"])
-        
-        # If we have segments with confidence, calculate average
-        if "segments" in transcription_result and transcription_result["segments"]:
-            segment_confidences = [
-                seg.get("confidence", 0) 
-                for seg in transcription_result["segments"]
-                if isinstance(seg, dict) and "confidence" in seg
-            ]
-            
-            if segment_confidences:
-                return sum(segment_confidences) / len(segment_confidences)
-        
-        # Default moderate confidence when we can't determine
-        return 0.5
-    
-    def transcribe_with_timestamps(self, audio_file_path: str) -> Dict[str, Any]:
-        """
-        Transcribe audio with detailed word-level timestamps.
-        
-        Args:
-            audio_file_path: Path to audio file
-            
-        Returns:
-            Transcription with word-level timing information
-        """
-        if self.use_local_model:
-            # Local model doesn't support the same level of detailed timestamps
-            # We'll use segment-level timestamps instead
-            result = self.transcribe_audio_local(audio_file_path)
-            # Add a note that these are segment-level timestamps only
-            result["timestamp_level"] = "segment"
-            return result
-        else:
-            try:
-                with open(audio_file_path, "rb") as audio_file:
-                    response = openai.audio.transcriptions.create(
-                        model="whisper-1",
-                        file=audio_file,
-                        language="ja",
-                        response_format="verbose_json",
-                        timestamp_granularities=["word", "segment"]
-                    )
-                
-                if isinstance(response, dict):
-                    result = response
-                else:
-                    # Convert object to dictionary
-                    result = response.__dict__
-                
-                result["timestamp_level"] = "word"
-                return result
-                
-            except Exception as e:
-                print(f"Error getting detailed timestamps: {str(e)}")
-                return {"error": str(e), "timestamp_level": "none"}
-
+    def get_model_info(self) -> Dict[str, Any]:
+        """Get information about the current model."""
+        return {
+            "model_size": self.model_size,
+            "is_local": self.use_local_model,
+            "device": "cuda" if torch.cuda.is_available() else "cpu",
+            "language": "ja",
+            "supports_word_timestamps": True
+        }
 
 # Example usage
 if __name__ == "__main__":
+    recognizer = JapaneseSpeechRecognition()
+    print("Model info:", recognizer.get_model_info())
+    
     # Example: Process an audio file
-    asr = JapaneseSpeechRecognition(use_local_model=False)
-    
-    # Example file path - replace with an actual file for testing
-    test_file = "path/to/japanese_audio_sample.mp3"
-    
-    if os.path.exists(test_file):
-        print(f"Transcribing: {test_file}")
-        result = asr.process_audio_data(test_file)
-        print(f"Transcription: {result.get('text', 'No text')}")
-        print(f"Language: {result.get('language', 'unknown')}")
-        print(f"Confidence: {asr.get_pronunciation_confidence(result)}")
-    else:
-        print("Please provide a valid audio file path for testing")
+    test_audio = "path/to/test.mp3"
+    if os.path.exists(test_audio):
+        result = recognizer.process_audio_data(test_audio)
+        print("Transcription:", result["text"])
+        print("Confidence:", result["confidence"])

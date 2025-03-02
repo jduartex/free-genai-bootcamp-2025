@@ -13,10 +13,12 @@ from dotenv import load_dotenv
 import werkzeug
 from jsonschema import validate, ValidationError
 import re
+import redis
+from limits.storage import MemoryStorage, RedisStorage
 
-# Import the new speech recognition components
-from speech_recognition import JapaneseSpeechRecognition
-from pronunciation_analysis import JapanesePronunciationAnalyzer
+# Import the speech recognition components from local modules
+from backend.speech_recognition import JapaneseSpeechRecognition  # Changed import path
+from backend.pronunciation_analysis import JapanesePronunciationAnalyzer  # Changed import path
 
 # Load environment variables
 load_dotenv()
@@ -28,12 +30,18 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-# Configure rate limiting
+# Configure Flask-Limiter
+app.config['RATELIMIT_ENABLED'] = True
+app.config['RATELIMIT_STORAGE_URL'] = os.getenv('REDIS_URL', 'memory://')
+app.config['RATELIMIT_DEFAULT'] = "2 per second"  # Stricter default limit for testing
+
+# Initialize limiter with configuration
 limiter = Limiter(
-    app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
+    storage_uri=app.config['RATELIMIT_STORAGE_URL'],
+    default_limits=["2 per second"]  # Match the default config
 )
+limiter.init_app(app)
 
 # Configure caching
 cache_config = {
@@ -110,7 +118,7 @@ def error_handler(func):
     return wrapper
 
 @app.route('/health', methods=['GET'])
-@limiter.exempt  # No rate limiting for health checks
+@limiter.limit("2 per second")  # Explicit rate limit for testing
 @cache.cached(timeout=60)  # Cache health check for 1 minute
 def health_check():
     """Simple endpoint to check if the API is running"""

@@ -4,20 +4,21 @@ Simple test script to verify that Whisper is working correctly
 import os
 import whisper
 import logging
+import pytest
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def test_whisper():
-    """Test that the Whisper model is loading correctly"""
+    """Test whisper model loading and basic functionality."""
     try:
-        logger.info("Loading Whisper model (this may take a moment)...")
-        model = whisper.load_model("base")
-        logger.info(f"✅ Whisper model loaded successfully: {model.device}")
-        return True
+        model = whisper.load_model("tiny")
+        assert model is not None, "Failed to load whisper model"
+        assert model.device is not None, "Model device not set"
+        assert model.is_multilingual, "Model should be multilingual"
     except Exception as e:
-        logger.error(f"❌ Error loading Whisper model: {str(e)}")
-        return False
+        pytest.fail(f"Failed to initialize whisper: {str(e)}")
 
 if __name__ == "__main__":
     print("Testing Whisper installation...")
