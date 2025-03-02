@@ -1,0 +1,150 @@
+import os
+import uvicorn
+from fastapi import FastAPI, HTTPException, Query, File, UploadFile, Form, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Import our service modules
+from transcript_fetcher import YouTubeTranscriptFetcher
+from vector_db import VectorDatabase
+from question_generator import QuestionGenerator
+from tts_service import TTSService
+from speech_recognition import SpeechRecognizer
+
+# Create FastAPI app
+app = FastAPI(title="Japanese Listening Comprehension Backend API")
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # During development, allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize services
+transcript_fetcher = YouTubeTranscriptFetcher()
+vector_db = VectorDatabase()
+question_generator = QuestionGenerator()
+tts_service = TTSService()
+speech_recognizer = SpeechRecognizer()
+
+# Define API models
+class TranscriptRequest(BaseModel):
+    video_id: str
+    language: str = "ja"  # Default to Japanese
+
+class TranscriptAnalysisRequest(BaseModel):
+    transcript: str
+    metadata: Optional[Dict[str, Any]] = None
+
+class QuestionGenerationRequest(BaseModel):
+    transcript: str
+    jlpt_level: str = "N4"  # Default to intermediate level
+    num_questions: int = 5
+    include_answers: bool = True
+
+class TTSRequest(BaseModel):
+    text: str
+    voice_id: str = "Mizuki"  # Default to a Japanese female voice
+    engine: str = "neural"
+    
+class ASRRequest(BaseModel):
+    file_path: str
+
+# API endpoints
+@app.get("/")
+def read_root():
+    return {"status": "active", "service": "Japanese Listening Comprehension Backend"}
+
+# Transcript Service
+@app.get("/api/transcript")
+async def get_transcript(video_id: str = Query(..., description="YouTube video ID")):
+    """Fetch transcript for a YouTube video"""
+    try:
+        transcript = await transcript_fetcher.fetch_transcript(video_id)
+        return {"status": "success", "transcript": transcript}
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Transcript not found: {str(e)}")
+
+@app.post("/api/transcript/analyze")
+async def analyze_transcript(request: TranscriptAnalysisRequest):
+    """Process and analyze transcript content"""
+    try:
+        analysis = await vector_db.analyze_transcript(request.transcript, request.metadata)
+        return {"status": "success", "analysis": analysis}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+# Question Generation
+@app.post("/api/questions/generate")
+async def generate_questions(request: QuestionGenerationRequest):
+    """Generate questions based on transcript"""
+    try:
+        questions = await question_generator.generate(
+            request.transcript, 
+            request.jlpt_level,
+            request.num_questions,
+            request.include_answers
+        )
+        return {"status": "success", "questions": questions}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Question generation failed: {str(e)}")
+
+@app.get("/api/questions")
+async def get_questions(jlpt_level: str = Query("N4", description="JLPT level (N1-N5)")):
+    """Get questions filtered by JLPT level"""
+    try:
+        questions = await question_generator.get_by_jlpt_level(jlpt_level)
+        return {"status": "success", "questions": questions}
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Questions not found: {str(e)}")
+
+# Text-to-Speech
+@app.post("/api/tts")
+async def text_to_speech(request: TTSRequest):
+    """Convert text to speech audio"""
+    try:
+        audio_file = await tts_service.synthesize(request.text, request.voice_id, request.engine)
+        return {"status": "success", "audio_file": audio_file}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"TTS failed: {str(e)}")
+
+@app.get("/api/voices")
+async def get_voices():
+    """Get available Japanese voice options"""
+    try:
+        voices = await tts_service.list_voices()
+        return {"status": "success", "voices": voices}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve voices: {str(e)}")
+
+# Speech Recognition
+@app.post("/api/asr")
+async def speech_recognition(file: UploadFile = File(...)):
+    """Process speech audio and return recognized text"""
+    try:
+        # Save uploaded file temporarily
+        temp_file_path = f"temp_{file.filename}"
+        with open(temp_file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Process with speech recognizer
+        transcription = await speech_recognizer.transcribe(temp_file_path)
+        
+        # Remove temporary file
+        os.remove(temp_file_path)
+        
+        return {"status": "success", "transcription": transcription}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Speech recognition failed: {str(e)}")
+
+if __name__ == "__main__":
+    uvicorn.run("run_backend:app", host="0.0.0.0", port=8000, reload=True)
