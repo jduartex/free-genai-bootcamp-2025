@@ -92,7 +92,7 @@ class YouTubeTranscriptFetcher:
             
             # Clean up text: remove special characters but keep Japanese punctuation
             text = re.sub(r'[\u2000-\u206F]', '', text)  # Remove Unicode formatting chars
-            text = re.sub(r'[[#*_]', '', text)  # Remove markdown-like formatting
+            text = self._clean_text(text)  # Remove markdown-like formatting
             
             # Skip segments that are likely not Japanese (music notes, sound effects)
             if re.match(r'^\[.*\]$', text) or text.strip() == '':
@@ -173,3 +173,10 @@ class YouTubeTranscriptFetcher:
             })
         
         return sentence_segments
+
+    def _clean_text(self, text: str) -> str:
+        """Clean transcript text by removing markdown formatting and normalizing whitespace"""
+        # Fix nested set warning by escaping brackets
+        text = re.sub(r'[\[#*_]', '', text)  # Remove markdown-like formatting
+        text = re.sub(r'\s+', ' ', text)  # Normalize whitespace
+        return text.strip()
