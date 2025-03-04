@@ -2,127 +2,78 @@ import streamlit as st
 from typing import List, Dict, Any
 
 def display_questions(questions: List[Dict[str, Any]], auto_play: bool = False, show_furigana: bool = False):
-    """Display questions in a structured format"""
-    # IMPORTANT: Always use the same key for this component instance
-    component_key = "quiz_component"
+    """Simple quiz display with minimal interactivity"""
     
-    # ==== STATE INITIALIZATION ====
-    # Initialize the component state if not already present
-    if component_key not in st.session_state:
-        st.session_state[component_key] = {
-            "questions": questions,
-            "answers": {},
-            "checked": {},
-            "show_results": False,
-        }
+    # Save questions in session state
+    if 'current_quiz_questions' not in st.session_state:
+        st.session_state.current_quiz_questions = questions
     
-    # Ensure we have the most recent questions
-    if questions:  # Only update if we get non-empty questions
-        st.session_state[component_key]["questions"] = questions
+    # Get questions from session state
+    current_questions = st.session_state.current_quiz_questions
     
-    # Get state references
-    state = st.session_state[component_key]
-    current_questions = state["questions"]
-    current_answers = state["answers"]
-    current_checked = state["checked"]
+    # Initialize answers if needed
+    if 'quiz_answers' not in st.session_state:
+        st.session_state.quiz_answers = {}
     
-    # Initialize default answers if needed
+    # Display quiz
+    st.write("## Japanese Quiz Questions")
+    
+    # Display each question
     for i, question in enumerate(current_questions, 1):
-        if options := question.get("options", []):
-            if f"q_{i}" not in current_answers:
-                current_answers[f"q_{i}"] = options[0]
-    
-    # Define callback functions to handle button clicks
-    def check_answer(i):
         q_key = f"q_{i}"
-        state["checked"][q_key] = True
         
-    def submit_all():
-        # Check all answers
-        for i, _ in enumerate(current_questions, 1):
-            state["checked"][f"q_{i}"] = True
-        state["show_results"] = True
-    
-    def reset_quiz():
-        state["answers"] = {}
-        state["checked"] = {}
-        state["show_results"] = False
-    
-    # ==== DISPLAY QUESTIONS ====
-    st.write("### Multiple Choice Questions")
-    
-    for i, question in enumerate(current_questions, 1):
-        q_key = f"q_{i}"
+        st.markdown(f"### Question {i}")
+        st.write(question.get("question", ""))
+        
         options = question.get("options", [])
+        if not options:
+            continue
         
-        # Question container
-        with st.container():
-            st.write(f"**Question {i}:** {question.get('question', '')}")
+        # Get current answer or set default
+        if q_key not in st.session_state.quiz_answers and options:
+            st.session_state.quiz_answers[q_key] = options[0]
+        
+        # Display options as clickable buttons instead of radio
+        st.write("Select your answer:")
+        
+        # Create a row of buttons for options
+        cols = st.columns(len(options))
+        for j, option in enumerate(options):
+            with cols[j]:
+                # Visual indicator if this option is selected
+                is_selected = st.session_state.quiz_answers.get(q_key) == option
+                button_label = f"✓ {option}" if is_selected else option
+                
+                if st.button(button_label, key=f"opt_{i}_{j}"):
+                    st.session_state.quiz_answers[q_key] = option
+        
+        # Show current selection
+        st.info(f"Selected: {st.session_state.quiz_answers.get(q_key, 'None')}")
+        st.markdown("---")
+    
+    # Check answers button
+    if st.button("Check Answers"):
+        st.subheader("Results:")
+        
+        correct_count = 0
+        for i, q in enumerate(current_questions, 1):
+            q_key = f"q_{i}"
+            user_answer = st.session_state.quiz_answers.get(q_key, "")
+            correct = q.get("correct_answer", "")
             
-            if options:
-                # Determine current selection
-                current_selection = current_answers.get(q_key, options[0])
+            st.write(f"**Question {i}**:")
+            if user_answer == correct:
+                st.success(f"Correct! Your answer: {user_answer}")
+                correct_count += 1
+            else:
+                st.error(f"Wrong. Your answer: {user_answer}, Correct: {correct}")
                 
-                # Use radio buttons with key that includes question index
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    # Find index of current answer
-                    try:
-                        index = options.index(current_selection)
-                    except (ValueError, IndexError):
-                        index = 0
-                        
-                    radio_selection = st.radio(
-                        "Choose your answer:",
-                        options,
-                        key=f"radio_{i}",
-                        index=index,
-                        horizontal=True
-                    )
-                    
-                    # Save selected answer
-                    current_answers[q_key] = radio_selection
+            if explanation := q.get("explanation"):
+                st.info(f"Explanation: {explanation}")
                 
-                # Check answer button
-                with col2:
-                    if st.button("Check", key=f"check_{i}", on_click=check_answer, args=(i,)):
-                        pass  # Actual check happens in the callback
-                
-                # Show result if checked
-                if q_key in current_checked:
-                    correct = question.get("correct_answer", "")
-                    if current_answers[q_key] == correct:
-                        st.success("✓ Correct!")
-                    else:
-                        st.error(f"✗ Incorrect. The correct answer is: **{correct}**")
-                    
-                    if explanation := question.get("explanation"):
-                        with st.expander("See Explanation"):
-                            st.write(explanation)
-            
             st.markdown("---")
-    
-    # ==== SUBMIT ANSWERS ====
-    col1, col2 = st.columns([3, 1])
-    with col2:
-        if st.button("Submit All", key="submit_all", on_click=submit_all):
-            pass  # Actual submission happens in the callback
-    
-    # ==== DISPLAY RESULTS ====
-    if state["show_results"]:
-        st.header("Final Results")
         
-        # Calculate score
-        correct_count = sum(
-            1 for i, q in enumerate(current_questions, 1)
-            if current_answers.get(f"q_{i}") == q.get("correct_answer")
-        )
-        
-        # Score display
+        # Show score
         total = len(current_questions)
-        score = (correct_count / total) * 100 if total > 0 else 0
+        score = (correct_count / total) * 100
         st.metric("Your Score", f"{correct_count}/{total} ({score:.1f}%)")
-        
-        # Reset button
-        if st.button("Try Again", key="reset_btn", on_click=reset_quiz):
-            pass  # Actual reset happens in the callback

@@ -251,6 +251,44 @@ def init_session_state():
     
     if 'history' not in st.session_state:
         st.session_state.history = []
+        
+    # Add a new state variable to store generated questions
+    if 'generated_questions' not in st.session_state:
+        st.session_state.generated_questions = None
+
+# Function to generate questions and store in session state
+def generate_and_store_questions():
+    youtube_url = st.session_state.youtube_url_input
+    jlpt_level = st.session_state.jlpt_level_select
+    
+    try:
+        with st.spinner("Fetching video transcript..."):
+            transcript_data = fetch_transcript(youtube_url)
+            
+            if transcript_data and transcript_data.get("status") != "error":
+                transcript = transcript_data.get("transcript", "")
+                
+                with st.spinner(f"Generating {jlpt_level} level questions..."):
+                    # Generate questions
+                    questions = generate_questions(transcript, jlpt_level)
+                    
+                    if questions:
+                        # Store questions in session state
+                        st.session_state.generated_questions = questions
+                        
+                        # Update history
+                        update_history(youtube_url, questions)
+                        st.session_state.current_progress["questions"] = questions
+                        
+                        # Set the active tab to the quiz tab
+                        st.session_state.active_tab = "Quiz"
+                    else:
+                        st.error("Failed to generate questions")
+            else:
+                st.error("Failed to fetch transcript. Please check the URL and try again.")
+                
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
 
 def main():
     # Initialize state - THIS MUST COME FIRST
@@ -263,7 +301,11 @@ def main():
         layout="wide"
     )
     
-    # Preferences sidebar
+    # Set default active tab if not already set
+    if 'active_tab' not in st.session_state:
+        st.session_state.active_tab = "Settings"
+    
+    # Preferences sidebar - Keep this the same
     with st.sidebar:
         st.subheader("Preferences")
         st.session_state.preferences["default_jlpt_level"] = st.selectbox(
@@ -288,51 +330,63 @@ def main():
     # Main content
     st.title("YouTube Listening Comprehension")
     
-    # Use default JLPT level from preferences
-    jlpt_level = st.selectbox(
-        "Select JLPT Level",
-        ["N5", "N4", "N3", "N2", "N1"],
-        index=["N5", "N4", "N3", "N2", "N1"].index(
-            st.session_state.preferences["default_jlpt_level"]
+    # Create tabs to separate settings from quiz
+    settings_tab, quiz_tab = st.tabs(["Settings", "Quiz"])
+    
+    # Update active tab if tabs are clicked
+    if settings_tab.button("Show Settings", key="btn_settings_tab"):
+        st.session_state.active_tab = "Settings"
+        
+    if quiz_tab.button("Show Quiz", key="btn_quiz_tab"):
+        st.session_state.active_tab = "Quiz"
+    
+    # Settings tab content
+    with settings_tab:
+        st.header("Quiz Settings")
+        
+        # JLPT Level selectbox - store in session_state
+        jlpt_level = st.selectbox(
+            "Select JLPT Level",
+            ["N5", "N4", "N3", "N2", "N1"],
+            index=["N5", "N4", "N3", "N2", "N1"].index(
+                st.session_state.preferences["default_jlpt_level"]
+            ),
+            key="jlpt_level_select"
         )
-    )
+        
+        # YouTube URL input - store in session_state
+        youtube_url = st.text_input(
+            "Enter YouTube URL",
+            value=st.session_state.current_progress["video_url"] or "",
+            placeholder="https://www.youtube.com/watch?v=...",
+            key="youtube_url_input"
+        )
+        
+        # Store URL in current_progress
+        st.session_state.current_progress["video_url"] = youtube_url
+        
+        # Generate Questions button - with callback to avoid rerun issues
+        if st.button("Generate Questions", 
+                     on_click=generate_and_store_questions):
+            pass  # Action happens in the callback
+            
+        st.info("Click 'Generate Questions' to create new questions, then switch to the 'Quiz' tab")
     
-    # Save current video URL in session state
-    youtube_url = st.text_input(
-        "Enter YouTube URL",
-        value=st.session_state.current_progress["video_url"] or "",
-        placeholder="https://www.youtube.com/watch?v=..."
-    )
-    st.session_state.current_progress["video_url"] = youtube_url
-    
-    if youtube_url:
-        if st.button("Generate Questions"):
-            try:
-                st.info("Fetching video transcript...")
-                transcript_data = fetch_transcript(youtube_url)
-                
-                if transcript_data and transcript_data.get("status") != "error":
-                    transcript = transcript_data.get("transcript", "")
-                    st.info(f"Generating {jlpt_level} level questions...")
-                    
-                    # Generate questions
-                    questions = generate_questions(transcript, jlpt_level)
-                    
-                    if questions:
-                        # Update history and display questions
-                        update_history(youtube_url, questions)
-                        st.session_state.current_progress["questions"] = questions
-                        
-                        display_questions(
-                            questions,
-                            auto_play=st.session_state.preferences["auto_play_audio"],
-                            show_furigana=st.session_state.preferences["show_furigana"]
-                        )
-                    else:
-                        st.error("Failed to generate questions")
-                        
-            except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
+    # Quiz tab content
+    with quiz_tab:
+        if st.session_state.generated_questions:
+            # Display questions from session state
+            display_questions(
+                st.session_state.generated_questions,
+                auto_play=st.session_state.preferences["auto_play_audio"],
+                show_furigana=st.session_state.preferences["show_furigana"]
+            )
+        else:
+            st.info("No questions generated yet. Go to Settings tab to generate questions.")
+            
+            # Optional: Add a button to go to settings
+            if st.button("Go to Settings"):
+                st.session_state.active_tab = "Settings"
 
 if __name__ == "__main__":
     main()
