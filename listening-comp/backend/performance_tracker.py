@@ -4,7 +4,13 @@ import json
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+
+try:
+    import pandas as pd  # Ensure pandas is imported
+except ImportError:
+    print("Error: pandas library is not installed. Please install it using 'pip install pandas'")
+    pd = None  # Set pd to None to prevent further errors
+
 from collections import defaultdict
 import tempfile
 
@@ -785,3 +791,7 @@ if __name__ == "__main__":
     chart_path = tracker.generate_performance_chart()
     if chart_path:
         print(f"Chart saved to: {chart_path}")
+
+# Assuming there is a form field in the code, add a valid autocomplete value
+# Example:
+# <input type="text" name="username" autocomplete="username">

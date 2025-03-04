@@ -1,23 +1,34 @@
-fastapi==0.104.1
-uvicorn==0.24.0
-python-dotenv==1.0.0
-youtube-transcript-api==0.6.1
-langdetect==1.0.9
-pydantic==2.5.2
-python-multipart==0.0.6
-aiohttp==3.9.1
+# Web Framework
+fastapi==0.95.0
+uvicorn==0.21.1
+
+# Data Processing
+numpy==1.24.3
+pandas==1.5.3
+
+# ML and AI
 openai==0.28.1
-sqlalchemy==2.0.23
-aiosqlite==0.19.0
 openai-whisper==20231117
-torch==2.1.0
-torchaudio==2.1.0
+torch==1.13.1
+torchaudio==0.13.1
+
+# Database
+sqlalchemy==1.4.41
+aiosqlite==0.19.0
+
+# API and HTTP
 httpx==0.24.1
+aiohttp==3.8.5
+python-multipart==0.0.6
 
-# TTS dependencies
-boto3==1.34.34
+# Configuration
+python-dotenv==1.0.0
+pydantic==1.10.7
+
+# Language Processing
+langdetect==1.0.9
+youtube-transcript-api==0.6.1
+
+# TTS Services
+boto3==1.26.137
 google-cloud-texttospeech==2.14.1
-
-# Data processing
-pandas==2.1.4
-numpy==1.26.2

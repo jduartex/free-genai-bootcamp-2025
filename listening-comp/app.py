@@ -1,117 +1,144 @@
 import streamlit as st
-import requests
+import aiohttp
+import asyncio
 import json
-import os
-import time
-import base64
-from urllib.parse import urlparse, parse_qs
-from io import BytesIO
+import pandas as pd  # Fixed the 'pd' not defined error
+from typing import Dict, Any, List
 from dotenv import load_dotenv
+import os
+import re
+from components.question_display import display_questions
+from utils.state import init_session_state, load_preferences, save_preferences, update_history
 
 # Load environment variables
 load_dotenv()
 
-# API Configuration
-API_URL = "http://localhost:8000"  # Change if backend runs on a different URL
+# Get backend URL from environment with fallback
+BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:8000')
 
-# Set page title and configuration
-st.set_page_config(
-    page_title="Japanese Listening Comprehension App",
-    page_icon="🎧",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-# Helper functions
-def extract_youtube_id(url):
+def extract_video_id(url: str) -> str:
     """Extract YouTube video ID from URL"""
-    parsed_url = urlparse(url)
-    if parsed_url.hostname in ('youtu.be',):
-        return parsed_url.path[1:]
-    if parsed_url.hostname in ('www.youtube.com', 'youtube.com'):
-        if parsed_url.path == '/watch':
-            return parse_qs(parsed_url.query)['v'][0]
-        if parsed_url.path.startswith('/embed/'):
-            return parsed_url.path.split('/')[2]
-        if parsed_url.path.startswith('/v/'):
-            return parsed_url.path.split('/')[2]
-    # Invalid YouTube URL
-    return None
-
-def get_transcript(video_id):
-    """Fetch transcript from API"""
-    try:
-        response = requests.get(f"{API_URL}/api/transcript?video_id={video_id}")
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching transcript: {str(e)}")
-        return None
-
-def generate_questions(transcript, jlpt_level, num_questions):
-    """Generate questions from API"""
-    try:
-        payload = {
-            "transcript": transcript,
-            "jlpt_level": jlpt_level,
-            "num_questions": num_questions,
-            "include_answers": True
-        }
-        response = requests.post(f"{API_URL}/api/questions/generate", json=payload)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error generating questions: {str(e)}")
-        return None
-
-def text_to_speech(text, voice_id="Mizuki"):
-    """Convert text to speech using API"""
-    try:
-        payload = {
-            "text": text,
-            "voice_id": voice_id,
-            "engine": "neural"
-        }
-        response = requests.post(f"{API_URL}/api/tts", json=payload)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error generating speech: {str(e)}")
-        return None
-
-def get_audio_html(audio_file):
-    """Generate HTML audio player for the audio file"""
-    try:
-        # Read audio file and encode as base64
-        with open(audio_file, "rb") as f:
-            audio_bytes = f.read()
-        audio_base64 = base64.b64encode(audio_bytes).decode()
+    if not url:
+        return ""
         
-        # Create HTML audio element
-        audio_html = f"""
-        <audio controls>
-            <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
-            Your browser does not support the audio element.
-        </audio>
-        """
-        return audio_html
+    # Handle different URL formats
+    patterns = [
+        r'(?:v=|\/)([0-9A-Za-z_-]{11}).*',  # Standard and embedded URLs
+        r'youtu.be\/([0-9A-Za-z_-]{11})',    # Shortened URLs
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return url  # Return as-is if no pattern matches
+
+@st.cache_data
+def fetch_transcript(video_url: str) -> Dict[str, Any]:
+    """Fetch and cache transcript"""
+    async def _fetch():
+        try:
+            async with aiohttp.ClientSession() as session:
+                video_id = extract_video_id(video_url)
+                if not video_id:
+                    return {"status": "error", "error": "Invalid YouTube URL"}
+                    
+                async with session.get(f"{BACKEND_URL}/api/transcript", params={"video_id": video_id}) as response:
+                    if response.status == 404:
+                        return {"status": "error", "error": "Backend service not found. Please check if the backend is running."}
+                    response.raise_for_status()
+                    return await response.json()
+        except aiohttp.ClientConnectorError:
+            return {"status": "error", "error": f"Cannot connect to backend at {BACKEND_URL}. Please check if the backend is running."}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
+    try:
+        return asyncio.run(_fetch())
     except Exception as e:
-        st.error(f"Error creating audio player: {str(e)}")
-        return None
+        return {"status": "error", "error": str(e)}
 
-# Main application
-st.title("日本語リスニング練習 - Japanese Listening Comprehension")
+@st.cache_data
+def generate_questions(transcript: str, jlpt_level: str) -> List[Dict[str, Any]]:
+    """Generate and cache questions"""
+    async def _generate():
+        async with aiohttp.ClientSession() as session:
+            # Extract the actual transcript text
+            if isinstance(transcript, dict):
+                # Handle transcript from YouTube API
+                if 'processed_transcript' in transcript:
+                    transcript_text = transcript['processed_transcript'].get('full_text', '')
+                elif 'transcript' in transcript:
+                    transcript_text = transcript['transcript']
+                else:
+                    transcript_text = str(transcript)
+            else:
+                transcript_text = str(transcript)
 
-# Sidebar with options
-st.sidebar.header("設定 (Settings)")
-jlpt_level = st.sidebar.selectbox(
-    "JLPT Level", 
-    ["N5", "N4", "N3", "N2", "N1"],
-    format_func=lambda x: f"{x} ({['Beginner', 'Basic', 'Intermediate', 'Pre-Advanced', 'Advanced'][['N5', 'N4', 'N3', 'N2', 'N1'].index(x)]})",
-    index=1  # Default to N4
-)
+            if not transcript_text.strip():
+                return []
 
-num_questions = st.sidebar.slider("Number of Questions", min_value=1, max_value=10, value=3)
+            request_data = {
+                "transcript": transcript_text,
+                "jlpt_level": jlpt_level,
+                "num_questions": 5,
+                "include_answers": True
+            }
+            
+            headers = {"Content-Type": "application/json"}
+            
+            try:
+                async with session.post(
+                    f"{BACKEND_URL}/api/questions/generate",
+                    json=request_data,
+                    headers=headers
+                ) as response:
+                    if response.status == 422:
+                        error_detail = await response.json()
+                        return []
+                    
+                    response.raise_for_status()
+                    result = await response.json()
+                    
+                    if isinstance(result, dict) and result.get("status") == "success":
+                        return result.get("questions", [])
+                    elif isinstance(result, dict) and "questions" in result:
+                        return result["questions"]
+                    elif isinstance(result, list):
+                        return result
+                        
+                    return []
+            except Exception as e:
+                return []
 
-voice_options = {
-    "Mizuki": "Female (Amazon Polly)",
+    try:
+        with st.spinner("Generating questions..."):
+            questions = asyncio.run(_generate())
+            
+            if not questions:
+                return []
+                
+            # Convert to serializable format
+            return [{
+                "question": str(q.get("questionJapanese", q.get("question", ""))),
+                "options": [str(opt) for opt in q.get("options", [])],
+                "correct_answer": str(q.get("correctAnswer", q.get("correct_answer", ""))),
+                "explanation": str(q.get("explanation", ""))
+            } for q in questions]
+            
+    except Exception as e:
+        st.error(f"Error generating questions: {str(e)}")
+        return []
+
+def main():
+    # Initialize state
+    init_session_state()
+    load_preferences()
+    
+    st.set_page_config(
+        page_title="Listening Comprehension App",
+        page_icon="🎧",
+        layout="wide"
+    )
+    
+    # Rest of the main function remains the same...

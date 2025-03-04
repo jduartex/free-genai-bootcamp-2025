@@ -3,7 +3,7 @@ import aiohttp
 import asyncio
 import json
 import requests
-import pandas as pd  # Add pandas import
+import pandas as pd  # Ensure pandas is imported
 from typing import Dict, Any, List
 from dotenv import load_dotenv
 import os
@@ -55,17 +55,31 @@ async def _fetch_transcript_async(video_url):
 
 @st.cache_data
 def fetch_transcript(video_url: str) -> Dict[str, Any]:
-    """Fetch and cache transcript"""
-    async def _fetch():
-        async with aiohttp.ClientSession() as session:
-            video_id = extract_video_id(video_url)
-            async with session.get(f"{BACKEND_URL}/api/transcript", params={"video_id": video_id}) as response:
-                response.raise_for_status()
-                return await response.json()
-
+    """Cached wrapper for transcript fetching"""
     try:
-        return asyncio.run(_fetch())
+        video_id = extract_video_id(video_url)
+        print(f"Requesting transcript for video ID: {video_id}")  # Debug print
+        
+        # Check if backend URL is properly set
+        print(f"Using backend URL: {BACKEND_URL}")  # Debug print
+        
+        response = requests.get(
+            f"{BACKEND_URL}/api/transcript",
+            params={"video_id": video_id}
+        )
+        
+        # Print response status
+        print(f"Transcript API response status: {response.status_code}")  # Debug print
+        
+        response.raise_for_status()
+        result = response.json()
+        
+        # Print first 100 chars of result for debugging
+        print(f"Transcript response preview: {str(result)[:100]}...")  # Debug print
+        
+        return result
     except Exception as e:
+        print(f"TRANSCRIPT ERROR: {str(e)}")  # More visible error
         st.error(f"Error fetching transcript: {str(e)}")
         return {"status": "error", "error": str(e)}
 
@@ -100,6 +114,9 @@ def generate_questions(transcript: str, jlpt_level: str) -> List[Dict[str, Any]]
             headers = {"Content-Type": "application/json"}
             
             try:
+                print(f"Processing transcript: {len(transcript_text)} characters")  # Debug print
+                print(f"Sending to LLM for {jlpt_level} questions")  # Debug print
+                
                 async with session.post(
                     f"{BACKEND_URL}/api/questions/generate",
                     json=request_data,
@@ -112,6 +129,8 @@ def generate_questions(transcript: str, jlpt_level: str) -> List[Dict[str, Any]]
                     
                     response.raise_for_status()
                     result = await response.json()
+                    
+                    print(f"LLM response received: {len(str(result))} characters")  # Debug print
                     
                     if result.get("status") != "success":
                         st.error(f"Error from backend: {result.get('detail', 'Unknown error')}")
@@ -144,8 +163,97 @@ def generate_questions(transcript: str, jlpt_level: str) -> List[Dict[str, Any]]
         st.error(f"Error generating questions: {str(e)}")
         return []
 
+def generate_questions_sync(transcript: str, jlpt_level: str) -> List[Dict[str, Any]]:
+    """Synchronous wrapper for generate_questions"""
+    try:
+        # Debug print to verify transcript
+        print(f"Transcript type: {type(transcript)}")
+        if isinstance(transcript, dict):
+            print(f"Transcript keys: {transcript.keys()}")
+        
+        # Extract transcript text from dictionary if needed
+        if isinstance(transcript, dict):
+            if 'processed_transcript' in transcript:
+                cleaned_transcript = transcript['processed_transcript'].get('full_text', '').strip()
+            else:
+                cleaned_transcript = transcript.get('transcript', '').strip()
+        else:
+            cleaned_transcript = str(transcript).strip()
+
+        if not cleaned_transcript:
+            st.error("Empty transcript received")
+            return []
+
+        # Update payload structure to match API requirements
+        payload = {
+            "transcript": cleaned_transcript,
+            "jlpt_level": jlpt_level,
+            "num_questions": 5
+        }
+
+        # Before making the API call
+        print(f"Sending request to {BACKEND_URL}/api/questions/generate")
+        print(f"Payload: {json.dumps(payload)[:200]}...")  # First 200 chars
+
+        # Check backend connectivity first
+        try:
+            health_check = requests.get(f"{BACKEND_URL}/health", timeout=3)
+            print(f"Backend health check: {health_check.status_code}")
+        except requests.exceptions.RequestException:
+            print("Backend appears to be down!")
+            st.error("Cannot connect to backend service. Please check if it's running.")
+            return []
+
+        response = requests.post(
+            f"{BACKEND_URL}/api/questions/generate",
+            json=payload,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        if response.status_code == 422:
+            error_detail = response.json()
+            st.error(f"API validation error: {error_detail}")
+            return []
+            
+        response.raise_for_status()
+        result = response.json()
+        
+        # Check if we got fallback questions (based on the backend log)
+        if isinstance(result, dict) and result.get("status") == "fallback":
+            st.warning("Using fallback questions due to API quota limits")
+            return result.get("questions", [])
+        
+        # Handle different response structures
+        if isinstance(result, list):
+            return result
+        elif isinstance(result, dict):
+            return result.get("questions", [])
+        return []
+        
+    except Exception as e:
+        st.error(f"Error generating questions: {str(e)}")
+        return []
+
+def init_session_state():
+    """Initialize session state variables"""
+    if 'preferences' not in st.session_state:
+        st.session_state.preferences = {
+            "default_jlpt_level": "N5",
+            "auto_play_audio": True,
+            "show_furigana": True
+        }
+    
+    if 'current_progress' not in st.session_state:
+        st.session_state.current_progress = {
+            "video_url": "",
+            "questions": []
+        }
+    
+    if 'history' not in st.session_state:
+        st.session_state.history = []
+
 def main():
-    # Initialize state
+    # Initialize state - THIS MUST COME FIRST
     init_session_state()
     load_preferences()
     
