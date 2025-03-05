@@ -1,6 +1,6 @@
 # Data Processing
-numpy==1.23.5
-pandas==1.5.3
+numpy==1.26.4
+pandas==2.1.1
 
 # TTS dependencies
 google-cloud-texttospeech==2.14.1
@@ -11,7 +11,7 @@ sqlalchemy==1.4.41
 openai==0.28.1
 
 # Web Framework
-streamlit==1.24.0
+streamlit==1.33.0
 aiohttp==3.8.5
 
 # API and HTTP
@@ -38,3 +38,10 @@ fastapi==0.95.0
 # Audio Processing
 torch==1.13.1
 torchaudio==0.13.1
+
+# Streamlit for frontend
+streamlit-extras==0.3.5
+streamlit-audiorecorder==0.0.3
+
+# Audio playback in browser
+pydub==0.25.1
