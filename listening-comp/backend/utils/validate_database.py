@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import sys
+import sqlite_vss  # Add explicit import
 
 def validate_sqlite_vector_extension():
     """Check if SQLite has the vector extension enabled."""
@@ -9,30 +10,27 @@ def validate_sqlite_vector_extension():
     try:
         # Create a temporary database in memory
         conn = sqlite3.connect(':memory:')
-        cursor = conn.cursor()
         
-        # Try to load the vector extension
+        # Enable extension loading and load using sqlite_vss
         try:
-            cursor.execute("SELECT load_extension('vector0');")
-            print("✅ Vector extension successfully loaded")
-            vector_support = True
-        except sqlite3.OperationalError:
-            print("❌ Vector extension not available")
-            print("ℹ️ Please build SQLite with vector extension: https://github.com/asg017/sqlite-vector")
-            vector_support = False
+            conn.enable_load_extension(True)
+            sqlite_vss.load(conn)  # Use the package's load function
             
-        # Check if vector functions exist
-        if vector_support:
-            try:
-                cursor.execute("SELECT vector_distance('[]', '[]');")
-                print("✅ Vector functions are available")
-                return True
-            except sqlite3.OperationalError:
-                print("❌ Vector functions not available")
-                return False
-        
-        return vector_support
-        
+            # Verify the extension loaded by checking version
+            version = conn.execute("SELECT vss_version()").fetchone()[0]
+            print(f"✅ Vector extension loaded successfully (version: {version})")
+            
+            # Create test virtual table
+            conn.execute("CREATE VIRTUAL TABLE temp_vss_test USING vss0(vec(3))")
+            print("✅ Virtual table creation works")
+            
+            return True
+            
+        except sqlite3.OperationalError as e:
+            print(f"❌ Vector extension loading failed: {e}")
+            print("ℹ️ Make sure sqlite-vss is installed: pip install sqlite-vss")
+            return False
+            
     except Exception as e:
         print(f"❌ SQLite validation failed: {str(e)}")
         return False

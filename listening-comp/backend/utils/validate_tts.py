@@ -148,3 +148,43 @@ def test_tts_pitch_accent():
     print("   - 橋 (hashi, bridge): high-low pitch")
     print("   - 箸 (hashi, chopsticks): low-high pitch")
     return None
+
+def validate_audio_data(audio_content):
+    """Validate that the audio data is not empty and can be read."""
+    try:
+        # Convert audio content to in-memory file
+        audio_file = io.BytesIO(audio_content)
+        # Try to read the audio file using soundfile
+        data, samplerate = sf.read(audio_file)
+        # Check if audio data is valid
+        if len(data) > 0 and samplerate > 0:
+            return True
+        return False
+    except Exception as e:
+        print(f"❌ Audio validation failed: {str(e)}")
+        return False
+
+def validate_tts():
+    """Run all TTS validation tests."""
+    print("\n=== Running TTS Validation Tests ===\n")
+    
+    aws_result = test_aws_polly()
+    google_result = test_google_tts()
+    
+    print("\n=== Test Results ===")
+    print(f"AWS Polly: {'✅ Pass' if aws_result is True else '❌ Fail' if aws_result is False else '⚠️ Skipped'}")
+    print(f"Google TTS: {'✅ Pass' if google_result is True else '❌ Fail' if google_result is False else '⚠️ Skipped'}")
+    
+    # At least one service should work
+    if aws_result is True or google_result is True:
+        print("\n✅ TTS validation passed: At least one service is working")
+        return True
+    elif aws_result is None and google_result is None:
+        print("\n⚠️ TTS validation inconclusive: No service credentials configured")
+        return None
+    else:
+        print("\n❌ TTS validation failed: No working service found")
+        return False
+
+if __name__ == "__main__":
+    validate_tts()
