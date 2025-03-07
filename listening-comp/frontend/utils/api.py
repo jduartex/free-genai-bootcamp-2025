@@ -44,11 +44,16 @@ async def text_to_speech(text: str) -> bytes:
 
 async def speech_to_text(audio_file) -> Dict[str, Any]:
     """Convert speech to text using backend API"""
-    files = {"audio": audio_file}
+    # Create a FormData object for proper file upload
+    form_data = aiohttp.FormData()
+    form_data.add_field('audio', audio_file.read(), 
+                       filename=getattr(audio_file, 'name', 'audio.wav'),
+                       content_type='audio/wav')
+    
     async with aiohttp.ClientSession() as session:
         async with session.post(
             f"{BACKEND_URL}/api/asr",
-            data=files
+            data=form_data
         ) as response:
             response.raise_for_status()
             return await response.json()

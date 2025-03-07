@@ -7,7 +7,7 @@ numpy==1.26.4
 pandas==1.5.3
 
 # ML and AI
-openai==1.12.0
+openai==1.0.0
 openai-whisper==20231117
 torch==2.1.0  # Required for Whisper
 torchaudio==2.1.0  # Required for audio processing
@@ -21,7 +21,7 @@ aiosqlite==0.19.0
 httpx==0.24.1
 aiohttp==3.8.5
 python-multipart==0.0.6
-flask==2.3.3
+flask==3.0.0
 requests==2.31.0
 Flask-Limiter==3.5.0
 Flask-Caching==2.1.0
@@ -61,3 +61,8 @@ pytest-asyncio==0.23.2
 # Rate limiting for production
 redis==5.0.1
 Flask-Limiter[redis]==3.5.0
+
+# Backend-specific
+gunicorn==21.2.0
+
+typing-extensions>=4.5.0  # Added to ensure compatibility

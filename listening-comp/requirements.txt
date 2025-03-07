@@ -1,14 +1,10 @@
-# Root requirements file - includes all dependencies for both frontend and backend
-# For development environment setup and comprehensive installation
-
-# Install component-specific dependencies
--r frontend/requirements.txt
--r backend/requirements.txt
-
-# Additional development and testing tools
+# Root requirements file - development tools only
 pytest==7.4.3
 pytest-cov==4.1.0
 pytest-asyncio==0.23.2
 flake8==6.1.0
 black==23.10.1
 isort==5.12.0
+
+-r frontend/requirements.txt
+-r backend/requirements.txt

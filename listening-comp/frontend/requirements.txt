@@ -8,7 +8,7 @@ boto3==1.26.137
 openai-whisper==20231117
 aiosqlite==0.19.0
 sqlalchemy==1.4.41
-openai==0.28.1
+openai==1.0.0
 
 # Web Framework
 streamlit==1.33.0
@@ -22,7 +22,7 @@ httpx==0.24.1
 python-dotenv==1.0.0
 
 # Utilities
-typing-extensions==4.4.0
+typing-extensions>=4.5.0  # Updated to be compatible with OpenAI 1.0.0
 python-multipart==0.0.6
 
 # Language Detection
@@ -31,17 +31,11 @@ langdetect==1.0.9
 # YouTube Transcript
 youtube-transcript-api==0.6.1
 
-# Server
-uvicorn==0.21.1
-fastapi==0.95.0
-
 # Audio Processing
 torch==1.13.1
 torchaudio==0.13.1
 
-# Streamlit for frontend
+# Streamlit specific
 streamlit-extras==0.3.5
 streamlit-audiorecorder==0.0.3
-
-# Audio playback in browser
 pydub==0.25.1
