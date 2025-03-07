@@ -158,7 +158,4 @@ streamlit run app.py
 - [x] Japanese-focused question generation with LLM
 - [x] Japanese Text-to-Speech integration
 - [ ] Japanese ASR for spoken answers with pronunciation feedback
-- [ ] User accounts with Japanese language learning progress tracking
-- [ ] Expanded Japanese content library organized by topic and JLPT level
-- [ ] Mobile-friendly interface with Japanese input support
-- [ ] Offline mode support for downloaded Japanese lessons
+- [ ] Japanese language learning progress tracking single user no need for authorization or login
