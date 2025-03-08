@@ -8,6 +8,13 @@ from typing import Dict, Any, List
 from dotenv import load_dotenv
 import os
 import re
+import sys
+
+# Add the current directory to the path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(current_dir)
+
+# Now use absolute imports
 from components.question_display import display_questions
 from utils.api import generate_questions
 from utils.state import init_session_state, load_preferences, save_preferences, update_history
@@ -290,7 +297,7 @@ def generate_and_store_questions():
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
 
-def main():
+async def main():
     # Initialize state - THIS MUST COME FIRST
     init_session_state()
     load_preferences()
@@ -328,65 +335,76 @@ def main():
             st.success("Preferences saved!")
     
     # Main content
-    st.title("YouTube Listening Comprehension")
+    st.title("Japanese Listening Comprehension")
     
     # Create tabs to separate settings from quiz
-    settings_tab, quiz_tab = st.tabs(["Settings", "Quiz"])
+    tabs = st.tabs(["Settings", "Quiz"])
     
-    # Update active tab if tabs are clicked
-    if settings_tab.button("Show Settings", key="btn_settings_tab"):
+    # Update active tab based on which tab is currently active
+    # This is more reliable than using buttons inside tabs
+    if tabs[0].button("Show Settings", key="btn_settings_tab"):
         st.session_state.active_tab = "Settings"
+        st.rerun()
         
-    if quiz_tab.button("Show Quiz", key="btn_quiz_tab"):
+    if tabs[1].button("Show Quiz", key="btn_quiz_tab"):
         st.session_state.active_tab = "Quiz"
+        st.rerun()
     
     # Settings tab content
-    with settings_tab:
-        st.header("Quiz Settings")
-        
-        # JLPT Level selectbox - store in session_state
-        jlpt_level = st.selectbox(
-            "Select JLPT Level",
-            ["N5", "N4", "N3", "N2", "N1"],
-            index=["N5", "N4", "N3", "N2", "N1"].index(
-                st.session_state.preferences["default_jlpt_level"]
-            ),
-            key="jlpt_level_select"
-        )
-        
-        # YouTube URL input - store in session_state
-        youtube_url = st.text_input(
-            "Enter YouTube URL",
-            value=st.session_state.current_progress["video_url"] or "",
-            placeholder="https://www.youtube.com/watch?v=...",
-            key="youtube_url_input"
-        )
-        
-        # Store URL in current_progress
-        st.session_state.current_progress["video_url"] = youtube_url
-        
-        # Generate Questions button - with callback to avoid rerun issues
-        if st.button("Generate Questions", 
-                     on_click=generate_and_store_questions):
-            pass  # Action happens in the callback
+    if st.session_state.active_tab == "Settings":
+        with tabs[0]:
+            st.header("Quiz Settings")
             
-        st.info("Click 'Generate Questions' to create new questions, then switch to the 'Quiz' tab")
+            # JLPT Level selectbox - store in session_state
+            jlpt_level = st.selectbox(
+                "Select JLPT Level",
+                ["N5", "N4", "N3", "N2", "N1"],
+                index=["N5", "N4", "N3", "N2", "N1"].index(
+                    st.session_state.preferences["default_jlpt_level"]
+                ),
+                key="jlpt_level_select"
+            )
+            
+            # YouTube URL input - store in session_state
+            youtube_url = st.text_input(
+                "Enter YouTube URL",
+                value=st.session_state.current_progress["video_url"] or "",
+                placeholder="https://www.youtube.com/watch?v=...",
+                key="youtube_url_input"
+            )
+            
+            # Store URL in current_progress
+            st.session_state.current_progress["video_url"] = youtube_url
+            
+            # Generate Questions button - with callback to avoid rerun issues
+            if st.button("Generate Questions", 
+                         on_click=generate_and_store_questions):
+                pass  # Action happens in the callback
+                
+            st.info("Click 'Generate Questions' to create new questions, then switch to the 'Quiz' tab")
     
     # Quiz tab content
-    with quiz_tab:
-        if st.session_state.generated_questions:
-            # Display questions from session state
-            display_questions(
-                st.session_state.generated_questions,
-                auto_play=st.session_state.preferences["auto_play_audio"],
-                show_furigana=st.session_state.preferences["show_furigana"]
-            )
-        else:
-            st.info("No questions generated yet. Go to Settings tab to generate questions.")
-            
-            # Optional: Add a button to go to settings
-            if st.button("Go to Settings"):
-                st.session_state.active_tab = "Settings"
+    if st.session_state.active_tab == "Quiz":
+        with tabs[1]:
+            if st.session_state.generated_questions:
+                # Await the async display_questions function
+                await display_questions(
+                    st.session_state.generated_questions,
+                    auto_play=st.session_state.preferences.get("auto_play_audio", False),
+                    show_furigana=st.session_state.preferences.get("show_furigana", False)
+                )
+            else:
+                st.info("No questions generated yet. Go to Settings tab to generate questions.")
+                
+                # Add a debug message to see what's in the session state
+                st.write("Debug: Check if questions were generated")
+                if st.checkbox("Show session state"):
+                    st.write("Generated questions:", st.session_state.get('generated_questions'))
+                
+                # Optional: Add a button to go to settings
+                if st.button("Go to Settings"):
+                    st.session_state.active_tab = "Settings"
+                    st.rerun()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

@@ -3,6 +3,8 @@ import streamlit as st
 from typing import Dict, Any, List
 import os
 from functools import lru_cache
+from datetime import datetime, timedelta
+import httpx
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
@@ -31,16 +33,72 @@ async def generate_questions(transcript: str, jlpt_level: str = "N5") -> Dict[st
             response.raise_for_status()
             return await response.json()
 
-async def text_to_speech(text: str) -> bytes:
-    """Convert text to speech using backend API"""
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            f"{BACKEND_URL}/api/tts",
-            json={"text": text},
-            stream=True
-        ) as response:
-            response.raise_for_status()
-            return await response.read()
+async def text_to_speech(text: str, voice_type: str = "female", speaking_style: str = "polite") -> bytes:
+    """
+    Convert text to speech using the TTS API
+    
+    Args:
+        text: The Japanese text to convert to speech
+        voice_type: The type of voice to use (male/female)
+        speaking_style: The speaking style (casual/polite)
+        
+    Returns:
+        bytes: Audio data for playback
+    """
+    api_base_url = st.session_state.get('api_base_url', 'http://localhost:8000')
+    
+    # Check if TTS service is available before attempting to use it
+    if not st.session_state.get('tts_available', True):
+        # Only recheck occasionally to avoid constant API calls
+        last_check = st.session_state.get('last_tts_check', datetime.min)
+        if datetime.now() - last_check < timedelta(minutes=5):
+            # Return None if TTS is known to be unavailable and we checked recently
+            return None
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{api_base_url}/api/tts/synthesize",
+                json={
+                    "text": text,
+                    "voice_type": voice_type,
+                    "speaking_style": speaking_style,
+                    "speed": st.session_state.get('speed', 1.0)
+                },
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "audio/mpeg, audio/wav"
+                },
+                timeout=15.0
+            )
+            
+            if response.status_code == 200:
+                st.session_state.tts_available = True
+                return response.content
+            else:
+                if response.status_code == 500:
+                    # Try to parse error message
+                    try:
+                        error_data = response.json()
+                        error_msg = error_data.get('detail', str(error_data))
+                        if "engine is not supported in this region" in error_msg:
+                            st.error("🔇 TTS Error: AWS Polly engine not supported in the configured region")
+                        else:
+                            st.error(f"🔇 TTS Error: {error_msg}")
+                    except:
+                        st.error(f"🔇 TTS Error: {response.text}")
+                
+                # Mark TTS as unavailable
+                st.session_state.tts_available = False
+                st.session_state.last_tts_check = datetime.now()
+                return None
+                
+    except Exception as e:
+        st.error(f"TTS API error: {str(e)}")
+        # Mark TTS as potentially unavailable
+        st.session_state.tts_available = False
+        st.session_state.last_tts_check = datetime.now()
+        return None
 
 async def speech_to_text(audio_file) -> Dict[str, Any]:
     """Convert speech to text using backend API"""
