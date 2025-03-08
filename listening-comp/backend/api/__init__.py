@@ -1,3 +1,7 @@
+"""
+API package for the Japanese Listening Comprehension backend.
+"""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .tts_routes import router as tts_router, init_tts_service, cleanup_tts_service
