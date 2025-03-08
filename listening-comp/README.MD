@@ -157,5 +157,8 @@ streamlit run app.py
 - [x] Japanese YouTube transcript fetching
 - [x] Japanese-focused question generation with LLM
 - [x] Japanese Text-to-Speech integration
-- [ ] Japanese ASR for spoken answers with pronunciation feedback
+- [x] Japanese ASR for spoken answers with pronunciation feedback
+    - Uses OpenAI's Whisper with Japanese language optimization
+    - Provides feedback on pronunciation accuracy, pitch accent, and intonation
+    - Handles common pronunciation challenges faced by non-native speakers
 - [ ] Japanese language learning progress tracking single user no need for authorization or login
