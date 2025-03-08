@@ -8,3 +8,17 @@ isort==5.12.0
 
 -r frontend/requirements.txt
 -r backend/requirements.txt
+
+fastapi>=0.68.0
+uvicorn>=0.15.0
+pydantic>=1.8.2
+numpy>=1.19.5
+openai>=0.27.0
+google-cloud-texttospeech>=2.8.0
+azure-cognitiveservices-speech>=1.19.0
+sentence-transformers>=2.2.0
+fugashi>=1.1.0
+ipadic>=1.0.0
+romkan
+requests>=2.25.1
+python-multipart>=0.0.5

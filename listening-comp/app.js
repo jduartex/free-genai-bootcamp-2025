@@ -64,4 +64,71 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Browser TTS not supported');
     }
   };
+
+  // Add new functions for vector database interaction
+  
+  // Store transcript in vector database
+  const storeTranscript = async (videoId, transcript, timestamp = 0, jlptLevel = 'N5') => {
+    try {
+      const response = await fetch(`/api/transcript/store`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          video_id: videoId,
+          transcript: transcript,
+          timestamp: timestamp,
+          jlpt_level: jlptLevel
+        })
+      });
+      
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      handleApiError('transcript storage', error);
+      return { success: false };
+    }
+  };
+  
+  // Search for similar transcripts
+  const searchTranscripts = async (query, limit = 5) => {
+    try {
+      const response = await fetch(`/api/transcript/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ query, limit })
+      });
+      
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      handleApiError('transcript search', error);
+      return { success: false, results: [] };
+    }
+  };
+  
+  // Get all transcripts for a video
+  const getVideoTranscripts = async (videoId) => {
+    try {
+      const response = await fetch(`/api/transcripts/${videoId}`);
+      
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      handleApiError('transcript retrieval', error);
+      return { success: false, transcripts: [] };
+    }
+  };
+  
+  // Make functions available globally
+  window.appFunctions = {
+    generateQuestions,
+    synthesizeSpeech,
+    storeTranscript,
+    searchTranscripts,
+    getVideoTranscripts
+  };
 });

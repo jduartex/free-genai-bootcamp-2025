@@ -10,6 +10,9 @@ import json
 # Import our modules
 from question_generator import QuestionGenerator
 from tts_service import TTSService
+# Add imports for new vector database functionality
+from vector_db import VectorDatabase
+from japanese_embeddings import JapaneseEmbeddings
 
 # Configure logging
 logging.basicConfig(
@@ -26,10 +29,15 @@ try:
     openai_api_key = os.environ.get("OPENAI_API_KEY", "")
     question_generator = QuestionGenerator(api_key=openai_api_key)
     tts_service = TTSService(provider="gcloud")  # Change to "azure" if needed
+    # Add new service initializations
+    vector_db = VectorDatabase(db_path="data/japanese_transcripts.db")
+    embeddings_service = JapaneseEmbeddings()
 except Exception as e:
     logger.error(f"Failed to initialize services: {e}")
     question_generator = None
     tts_service = None
+    vector_db = None
+    embeddings_service = None
 
 # Define models
 class QuestionRequest(BaseModel):
@@ -40,6 +48,16 @@ class QuestionRequest(BaseModel):
 class TTSRequest(BaseModel):
     text: str
     language: str = "ja-JP"
+
+class TranscriptRequest(BaseModel):
+    video_id: str
+    transcript: str
+    timestamp: float = 0.0
+    jlpt_level: Optional[str] = "N5"
+
+class SearchRequest(BaseModel):
+    query: str
+    limit: int = 5
 
 # API Routes
 @app.get("/api/transcript")
@@ -64,6 +82,13 @@ async def generate_questions(request: QuestionRequest):
         # Get transcript (in real app, this would be from the video_id)
         # For demo purposes, using a simple transcript
         transcript = "これは日本語の文章です。今日は晴れです。私は日本語を勉強しています。"
+        
+        # Use vector DB to get the transcript if possible
+        if vector_db and vector_db.initialized:
+            stored_transcripts = vector_db.get_transcripts_by_video(request.video_id)
+            if stored_transcripts:
+                # Combine all transcripts for this video
+                transcript = " ".join([t["kanji"] for t in stored_transcripts])
         
         logger.info(f"Received question generation request for JLPT level: {request.jlpt_level}")
         logger.info("Generating questions...")
@@ -106,6 +131,84 @@ async def synthesize_speech(request: TTSRequest):
     except Exception as e:
         logger.error(f"TTS synthesis failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"TTS synthesis failed: {str(e)}")
+
+# Add new routes for vector database functionality
+@app.post("/api/transcript/store")
+async def store_transcript(request: TranscriptRequest):
+    """Store a transcript with its embeddings in the vector database"""
+    if not vector_db or not embeddings_service:
+        logger.error("Vector database or embeddings service not initialized")
+        raise HTTPException(status_code=500, detail="Vector database service not available")
+    
+    try:
+        # Process Japanese text to get kanji, kana, and romaji
+        processed_text = embeddings_service.process_japanese_text(request.transcript)
+        
+        # Generate embedding
+        embedding = embeddings_service.get_embeddings(request.transcript)
+        
+        if embedding is None:
+            raise HTTPException(status_code=500, detail="Failed to generate embedding for transcript")
+        
+        # Store in vector database
+        success = vector_db.store_transcript(
+            video_id=request.video_id,
+            kanji=processed_text["kanji"],
+            kana=processed_text["kana"],
+            romaji=processed_text["romaji"],
+            jlpt_level=request.jlpt_level,
+            timestamp=request.timestamp,
+            embedding=embedding
+        )
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to store transcript in vector database")
+        
+        return JSONResponse(content={"success": True, "message": "Transcript stored successfully"})
+    
+    except Exception as e:
+        logger.error(f"Failed to store transcript: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to store transcript: {str(e)}")
+
+@app.post("/api/transcript/search")
+async def search_transcripts(request: SearchRequest):
+    """Search for similar transcripts using vector similarity"""
+    if not vector_db or not embeddings_service:
+        logger.error("Vector database or embeddings service not initialized")
+        raise HTTPException(status_code=500, detail="Vector database service not available")
+    
+    try:
+        # Generate embedding for the query
+        query_embedding = embeddings_service.get_embeddings(request.query)
+        
+        if query_embedding is None:
+            raise HTTPException(status_code=500, detail="Failed to generate embedding for query")
+        
+        # Search for similar transcripts
+        results = vector_db.search_similar(query_embedding, limit=request.limit)
+        
+        return JSONResponse(content={"success": True, "results": results})
+    
+    except Exception as e:
+        logger.error(f"Failed to search transcripts: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to search transcripts: {str(e)}")
+
+@app.get("/api/transcripts/{video_id}")
+async def get_video_transcripts(video_id: str):
+    """Get all transcripts for a video"""
+    if not vector_db:
+        logger.error("Vector database not initialized")
+        raise HTTPException(status_code=500, detail="Vector database service not available")
+    
+    try:
+        # Get transcripts from database
+        transcripts = vector_db.get_transcripts_by_video(video_id)
+        
+        return JSONResponse(content={"success": True, "transcripts": transcripts})
+    
+    except Exception as e:
+        logger.error(f"Failed to get video transcripts: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get video transcripts: {str(e)}")
 
 # Run the server
 if __name__ == "__main__":
