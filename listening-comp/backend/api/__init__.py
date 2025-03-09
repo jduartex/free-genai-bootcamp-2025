@@ -4,45 +4,47 @@ API package for the Japanese Listening Comprehension backend.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .tts_routes import router as tts_router, init_tts_service, cleanup_tts_service
 import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(
-    title="Japanese Learning API",
-    description="API for Japanese language learning with TTS support",
-    version="1.0.0"
-)
+# Import routers
+from .tts import router as tts_router
+from .questions import router as questions_router
+from .transcripts import router as transcripts_router
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Add startup and shutdown events
-@app.on_event("startup")
-async def startup_event():
-    """Initialize services on startup."""
-    logger.info("Initializing TTS service...")
-    await init_tts_service()
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup services on shutdown."""
-    logger.info("Cleaning up TTS service...")
-    await cleanup_tts_service()
-
-# Root endpoint for API health check
-@app.get("/")
-async def root():
-    return {"status": "healthy", "message": "Japanese Learning API is running"}
-
-# Include routers with prefix
-app.include_router(tts_router)
+# Function to initialize the API - keep only this function, remove the separate app instance
+def init_api(app: FastAPI):
+    """
+    Initialize API routes and middleware.
+    """
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
+    # Include routers
+    app.include_router(tts_router, prefix="/api/tts", tags=["tts"])
+    app.include_router(questions_router, prefix="/api/questions", tags=["questions"])
+    app.include_router(transcripts_router, prefix="/api/transcripts", tags=["transcripts"])
+    
+    # Add health check endpoint
+    @app.get("/api/health")
+    async def health_check():
+        """
+        Health check endpoint to verify API is running.
+        """
+        from datetime import datetime
+        return {
+            "status": "ok",
+            "timestamp": datetime.now().isoformat(),
+            "version": app.version,
+        }
+    
+    logger.info("API routes initialized")

@@ -3,7 +3,7 @@ fastapi>=0.68.0
 uvicorn>=0.15.0
 
 # Data Processing
-numpy>=1.22.0
+numpy==1.26.3
 pandas==2.1.1  # Standardized pandas version
 
 # ML and AI
@@ -29,7 +29,7 @@ Flask-CORS==4.0.0
 jsonschema==4.20.0
 
 # Configuration
-python-dotenv>=1.0.0
+python-dotenv==1.0.0
 pydantic>=1.8.2
 
 # Language Processing
@@ -37,9 +37,10 @@ langdetect==1.0.9
 youtube-transcript-api==0.6.2  # Keep this version consistent
 
 # TTS Services
-boto3>=1.26.137
-google-cloud-texttospeech>=2.8.0
-soundfile>=0.12.1
+boto3==1.34.22
+google-cloud-texttospeech==2.16.3
+google-auth==2.27.0
+soundfile==0.12.1
 azure-cognitiveservices-speech>=1.19.0
 
 # Audio processing

@@ -56,7 +56,7 @@ def play_tts_audio(text: str, jlpt_level: str = None):
             return
 
         response = requests.post(
-            f"{api_base_url}/api/tts/synthesize",
+            f"{api_base_url}/api/tts",
             json={
                 "text": text,
                 "voice_type": st.session_state.get('voice_type', 'female'),

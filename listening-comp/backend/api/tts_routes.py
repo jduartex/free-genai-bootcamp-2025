@@ -80,7 +80,7 @@ def generate_audio_stream(audio_content: bytes):
     """Generate audio stream from bytes."""
     return io.BytesIO(audio_content)
 
-@router.post("/synthesize")  # Changed from "/api/tts/synthesize"
+@router.post("/synthesize")  # Changed from "/api/tts"
 async def synthesize_speech(request: TTSRequest, background_tasks: BackgroundTasks):
     """
     Synthesize Japanese speech from text with specified parameters.

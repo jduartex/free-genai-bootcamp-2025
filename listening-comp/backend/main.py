@@ -23,11 +23,11 @@ if __name__ == "__main__":
     
     # Log startup information
     logger.info(f"Starting backend server on port {port}")
-    logger.info("API documentation available at http://localhost:{port}/docs")
+    logger.info(f"API documentation available at http://localhost:{port}/docs")
     
     # Run the FastAPI application with uvicorn
     uvicorn.run(
-        "app:app",
+        "app:app",  # Referring to app.py:app
         host="0.0.0.0",
         port=port,
         reload=True  # Enable auto-reload for development

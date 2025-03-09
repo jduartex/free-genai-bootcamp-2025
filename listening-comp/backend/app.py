@@ -3,13 +3,12 @@ Main FastAPI application for the Japanese Listening Comprehension backend.
 """
 
 import os
-from fastapi import FastAPI, HTTPException, Body, BackgroundTasks
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from fastapi.staticfiles import StaticFiles
 import logging
-import json
 from datetime import datetime
+from pathlib import Path
 
 # Setup logging
 logging.basicConfig(
@@ -18,10 +17,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("japanese-listening-app")
 
-# Import routers and services
-from api.questions import router as questions_router
-from api.tts import router as tts_router
-from api.transcripts import router as transcripts_router
+# Import API initialization
+from api import init_api
 
 # Create the FastAPI application
 app = FastAPI(
@@ -39,27 +36,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(questions_router, prefix="/api/questions", tags=["questions"])
-app.include_router(tts_router, prefix="/api/tts", tags=["tts"])
-app.include_router(transcripts_router, prefix="/api/transcripts", tags=["transcripts"])
+# Create static directory for audio files if it doesn't exist
+static_dir = Path(__file__).parent / "static"
+audio_dir = static_dir / "audio"
+os.makedirs(audio_dir, exist_ok=True)
 
-@app.get("/api/health")
-async def health_check():
-    """
-    Health check endpoint to verify API is running.
-    """
-    return {
-        "status": "ok",
-        "timestamp": datetime.now().isoformat(),
-        "version": app.version,
-        "services": {
-            "questions": "available",
-            "tts": "available",
-            "transcripts": "available"
-        }
-    }
+# Mount static files directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Initialize API routes
+init_api(app)
+
+# Root endpoint is directly on the app
 @app.get("/")
 async def root():
     """
@@ -70,3 +58,17 @@ async def root():
         "docs_url": "/docs",
         "redoc_url": "/redoc",
     }
+
+# Add startup event
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup."""
+    logger.info("Initializing API services...")
+    # No need to call a specific TTS service initialization here
+
+# Add shutdown event
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup services on shutdown."""
+    logger.info("Cleaning up API services...")
+    # No specific cleanup required for TTS service

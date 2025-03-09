@@ -26,7 +26,7 @@ async def tts_status():
         raise HTTPException(status_code=503, detail=status["message"])
     return status
 
-@app.post("/api/tts/synthesize")
+@app.post("/api/tts")
 async def synthesize_text(text: str):
     try:
         audio = await tts_service.synthesize(text)

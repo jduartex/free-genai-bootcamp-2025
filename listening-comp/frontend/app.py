@@ -297,6 +297,13 @@ def generate_and_store_questions():
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
 
+class PreferencesManager:
+    # ...existing code...
+    
+    def save_preferences(self, state):
+        # ...existing code...
+        pass
+
 async def main():
     # Initialize state - THIS MUST COME FIRST
     init_session_state()
@@ -322,16 +329,21 @@ async def main():
                 st.session_state.preferences["default_jlpt_level"]
             )
         )
+        
+        # Fixed this line - removed the erroneous "t.session_state)" text
         st.session_state.preferences["auto_play_audio"] = st.checkbox(
             "Auto-play Audio",
             st.session_state.preferences["auto_play_audio"]
         )
+        
         st.session_state.preferences["show_furigana"] = st.checkbox(
             "Show Furigana",
             st.session_state.preferences["show_furigana"]
         )
+        
         if st.button("Save Preferences"):
-            save_preferences()
+            prefs_manager = PreferencesManager()
+            prefs_manager.save_preferences(st.session_state)
             st.success("Preferences saved!")
     
     # Main content

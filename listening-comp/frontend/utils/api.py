@@ -1,3 +1,132 @@
+"""
+API utilities for making robust requests to the backend.
+"""
+import os
+import asyncio
+import logging
+import requests
+import streamlit as st
+from typing import Dict, Any, Optional, Union
+import base64
+from pathlib import Path
+import time
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# Default API base URL
+DEFAULT_API_URL = "http://localhost:8000"
+
+def get_api_base_url() -> str:
+    """Get the API base URL from environment or session state."""
+    # Check environment first
+    api_url = os.environ.get("API_URL")
+    
+    # Then check session state (UI configuration)
+    if not api_url and hasattr(st, "session_state") and "api_base_url" in st.session_state:
+        api_url = st.session_state.api_base_url
+    
+    # Fall back to default
+    return api_url or DEFAULT_API_URL
+
+async def text_to_speech(text: str, voice_id: str = "Mizuki") -> Optional[bytes]:
+    """
+    Generate speech from text using the TTS API.
+    Handles errors gracefully and provides fallbacks.
+    
+    Args:
+        text: The Japanese text to convert to speech
+        voice_id: Voice ID or type to use
+    
+    Returns:
+        Audio content as bytes or None if failed
+    """
+    if not text:
+        logger.warning("Empty text provided to TTS")
+        return None
+    
+    api_base_url = get_api_base_url()
+    endpoint = f"{api_base_url}/api/tts"
+    
+    try:
+        logger.info(f"Calling TTS API with text: {text[:30]}...")
+        
+        # Make API request
+        response = requests.post(
+            endpoint,
+            json={
+                "text": text,
+                "voice_id": voice_id,
+                "engine": "standard"  # Always use standard for reliability
+            },
+            timeout=10
+        )
+        
+        # Check for success
+        if response.status_code == 200:
+            logger.info("TTS request successful")
+            response_data = response.json()
+            audio_url = response_data.get("audio_url")
+            
+            if audio_url:
+                # Get the full audio URL
+                full_audio_url = f"{api_base_url}{audio_url}"
+                
+                # Get the audio content
+                audio_response = requests.get(full_audio_url, timeout=5)
+                if audio_response.status_code == 200:
+                    return audio_response.content
+        
+        # Log error details
+        logger.error(f"TTS API error: status={response.status_code}")
+        try:
+            error_details = response.json()
+            logger.error(f"Error details: {error_details}")
+        except:
+            logger.error(f"Response text: {response.text}")
+        
+        return None
+        
+    except requests.RequestException as e:
+        logger.exception(f"TTS request failed: {e}")
+        return None
+    except Exception as e:
+        logger.exception(f"Unexpected error in text_to_speech: {e}")
+        return None
+
+async def get_voices() -> list:
+    """Get available TTS voices."""
+    api_base_url = get_api_base_url()
+    endpoint = f"{api_base_url}/api/tts/voices"
+    
+    try:
+        response = requests.get(endpoint, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            return data.get("voices", [])
+    except Exception as e:
+        logger.exception(f"Error getting voices: {e}")
+    
+    # Return default voices if API call fails
+    return [
+        {"id": "Mizuki", "name": "Mizuki (Female)", "gender": "Female"},
+        {"id": "Takumi", "name": "Takumi (Male)", "gender": "Male"}
+    ]
+
+async def check_tts_status() -> Dict[str, Any]:
+    """Check TTS service status."""
+    api_base_url = get_api_base_url()
+    endpoint = f"{api_base_url}/api/tts/status"
+    
+    try:
+        response = requests.get(endpoint, timeout=5)
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        logger.exception(f"Error checking TTS status: {e}")
+    
+    return {"status": "unknown", "message": "Could not connect to TTS service"}
+
 import aiohttp
 import streamlit as st
 from typing import Dict, Any, List
@@ -32,73 +161,6 @@ async def generate_questions(transcript: str, jlpt_level: str = "N5") -> Dict[st
         ) as response:
             response.raise_for_status()
             return await response.json()
-
-async def text_to_speech(text: str, voice_type: str = "female", speaking_style: str = "polite") -> bytes:
-    """
-    Convert text to speech using the TTS API
-    
-    Args:
-        text: The Japanese text to convert to speech
-        voice_type: The type of voice to use (male/female)
-        speaking_style: The speaking style (casual/polite)
-        
-    Returns:
-        bytes: Audio data for playback
-    """
-    api_base_url = st.session_state.get('api_base_url', 'http://localhost:8000')
-    
-    # Check if TTS service is available before attempting to use it
-    if not st.session_state.get('tts_available', True):
-        # Only recheck occasionally to avoid constant API calls
-        last_check = st.session_state.get('last_tts_check', datetime.min)
-        if datetime.now() - last_check < timedelta(minutes=5):
-            # Return None if TTS is known to be unavailable and we checked recently
-            return None
-    
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{api_base_url}/api/tts/synthesize",
-                json={
-                    "text": text,
-                    "voice_type": voice_type,
-                    "speaking_style": speaking_style,
-                    "speed": st.session_state.get('speed', 1.0)
-                },
-                headers={
-                    "Content-Type": "application/json",
-                    "Accept": "audio/mpeg, audio/wav"
-                },
-                timeout=15.0
-            )
-            
-            if response.status_code == 200:
-                st.session_state.tts_available = True
-                return response.content
-            else:
-                if response.status_code == 500:
-                    # Try to parse error message
-                    try:
-                        error_data = response.json()
-                        error_msg = error_data.get('detail', str(error_data))
-                        if "engine is not supported in this region" in error_msg:
-                            st.error("🔇 TTS Error: AWS Polly engine not supported in the configured region")
-                        else:
-                            st.error(f"🔇 TTS Error: {error_msg}")
-                    except:
-                        st.error(f"🔇 TTS Error: {response.text}")
-                
-                # Mark TTS as unavailable
-                st.session_state.tts_available = False
-                st.session_state.last_tts_check = datetime.now()
-                return None
-                
-    except Exception as e:
-        st.error(f"TTS API error: {str(e)}")
-        # Mark TTS as potentially unavailable
-        st.session_state.tts_available = False
-        st.session_state.last_tts_check = datetime.now()
-        return None
 
 async def speech_to_text(audio_file) -> Dict[str, Any]:
     """Convert speech to text using backend API"""

@@ -109,7 +109,7 @@ async def generate_questions(request: QuestionRequest):
         logger.info(f"Using {len(fallback)} fallback questions for level {request.jlpt_level}")
         return JSONResponse(content={"questions": fallback, "success": False, "error": str(e)})
 
-@app.post("/api/tts/synthesize")
+@app.post("/api/tts")
 async def synthesize_speech(request: TTSRequest):
     """Synthesize speech from text"""
     if not tts_service:

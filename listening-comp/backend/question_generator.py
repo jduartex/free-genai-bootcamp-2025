@@ -172,7 +172,9 @@ class QuestionGenerator:
     async def _call_openai_api(self, system_prompt: str, user_prompt: str) -> str:
         """Call the OpenAI API with the given prompts"""
         try:
-            response = await openai.ChatCompletion.acreate(
+            client = openai.OpenAI(api_key=self.api_key)
+            
+            response = await client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},

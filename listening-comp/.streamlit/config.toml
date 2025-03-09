@@ -1,0 +1,13 @@
+[logger]
+level = "debug"
+messageFormat = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+[client]
+showErrorDetails = true
+toolbarMode = "developer"
+
+[server]
+runOnSave = true
+enableCORS = false
+enableXsrfProtection = false
+```

@@ -60,7 +60,7 @@ fi
 
 # Install dependencies with a specific order to avoid conflicts
 echo "Installing core dependencies first..."
-pip install streamlit==1.33.0 youtube-transcript-api==0.6.2 torch==2.1.0 torchaudio==2.1.0 streamlit-audiorecorder==0.0.3
+pip install streamlit==1.33.0 requests==2.31.0 youtube-transcript-api==0.6.2 torch==2.1.0 torchaudio==2.1.0 streamlit-audiorecorder==0.0.3
 
 echo "Installing backend dependencies..."
 pip install -r backend/requirements.txt --no-deps
@@ -90,6 +90,18 @@ fi
 if ! python -c "import streamlit_audiorecorder; print('streamlit-audiorecorder installed')" &> /dev/null; then
     echo "Installing streamlit-audiorecorder separately..."
     pip install streamlit-audiorecorder==0.0.3
+fi
+
+# Add specific verification for requests and streamlit
+echo "Verifying critical imports..."
+if ! python -c "import streamlit; print(f'Streamlit version: {streamlit.__version__}')" &> /dev/null; then
+    echo "Installing streamlit separately..."
+    pip install streamlit==1.33.0
+fi
+
+if ! python -c "import requests; print(f'Requests version: {requests.__version__}')" &> /dev/null; then
+    echo "Installing requests separately..."
+    pip install requests==2.31.0
 fi
 
 # Check for soundfile installation specifically

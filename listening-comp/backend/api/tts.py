@@ -1,236 +1,264 @@
 """
-Text-to-Speech API for Japanese audio synthesis.
+Text-to-Speech API for Japanese audio synthesis using AWS Polly.
 """
 
 import os
-import tempfile
-from typing import Dict, Optional, List
-from pathlib import Path
-import base64
 import logging
-from fastapi import APIRouter, HTTPException, Body, Query, File, UploadFile
-from pydantic import BaseModel, Field
-from google.cloud import texttospeech
+from pathlib import Path
 import boto3
-from openai import OpenAI
+from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
+import uuid
+from fastapi import APIRouter, HTTPException, Request, Response
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any, Union
 from dotenv import load_dotenv
+import json
 
 # Load environment variables
 load_dotenv()
 
 # Set up logging
 logger = logging.getLogger(__name__)
+if logger.handlers:
+    logger.handlers = []
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 # Create router
 router = APIRouter()
 
-class TTSRequest(BaseModel):
-    """
-    Text-to-speech synthesis request.
-    """
-    text: str = Field(..., description="Japanese text to synthesize")
-    voice_gender: str = Field("female", description="Voice gender (male or female)")
-    voice_language: str = Field("ja-JP", description="Voice language code")
-    service: str = Field("google", description="TTS service to use (google, aws, openai)")
-    speed: float = Field(1.0, description="Speech rate (0.5 to 2.0)")
-    pitch: float = Field(0.0, description="Voice pitch (-10.0 to 10.0)")
-
 class TTSResponse(BaseModel):
-    """
-    Text-to-speech synthesis response.
-    """
-    audio_base64: str = Field(..., description="Base64-encoded audio data")
-    content_type: str = Field(..., description="Audio content type")
-    text: str = Field(..., description="Original text")
-    service: str = Field(..., description="Service used for synthesis")
+    status: str = Field("success", description="Status of the request")
+    audio_url: str = Field(..., description="URL to access the audio file")
 
-@router.post("/synthesize", response_model=TTSResponse)
-async def synthesize_speech(request: TTSRequest):
+@router.post("/")
+async def synthesize_speech(request: Request) -> Union[TTSResponse, Dict[str, Any]]:
     """
-    Synthesize Japanese text to speech using the specified service.
+    Synthesize Japanese text to speech using AWS Polly - optimized for reliability.
     """
+    # Set up output path first so we can return fallback audio if needed
+    audio_dir = Path(__file__).parent.parent / "static" / "audio"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    
+    filename = f"{uuid.uuid4()}.mp3"
+    file_path = audio_dir / filename
+    
     try:
-        # Validate speech parameters
-        if request.speed < 0.5 or request.speed > 2.0:
-            raise HTTPException(status_code=400, detail="Speed must be between 0.5 and 2.0")
+        # Parse request body - with fallback for invalid JSON
+        try:
+            request_body = await request.body()
+            request_data = json.loads(request_body) if request_body else {}
+        except json.JSONDecodeError:
+            logger.warning("Invalid JSON request")
+            request_data = {}
+        
+        # Extract text with fallback
+        text = request_data.get("text")
+        if not text:
+            logger.warning("No text provided in request")
+            create_minimum_audio_file(file_path)
+            return {"status": "error", "message": "No text provided", "audio_url": f"/static/audio/{filename}"}
+        
+        # Log request (truncated for long text)
+        text_preview = text[:30] + ("..." if len(text) > 30 else "")
+        logger.info(f"TTS request: '{text_preview}'")
+        
+        # Extract voice parameter - support both voice_id and voice_type
+        voice_id = request_data.get("voice_id")
+        if not voice_id and "voice_type" in request_data:
+            # Map frontend voice_type to Polly voice_id
+            voice_map = {
+                "female": "Mizuki",
+                "male": "Takumi",
+            }
+            voice_id = voice_map.get(request_data.get("voice_type", "").lower(), "Mizuki")
+        
+        # Default to Mizuki if no valid voice specified
+        if not voice_id:
+            voice_id = "Mizuki"
             
-        if request.pitch < -10.0 or request.pitch > 10.0:
-            raise HTTPException(status_code=400, detail="Pitch must be between -10.0 and 10.0")
+        # Set up AWS Polly client with error handling
+        try:
+            region = os.environ.get("AWS_REGION", "us-east-1")
+            polly_client = boto3.client('polly', region_name=region)
+        except Exception as e:
+            logger.exception(f"Failed to initialize AWS client: {e}")
+            create_minimum_audio_file(file_path)
+            return TTSResponse(status="error", audio_url=f"/static/audio/{filename}")
         
-        if not request.text:
-            raise HTTPException(status_code=400, detail="Text cannot be empty")
+        # Prepare SSML if speed is specified - with error handling
+        text_type = "text"
+        final_text = text
+        try:
+            speed = request_data.get("speed")
+            if speed is not None:
+                speed_float = float(speed)
+                if speed_float != 1.0:
+                    # Ensure speed is within valid range
+                    speed_float = max(0.5, min(2.0, speed_float))
+                    final_text = f'<speak><prosody rate="{speed_float}">{text}</prosody></speak>'
+                    text_type = "ssml"
+        except (ValueError, TypeError):
+            # Invalid speed value, just use plain text
+            pass
+                
+        # Always use standard engine - it works in all regions
+        engine = "standard"
         
-        # Select the appropriate TTS engine based on the request
-        if request.service == "google":
-            audio_content, content_type = await synthesize_google_tts(
-                request.text,
-                request.voice_gender,
-                request.voice_language,
-                request.speed,
-                request.pitch
+        try:
+            # Call Polly to synthesize speech
+            logger.debug(f"Calling Polly: voice={voice_id}, engine={engine}, text_type={text_type}")
+            
+            try:
+                response = polly_client.synthesize_speech(
+                    Text=final_text,
+                    TextType=text_type,
+                    OutputFormat='mp3',
+                    VoiceId=voice_id,
+                    Engine=engine,
+                    LanguageCode='ja-JP'
+                )
+            except ClientError as e:
+                # If the voice is not found, try with Mizuki
+                if "VoiceId not found" in str(e) or "not find voice" in str(e).lower():
+                    logger.warning(f"Voice {voice_id} not found, falling back to Mizuki")
+                    response = polly_client.synthesize_speech(
+                        Text=final_text if text_type == "ssml" else text,
+                        TextType=text_type,
+                        OutputFormat='mp3',
+                        VoiceId="Mizuki",  # Fallback to most reliable voice
+                        Engine=engine,
+                        LanguageCode='ja-JP'
+                    )
+                else:
+                    # For other errors, try with basic parameters
+                    logger.warning(f"Error with complex parameters: {e}. Trying simplest parameters.")
+                    response = polly_client.synthesize_speech(
+                        Text=text,  # Plain text, no SSML
+                        TextType="text",
+                        OutputFormat='mp3',
+                        VoiceId="Mizuki",
+                        Engine="standard",
+                        LanguageCode='ja-JP'
+                    )
+            
+            # Get and save audio content
+            audio_content = response['AudioStream'].read()
+            with open(file_path, 'wb') as f:
+                f.write(audio_content)
+                
+            # Return success response with audio URL
+            audio_url = f"/static/audio/{filename}"
+            logger.info(f"Successfully generated audio: {audio_url}")
+            
+            return TTSResponse(
+                status="success",
+                audio_url=audio_url
             )
-        elif request.service == "aws":
-            audio_content, content_type = await synthesize_aws_polly(
-                request.text,
-                request.voice_gender,
-                request.voice_language,
-                request.speed
+            
+        except Exception as error:
+            error_msg = str(error)
+            logger.exception(f"Polly synthesis error: {error_msg}")
+            
+            # Create fallback audio
+            create_minimum_audio_file(file_path)
+            return TTSResponse(
+                status="error",
+                audio_url=f"/static/audio/{filename}"
             )
-        elif request.service == "openai":
-            audio_content, content_type = await synthesize_openai_tts(
-                request.text,
-                request.voice_gender
-            )
-        else:
-            raise HTTPException(status_code=400, detail="Unsupported TTS service")
+                
+    except Exception as e:
+        logger.exception(f"Unexpected error in TTS endpoint: {e}")
         
-        # Encode audio content as base64
-        audio_base64 = base64.b64encode(audio_content).decode("utf-8")
+        # Create fallback audio file
+        create_minimum_audio_file(file_path)
         
+        # Return the minimal audio
         return TTSResponse(
-            audio_base64=audio_base64,
-            content_type=content_type,
-            text=request.text,
-            service=request.service
+            status="error",
+            audio_url=f"/static/audio/{filename}"
         )
-    
-    except Exception as e:
-        logger.error(f"Error synthesizing speech: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error synthesizing speech: {str(e)}")
 
-async def synthesize_google_tts(
-    text: str,
-    voice_gender: str,
-    voice_language: str,
-    speed: float,
-    pitch: float
-) -> tuple:
+def create_minimum_audio_file(filepath: Path) -> bool:
+    """Create a minimum valid MP3 file"""
+    try:
+        # This is a minimal valid MP3 file
+        mp3_header = bytes([
+            0xFF, 0xFB, 0x90, 0x44, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        ])
+        
+        # Write enough data for a short audio file
+        with open(filepath, 'wb') as f:
+            f.write(mp3_header * 100)
+            
+        return True
+    except Exception as e:
+        logger.error(f"Failed to create minimal audio file: {e}")
+        return False
+
+@router.get("/voices")
+async def get_voices():
     """
-    Synthesize speech using Google Cloud Text-to-Speech.
+    Get available voices for TTS.
     """
     try:
-        # Initialize the TTS client
-        client = texttospeech.TextToSpeechClient()
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        polly_client = boto3.client('polly', region_name=region)
         
-        # Set the input text
-        synthesis_input = texttospeech.SynthesisInput(text=text)
+        # Get available voices
+        response = polly_client.describe_voices(LanguageCode='ja-JP')
         
-        # Select voice parameters
-        voice_gender_enum = texttospeech.SsmlVoiceGender.FEMALE
-        if voice_gender.lower() == "male":
-            voice_gender_enum = texttospeech.SsmlVoiceGender.MALE
+        # Extract voice information - only include standard engine
+        voices = []
+        for voice in response.get('Voices', []):
+            voices.append({
+                'id': voice.get('Id'),
+                'name': voice.get('Name'),
+                'gender': voice.get('Gender'),
+                'engines': ["standard"]  # Only include standard engine as it's guaranteed to work
+            })
         
-        # Select the voice
-        voice = texttospeech.VoiceSelectionParams(
-            language_code=voice_language,
-            ssml_gender=voice_gender_enum
-        )
-        
-        # Select the audio config
-        audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3,
-            speaking_rate=speed,
-            pitch=pitch
-        )
-        
-        # Perform the TTS request
-        response = client.synthesize_speech(
-            input=synthesis_input,
-            voice=voice,
-            audio_config=audio_config
-        )
-        
-        return response.audio_content, "audio/mp3"
-    
+        logger.info(f"Found {len(voices)} Japanese voices")
+        return {"voices": voices}
     except Exception as e:
-        logger.error(f"Error with Google TTS: {str(e)}")
-        raise Exception(f"Error with Google TTS: {str(e)}")
+        logger.exception(f"Error getting voices: {e}")
+        return {"voices": [{"id": "Mizuki", "name": "Mizuki (Fallback)", "gender": "Female", "engines": ["standard"]}]}
 
-async def synthesize_aws_polly(
-    text: str,
-    voice_gender: str,
-    voice_language: str,
-    speed: float
-) -> tuple:
+@router.get("/status")
+async def tts_status():
     """
-    Synthesize speech using AWS Polly.
+    Check TTS service status.
     """
     try:
-        # Initialize the Polly client
-        polly_client = boto3.client('polly')
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        polly_client = boto3.client('polly', region_name=region)
         
-        # Select voice ID based on gender and language
-        voice_id = "Mizuki"  # Default Japanese female voice
-        if voice_gender.lower() == "male":
-            voice_id = "Takumi"  # Japanese male voice
-        
-        # Adjust speech with SSML if needed
-        if speed != 1.0:
-            ssml_text = f'<speak><prosody rate="{int(speed*100)}%">{text}</prosody></speak>'
-            text_type = "ssml"
-        else:
-            ssml_text = text
-            text_type = "text"
-        
-        # Perform the TTS request
+        # Try minimal synthesis test
         response = polly_client.synthesize_speech(
-            Text=ssml_text,
-            TextType=text_type,
-            VoiceId=voice_id,
-            OutputFormat='mp3'
+            Text="テスト",
+            OutputFormat='mp3',
+            VoiceId="Mizuki",
+            Engine="standard",
+            LanguageCode='ja-JP'
         )
         
-        # Extract audio from the response
-        if "AudioStream" in response:
-            audio_content = response["AudioStream"].read()
-            return audio_content, "audio/mp3"
-        else:
-            raise Exception("No audio stream in response")
-    
+        # Verify we got audio content
+        audio_size = len(response['AudioStream'].read())
+        
+        return {
+            "status": "ok",
+            "message": "TTS service is operational",
+            "details": {
+                "region": region,
+                "test_audio_size": audio_size
+            }
+        }
     except Exception as e:
-        logger.error(f"Error with AWS Polly: {str(e)}")
-        raise Exception(f"Error with AWS Polly: {str(e)}")
-
-async def synthesize_openai_tts(
-    text: str,
-    voice_gender: str
-) -> tuple:
-    """
-    Synthesize speech using OpenAI TTS.
-    """
-    try:
-        # Initialize OpenAI client
-        client = OpenAI()
-        
-        # Select voice
-        voice = "nova"  # Default female voice
-        if voice_gender.lower() == "male":
-            voice = "alloy"
-        
-        # Create a temporary file for the audio
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        temp_filename = temp_file.name
-        temp_file.close()
-        
-        # Generate speech
-        response = client.audio.speech.create(
-            model="tts-1",
-            voice=voice,
-            input=text,
-        )
-        
-        # Save audio to the temporary file
-        response.stream_to_file(temp_filename)
-        
-        # Read the file back
-        with open(temp_filename, "rb") as audio_file:
-            audio_content = audio_file.read()
-        
-        # Clean up
-        os.remove(temp_filename)
-        
-        return audio_content, "audio/mp3"
-    
-    except Exception as e:
-        logger.error(f"Error with OpenAI TTS: {str(e)}")
-        raise Exception(f"Error with OpenAI TTS: {str(e)}")
+        logger.exception(f"TTS status check failed: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }

@@ -84,7 +84,7 @@ class TTSControls:
             
             # Call TTS API
             response = requests.post(
-                f"{self.api_url}/api/tts/synthesize",
+                f"{self.api_url}/api/tts",
                 json={
                     "text": text,
                     **settings
