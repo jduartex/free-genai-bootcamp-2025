@@ -102,3 +102,9 @@ local_*.py
 .coverage.*
 coverage_report/
 htmlcov/
+
+# Credentials
+credentials/
+**/credentials/
+google-credentials.json
+**/google-credentials.json

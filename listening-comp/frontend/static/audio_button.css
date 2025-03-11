@@ -1,0 +1,34 @@
+/* Custom styles for audio play buttons */
+.stButton > button {
+    border-radius: 50%;
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    background-color: #4CAF50 !important;
+    color: white !important;
+    border: none !important;
+    font-size: 18px !important;
+    margin: 4px auto !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.stButton > button:hover {
+    background-color: #45a049 !important;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+    transform: translateY(-1px) !important;
+}
+
+.stButton > button:active {
+    background-color: #3d8b40 !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+    transform: translateY(0) !important;
+}
+
+/* Audio player styles */
+.stAudio > div {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}

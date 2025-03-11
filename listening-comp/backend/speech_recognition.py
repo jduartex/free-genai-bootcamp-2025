@@ -161,6 +161,85 @@ class JapaneseSpeechRecognition:
             "supports_word_timestamps": True
         }
 
+class SpeechRecognizer:
+    def __init__(self, model_name: str = "base"):
+        """
+        Initialize the speech recognizer with Whisper model.
+        
+        Args:
+            model_name: Name of the Whisper model to use
+        """
+        try:
+            self.model = whisper.load_model(model_name)
+            logger.info(f"Loaded Whisper model: {model_name}")
+        except Exception as e:
+            logger.error(f"Failed to load Whisper model: {str(e)}")
+            raise
+
+    async def transcribe(self, audio_path: str, language: str = "ja") -> Dict[str, Any]:
+        """
+        Transcribe audio file to text.
+        
+        Args:
+            audio_path: Path to audio file
+            language: Target language (default: Japanese)
+            
+        Returns:
+            Dictionary containing transcription and metadata
+        """
+        try:
+            # Load and transcribe audio
+            result = self.model.transcribe(
+                audio_path,
+                language=language,
+                task="transcribe"
+            )
+            
+            return {
+                "text": result["text"],
+                "segments": result["segments"],
+                "language": result.get("language", language),
+                "status": "success"
+            }
+            
+        except Exception as e:
+            logger.error(f"Transcription failed: {str(e)}")
+            return {
+                "status": "error",
+                "error": str(e)
+            }
+
+    async def process_audio_stream(self, audio_data: bytes) -> Dict[str, Any]:
+        """
+        Process audio data from a stream.
+        
+        Args:
+            audio_data: Raw audio data bytes
+            
+        Returns:
+            Transcription results
+        """
+        try:
+            # Create temporary file to store audio data
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+                temp_file.write(audio_data)
+                temp_path = temp_file.name
+
+            # Transcribe the temporary file
+            result = await self.transcribe(temp_path)
+            
+            # Clean up temporary file
+            os.unlink(temp_path)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Stream processing failed: {str(e)}")
+            return {
+                "status": "error",
+                "error": str(e)
+            }
+
 # Example usage
 if __name__ == "__main__":
     recognizer = JapaneseSpeechRecognition()

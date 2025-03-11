@@ -68,33 +68,34 @@ This application is specifically designed to help users improve their Japanese l
 - Progress tracking across different JLPT levels and speaking/listening skills
 - Audio playback controls with Japanese-specific features like pitch accent visualization
 
-## Requirements File
+## Requirements Files Structure
+
+The project uses a hierarchical requirements file structure:
+
+1. **Root `requirements.txt`**: 
+   - Contains common dependencies shared between frontend and backend
+   - Used for development environment setup and initial installation
+   - Includes testing frameworks and development tools
+
+2. **`frontend/requirements.txt`**: 
+   - Contains dependencies specific to the frontend Streamlit application
+   - Used when deploying only the frontend component
+
+3. **`backend/requirements.txt`**: 
+   - Contains dependencies specific to the backend API and processing services
+   - Used when deploying only the backend component
+
+This structure allows for:
+- Flexible deployment options (frontend-only, backend-only, or full-stack)
+- Clear separation of concerns between components
+- Efficient containerization with properly scoped dependencies
+
+For local development, you can install all dependencies with:
+```bash
+pip install -r requirements.txt
 ```
-streamlit==1.33.0
-youtube-transcript-api==0.6.2
-openai==1.12.0
-numpy==1.26.4
-sentence-transformers==2.5.1
-boto3==1.29.6
-google-cloud-texttospeech==2.15.0
-openai-whisper==20231117
-```
 
-## Docker Setup (Optional)
-```dockerfile
-FROM python:3.10-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-EXPOSE 8501
-
-CMD ["streamlit", "run", "app.py"]
-```
+For production deployment, use the component-specific requirements files.
 
 ## Starting the Application
 ```bash
@@ -156,8 +157,8 @@ streamlit run app.py
 - [x] Japanese YouTube transcript fetching
 - [x] Japanese-focused question generation with LLM
 - [x] Japanese Text-to-Speech integration
-- [ ] Japanese ASR for spoken answers with pronunciation feedback
-- [ ] User accounts with Japanese language learning progress tracking
-- [ ] Expanded Japanese content library organized by topic and JLPT level
-- [ ] Mobile-friendly interface with Japanese input support
-- [ ] Offline mode support for downloaded Japanese lessons
+- [x] Japanese ASR for spoken answers with pronunciation feedback
+    - Uses OpenAI's Whisper with Japanese language optimization
+    - Provides feedback on pronunciation accuracy, pitch accent, and intonation
+    - Handles common pronunciation challenges faced by non-native speakers
+- [ ] Japanese language learning progress tracking single user no need for authorization or login

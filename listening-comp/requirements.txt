@@ -1,41 +1,32 @@
-streamlit==1.33.0
-youtube-transcript-api==0.6.2
-openai==1.12.0
-numpy==1.26.4
-sentence-transformers==2.5.1
-flask==2.3.3
-python-dotenv==1.0.0
-requests==2.31.0
-Flask-Limiter==3.5.0
-Flask-Caching==2.1.0
-jsonschema==4.20.0
-
-# Testing dependencies
+# Root requirements file - development tools only
 pytest==7.4.3
 pytest-cov==4.1.0
 pytest-asyncio==0.23.2
+flake8==6.1.0
+black==23.10.1
+isort==5.12.0
 
-# API Dependencies
-Flask-CORS==4.0.0
+-r frontend/requirements.txt
+-r backend/requirements.txt
 
-# Audio processing dependencies
-pydub==0.25.1
-ffmpeg-python==0.2.0
-SpeechRecognition==3.10.0
-sounddevice==0.4.6
-
-# Speech recognition dependencies
-openai-whisper==20231117
-torch==2.1.0  # Required for Whisper
-torchaudio==2.1.0  # Required for audio processing
-
-# Japanese language processing
-fugashi==1.3.0
-unidic==1.1.0  # Japanese dictionary for fugashi
-unidic-lite==1.0.8  # Lighter version of unidic
-mecab-python3==1.0.8  # Required by fugashi
-ipadic==1.0.0  # Japanese dictionary
-
-# Redis for production rate limiting
-redis==5.0.1
-Flask-Limiter[redis]==3.5.0  # Redis storage backend for rate limiting
+fastapi>=0.68.0
+uvicorn>=0.15.0
+pydantic>=1.8.2
+numpy>=1.22.0
+openai>=1.0.0
+google-cloud-texttospeech>=2.8.0
+azure-cognitiveservices-speech>=1.19.0
+sentence-transformers>=2.2.0
+fugashi>=1.1.0
+ipadic>=1.0.0
+romkan>=0.2.1
+requests>=2.25.1
+python-multipart>=0.0.5
+sounddevice>=0.4.5
+soundfile>=0.12.1
+librosa>=0.10.0
+pykakasi>=2.2.1
+python-dotenv>=1.0.0
+# Remove specific torch version as it's already in component requirements
+# Remove any explicit youtube-transcript-api specification from here
+# since it's already included in the component requirements files

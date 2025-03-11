@@ -1,0 +1,55 @@
+# Data Processing
+numpy==1.26.4
+pandas==2.1.1  # Standardized pandas version
+
+# TTS dependencies
+google-cloud-texttospeech==2.14.1
+boto3==1.26.137
+openai-whisper==20231117
+aiosqlite==0.19.0
+sqlalchemy==1.4.41
+openai==1.0.0
+
+# Web Framework
+streamlit==1.33.0  # Standardized Streamlit version
+aiohttp==3.8.5
+
+# API and HTTP
+requests==2.31.0
+httpx==0.24.1
+
+# Configuration
+python-dotenv==1.0.0
+
+# Utilities
+typing-extensions>=4.5.0  # Updated to be compatible with OpenAI 1.0.0
+python-multipart==0.0.6
+
+# Language Detection
+langdetect==1.0.9
+
+# YouTube Transcript
+youtube-transcript-api==0.6.2  # Updated to match backend version
+
+# Audio Processing
+torch==2.1.0  # Updated to match backend
+torchaudio==2.1.0  # Updated to match backend
+sounddevice==0.4.6
+soundfile==0.12.1
+librosa==0.10.1
+pykakasi==2.2.1
+romkan==0.2.1
+
+# Streamlit specific
+streamlit-extras==0.3.5
+streamlit-audiorecorder==0.0.3  # Keep this version consistent
+pydub==0.25.1
+
+# Frontend requirements
+# Remove duplicate streamlit specification
+streamlit-webrtc>=0.47.0
+st-annotated-text>=4.0.0
+matplotlib>=3.7.0
+pandas>=1.5.3
+pillow>=9.4.0
+plotly>=5.13.1

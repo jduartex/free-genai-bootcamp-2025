@@ -1,0 +1,9 @@
+# Set proper Permissions-Policy header
+<IfModule mod_headers.c>
+  Header always set Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+</IfModule>
+
+# Set Content-Security-Policy to address iframe issues
+<IfModule mod_headers.c>
+  Header always set Content-Security-Policy "frame-ancestors 'self'; sandbox allow-forms allow-scripts"
+</IfModule>

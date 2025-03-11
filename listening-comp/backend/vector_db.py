@@ -541,6 +541,69 @@ class JapaneseVectorDB:
             
         logger.info(f"Stored vocabulary for transcript ID {transcript_id}")
 
+class VectorDatabase:
+    def __init__(self, db_path: str = "data/transcript_db.sqlite"):
+        self.db_path = db_path
+        self._init_db()
+
+    def _init_db(self):
+        """Initialize the database with required tables"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Create tables if they don't exist
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS transcripts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content TEXT NOT NULL,
+            metadata TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        ''')
+        
+        conn.commit()
+        conn.close()
+
+    async def analyze_transcript(self, transcript: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Store and analyze a transcript
+        
+        Args:
+            transcript (str): The transcript text
+            metadata (dict, optional): Additional metadata about the transcript
+            
+        Returns:
+            dict: Analysis results
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Store the transcript
+            cursor.execute(
+                'INSERT INTO transcripts (content, metadata) VALUES (?, ?)',
+                (transcript, json.dumps(metadata or {}))
+            )
+            
+            transcript_id = cursor.lastrowid
+            conn.commit()
+            
+            # Basic analysis (placeholder for now)
+            analysis = {
+                "transcript_id": transcript_id,
+                "char_count": len(transcript),
+                "word_count": len(transcript.split()),
+                "status": "success"
+            }
+            
+            return analysis
+            
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+            
+        finally:
+            conn.close()
+
 # Example usage
 if __name__ == "__main__":
     # Test the vector database

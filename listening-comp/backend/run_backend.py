@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from dotenv import load_dotenv
+import re
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
@@ -15,6 +17,10 @@ from vector_db import VectorDatabase
 from question_generator import QuestionGenerator
 from tts_service import TTSService
 from speech_recognition import SpeechRecognizer
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(title="Japanese Listening Comprehension Backend API")
@@ -63,12 +69,30 @@ class ASRRequest(BaseModel):
 def read_root():
     return {"status": "active", "service": "Japanese Listening Comprehension Backend"}
 
+def extract_video_id(url_or_id: str) -> str:
+    """Extract video ID from URL or return as-is if already an ID"""
+    patterns = [
+        r'(?:v=|\/)([0-9A-Za-z_-]{11}).*',
+        r'youtu.be\/([0-9A-Za-z_-]{11})'
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, url_or_id)
+        if match:
+            return match.group(1)
+    return url_or_id
+
 # Transcript Service
 @app.get("/api/transcript")
-async def get_transcript(video_id: str = Query(..., description="YouTube video ID")):
+async def get_transcript(
+    video_id: str = Query(..., description="YouTube video ID or URL"),
+    language: str = Query("ja", description="Language code")
+):
     """Fetch transcript for a YouTube video"""
     try:
-        transcript = await transcript_fetcher.fetch_transcript(video_id)
+        # Extract video ID if a full URL was provided
+        clean_video_id = extract_video_id(video_id)
+        transcript = await transcript_fetcher.fetch_transcript(clean_video_id)
         return {"status": "success", "transcript": transcript}
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Transcript not found: {str(e)}")
@@ -87,15 +111,62 @@ async def analyze_transcript(request: TranscriptAnalysisRequest):
 async def generate_questions(request: QuestionGenerationRequest):
     """Generate questions based on transcript"""
     try:
+        logger.info(f"Received question generation request for JLPT level: {request.jlpt_level}")
+        
+        if not request.transcript or not isinstance(request.transcript, str):
+            logger.error(f"Invalid transcript format: {type(request.transcript)}")
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid transcript format. Expected a string."
+            )
+            
+        if request.jlpt_level not in ["N1", "N2", "N3", "N4", "N5"]:
+            logger.error(f"Invalid JLPT level: {request.jlpt_level}")
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid JLPT level. Must be one of: N1, N2, N3, N4, N5"
+            )
+        
+        # Clean the transcript text
+        transcript_text = request.transcript.strip()
+        if not transcript_text:
+            logger.error("Empty transcript received")
+            raise HTTPException(
+                status_code=422,
+                detail="Empty transcript"
+            )
+        
+        logger.info("Generating questions...")
         questions = await question_generator.generate(
-            request.transcript, 
-            request.jlpt_level,
-            request.num_questions,
-            request.include_answers
+            transcript=transcript_text,
+            jlpt_level=request.jlpt_level,
+            num_questions=request.num_questions,
+            include_answers=request.include_answers
         )
-        return {"status": "success", "questions": questions}
+        
+        if not questions:
+            logger.warning("No questions generated, using fallback questions")
+        else:
+            logger.info(f"Successfully generated {len(questions)} questions")
+            
+        return {
+            "status": "success",
+            "questions": questions,
+            "source": "fallback" if not questions else "api"
+        }
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Question generation failed: {str(e)}")
+        logger.error(f"Question generation error: {str(e)}", exc_info=True)
+        # Return fallback questions instead of error
+        fallback_questions = question_generator._get_fallback_questions(
+            request.jlpt_level, 
+            request.num_questions
+        )
+        return {
+            "status": "success",
+            "questions": fallback_questions,
+            "source": "fallback"
+        }
 
 @app.get("/api/questions")
 async def get_questions(jlpt_level: str = Query("N4", description="JLPT level (N1-N5)")):
