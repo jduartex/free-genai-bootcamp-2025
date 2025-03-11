@@ -1,0 +1,10 @@
+streamlit==1.29.0
+openai==0.28.0  # Using older version to avoid proxies issue
+manga-ocr==0.1.8
+numpy==1.26.0
+opencv-python==4.8.1.78
+python-dotenv==1.0.0
+pillow==10.1.0
+streamlit-drawable-canvas==0.9.2
+requests==2.31.0
+torch==1.13.1  # Pin to specific version to avoid warnings

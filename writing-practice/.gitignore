@@ -1,0 +1,82 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+.python-version
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Streamlit
+.streamlit/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+
+# Test data/images that might contain personal handwriting
+test_images/
+
+# PyTorch/Deep Learning specific
+*.pt
+*.pth
+*.onnx
+*.tflite
+*.h5
+*.pb
+*.mlmodel
+
+# MangaOCR and related cache files
+.cache/
+.manga_ocr/
+*.ckpt
+.model_cache/
+**/runs/
+**/lightning_logs/
+
+# Huggingface cache
+.huggingface/
+
+# Local application data
+instance/
+*.sqlite
+*.db
