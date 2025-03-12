@@ -146,19 +146,60 @@ def generate_sentence(word_data):
             st.error(f"Error generating sentence: {error_msg}")
             return {"english": f"Error generating sentence: {error_msg}", "japanese": ""}
 
+# Function to generate a single word for translation practice
+def generate_word(word_data):
+    if not word_data or not word_data.get("words"):
+        return {"english": "Error: No word data available", "japanese": ""}
+    
+    # Randomly select a word from the words array
+    import random
+    word = random.choice(word_data["words"])
+    
+    # Process the English translation - remove "to " prefix if it's a verb
+    english = word["english"]
+    if english.startswith("to "):
+        english = english[3:]
+    
+    # Return the word in the same format as sentences for compatibility
+    return {
+        "english": english,
+        "japanese": word["kanji"]
+    }
+
 # Function to preprocess image for OCR
 def preprocess_image(image):
     # Convert to numpy array if it's not already
     if isinstance(image, Image.Image):
+        # Ensure the image is in RGB mode (not RGBA or other formats)
+        if image.mode == 'RGBA':
+            # Convert RGBA to RGB by removing alpha channel
+            image = image.convert('RGB')
+        elif image.mode != 'RGB' and image.mode != 'L':
+            # Convert any other mode to RGB
+            image = image.convert('RGB')
+        
         image_np = np.array(image)
     else:
         image_np = image
     
     # Convert to grayscale if it's a color image
-    if len(image_np.shape) == 3 and image_np.shape[2] == 3:
-        gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
+    if len(image_np.shape) == 3:
+        if image_np.shape[2] == 3:  # RGB
+            gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
+        elif image_np.shape[2] == 4:  # RGBA
+            # First convert RGBA to RGB, then to grayscale
+            rgb = image_np[:, :, :3]
+            gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+        else:
+            # For any other channel configuration, flatten to grayscale
+            gray = np.mean(image_np, axis=2).astype(np.uint8)
     else:
-        gray = image_np
+        # Already grayscale, ensure it's uint8
+        gray = image_np.astype(np.uint8)
+    
+    # Make sure it's the right type for adaptiveThreshold
+    if gray.dtype != np.uint8:
+        gray = gray.astype(np.uint8)
     
     # Apply adaptive thresholding
     thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
@@ -240,28 +281,65 @@ def grade_submission(ocr_text, expected_japanese):
 def change_state(new_state):
     st.session_state.page_state = new_state
 
+# Allow the user to select a word or a sentence
+def select_text():
+    col1, col2 = st.columns(2)
+    with col1:
+        word_button = st.button("Generate Word", key="word_button", use_container_width=True)
+    with col2:
+        sentence_button = st.button("Generate Sentence", key="sentence_button", use_container_width=True)
+    
+    if word_button:
+        return "word"
+    elif sentence_button:
+        return "sentence"
+    else:
+        return None
+
+# Make the canvas wider and reduce the height of the box
+def style_canvas():
+    return """
+    <style>
+      .canvas {
+        width: 800px;
+        height: 200px;
+      }
+    </style>
+    """
+
 # App title
 st.title("Japanese Writing Practice")
 
 # Main app logic based on current state
 if st.session_state.page_state == 'setup':
     st.subheader("Welcome to Japanese Writing Practice")
-    st.write("Click the button below to generate a sentence to practice writing in Japanese.")
+    st.write("Select what you would like to practice:")
     
     # Fetch word data if not already done
     if st.session_state.word_data is None:
         st.session_state.word_data = fetch_word_data()
     
-    # Generate button
-    if st.button("Generate Sentence"):
+    # Select text type via buttons
+    selection = select_text()
+    
+    if selection == "word":
+        with st.spinner("Generating word..."):
+            st.session_state.current_sentence = generate_word(st.session_state.word_data)
+            st.session_state.text_type = "word"
+            change_state('practice')
+    elif selection == "sentence":
         with st.spinner("Generating sentence..."):
             st.session_state.current_sentence = generate_sentence(st.session_state.word_data)
+            st.session_state.text_type = "sentence"
             change_state('practice')
 
 elif st.session_state.page_state == 'practice':
-    # Display the English sentence to be written in Japanese
+    # Get text type (default to "sentence" for backward compatibility)
+    text_type = st.session_state.get("text_type", "sentence")
+    
+    # Display the English text to be written in Japanese
     st.subheader("Practice Writing")
-    st.write(f"**Write this sentence in Japanese:**")
+    st.write(f"**Write this {text_type} in Japanese:**")
     st.write(f"*{st.session_state.current_sentence['english']}*")
     
     # Create tabs for the two input methods
@@ -352,11 +430,14 @@ elif st.session_state.page_state == 'practice':
                 change_state('review')
 
 elif st.session_state.page_state == 'review':
+    # Get text type (default to "sentence" for backward compatibility)
+    text_type = st.session_state.get("text_type", "sentence")
+    
     # Display review and feedback
     st.subheader("Review & Feedback")
     
-    # Original sentence
-    st.write("**Original Sentence:**")
+    # Original text
+    st.write(f"**Original {text_type.capitalize()}:**")
     st.write(f"English: *{st.session_state.current_sentence['english']}*")
     st.write(f"Expected Japanese: *{st.session_state.current_sentence['japanese']}*")
     
@@ -394,14 +475,9 @@ elif st.session_state.page_state == 'review':
         st.write("**Corrected Japanese:**")
         st.write(grade["corrected_text"])
     
-    # Button to try another sentence
+    # Button to try another
     if st.button("Next Question"):
-        # Generate a new sentence
-        with st.spinner("Generating new sentence..."):
-            st.session_state.current_sentence = generate_sentence(st.session_state.word_data)
-            st.session_state.ocr_result = None
-            st.session_state.grade_result = None
-            change_state('practice')
+        change_state('setup')  # Go back to setup to let user choose again
 
 # Footer with app information
 st.markdown("---")
