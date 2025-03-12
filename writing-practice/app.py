@@ -97,6 +97,33 @@ def fetch_word_data(group_id="1"):
         st.error(f"Error fetching word data: {str(e)}")
         return None
 
+# Add a fallback function for offline sentence generation
+def generate_sentence_offline(word_data):
+    if not word_data or not word_data.get("words"):
+        return {"english": "Error: No word data available", "japanese": ""}
+    
+    # Randomly select a word from the words array
+    import random
+    word = random.choice(word_data["words"])
+    
+    # Simple template-based sentence generation
+    templates = [
+        {"english": "I like {}", "japanese": "私は{}が好きです。"},
+        {"english": "This is a {}", "japanese": "これは{}です。"},
+        {"english": "I have a {}", "japanese": "私は{}を持っています。"},
+        {"english": "I want a {}", "japanese": "私は{}が欲しいです。"},
+        {"english": "I see a {}", "japanese": "私は{}を見ます。"}
+    ]
+    
+    # Select a random template
+    template = random.choice(templates)
+    
+    # Fill in the template with the word
+    return {
+        "english": template["english"].format(word["english"]),
+        "japanese": template["japanese"].format(word["kanji"])
+    }
+
 # Function to generate a sentence using GPT-4o
 def generate_sentence(word_data):
     if not word_data or not word_data.get("words"):
@@ -107,7 +134,9 @@ def generate_sentence(word_data):
     word = random.choice(word_data["words"])
     
     if not openai.api_key:
-        return {"english": "Error: OpenAI API key is not set", "japanese": ""}
+        # Fall back to offline generation if no API key
+        st.warning("No OpenAI API key found. Using offline sentence generation.")
+        return generate_sentence_offline(word_data)
         
     try:
         prompt = f"""Generate a simple Japanese sentence using the word: '{word['kanji']}' ({word['english']}). 
@@ -135,25 +164,38 @@ def generate_sentence(word_data):
     except Exception as e:
         error_msg = str(e)
         if "quota" in error_msg.lower():
-            st.error("""
-            Your OpenAI API key has exceeded its quota. Please:
+            st.warning("""
+            Your OpenAI API key has exceeded its quota. Switching to offline sentence generation.
+            To use AI-generated sentences:
             1. Check your OpenAI account billing settings at https://platform.openai.com/account/billing
             2. Update your API key in the .env file with a working key
             3. Restart the application
             """)
-            return {"english": "Error: OpenAI API quota exceeded. Please update your API key in the .env file.", "japanese": ""}
+            # Fall back to the offline generation
+            return generate_sentence_offline(word_data)
         else:
             st.error(f"Error generating sentence: {error_msg}")
-            return {"english": f"Error generating sentence: {error_msg}", "japanese": ""}
+            # Fall back to offline generation for other errors too
+            st.warning("Using offline sentence generation due to API error.")
+            return generate_sentence_offline(word_data)
 
 # Function to generate a single word for translation practice
 def generate_word(word_data):
     if not word_data or not word_data.get("words"):
         return {"english": "Error: No word data available", "japanese": ""}
     
-    # Randomly select a word from the words array
     import random
-    word = random.choice(word_data["words"])
+    
+    # First, try to find substantives (nouns) by filtering out words that start with "to "
+    # which are likely verbs
+    nouns = [word for word in word_data["words"] if not word["english"].startswith("to ")]
+    
+    # If we have nouns, prioritize them (80% chance of selecting a noun)
+    if nouns and random.random() < 0.8:
+        word = random.choice(nouns)
+    else:
+        # Otherwise select any random word
+        word = random.choice(word_data["words"])
     
     # Process the English translation - remove "to " prefix if it's a verb
     english = word["english"]
@@ -201,8 +243,31 @@ def preprocess_image(image):
     if gray.dtype != np.uint8:
         gray = gray.astype(np.uint8)
     
+    # Resize the image to improve OCR results if it's too small or too large
+    h, w = gray.shape
+    target_height = 900  # Target height for better OCR performance
+    if h < 300 or h > 1200:
+        scale_factor = target_height / h
+        new_width = int(w * scale_factor)
+        gray = cv2.resize(gray, (new_width, target_height), interpolation=cv2.INTER_CUBIC)
+    
+    # Enhance contrast using CLAHE (Contrast Limited Adaptive Histogram Equalization)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    gray = clahe.apply(gray)
+    
+    # Denoise the image
+    gray = cv2.fastNlMeansDenoising(gray, None, 10, 7, 21)
+    
+    # Apply sharpening
+    kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+    gray = cv2.filter2D(gray, -1, kernel)
+    
     # Apply adaptive thresholding
     thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+    
+    # Perform morphological operations to clean up the image
+    kernel = np.ones((2, 2), np.uint8)
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=1)
     
     # Invert back to black text on white background
     thresh = cv2.bitwise_not(thresh)
@@ -210,15 +275,24 @@ def preprocess_image(image):
     # Convert back to PIL Image for MangaOCR
     return Image.fromarray(thresh)
 
-# Function to grade OCR result
+# Function to grade OCR result with offline fallback
 def grade_submission(ocr_text, expected_japanese):
-    if not openai.api_key:
+    # Normalize both texts by stripping whitespace
+    ocr_text_normalized = ocr_text.strip() if ocr_text else ""
+    expected_normalized = expected_japanese.strip() if expected_japanese else ""
+    
+    # Check for exact match first (after normalization)
+    if ocr_text_normalized == expected_normalized:
         return {
-            "grade": "F", 
-            "accuracy_percentage": 0,
-            "feedback": "OpenAI API key is not set",
-            "corrected_text": ""
+            "grade": "S",
+            "accuracy_percentage": 100,
+            "feedback": "Perfect match! Your writing is excellent.",
+            "corrected_text": expected_japanese
         }
+    
+    # If API key is not available or quota exceeded, use simple comparison logic
+    if not openai.api_key:
+        return simple_grade_submission(ocr_text, expected_japanese)
         
     try:
         prompt = f"""
@@ -256,26 +330,67 @@ def grade_submission(ocr_text, expected_japanese):
     except Exception as e:
         error_msg = str(e)
         if "quota" in error_msg.lower():
-            st.error("""
-            Your OpenAI API key has exceeded its quota. Please:
-            1. Check your OpenAI account billing settings at https://platform.openai.com/account/billing
-            2. Update your API key in the .env file with a working key
-            3. Restart the application
-            """)
-            return {
-                "grade": "F",
-                "accuracy_percentage": 0,
-                "feedback": "Error: OpenAI API quota exceeded. Please update your API key.",
-                "corrected_text": ""
-            }
+            st.warning("OpenAI API quota exceeded. Using basic grading algorithm.")
+            return simple_grade_submission(ocr_text, expected_japanese)
         else:
             st.error(f"Error grading submission: {error_msg}")
-            return {
-                "grade": "F", 
-                "accuracy_percentage": 0,
-                "feedback": f"Error in grading process: {error_msg}",
-                "corrected_text": ""
-            }
+            return simple_grade_submission(ocr_text, expected_japanese)
+
+# Simple grading function for when API is unavailable
+def simple_grade_submission(ocr_text, expected_japanese):
+    # Simple character-by-character comparison
+    ocr_text = ocr_text.strip() if ocr_text else ""
+    expected = expected_japanese.strip() if expected_japanese else ""
+    
+    if not ocr_text:
+        return {
+            "grade": "F",
+            "accuracy_percentage": 0,
+            "feedback": "No text was detected. Please try again with clearer writing.",
+            "corrected_text": expected
+        }
+    
+    if ocr_text == expected:
+        return {
+            "grade": "S",
+            "accuracy_percentage": 100,
+            "feedback": "Perfect match! Your writing is excellent.",
+            "corrected_text": expected
+        }
+    
+    # Calculate similarity percentage
+    max_len = max(len(ocr_text), len(expected))
+    if max_len == 0:
+        accuracy = 0
+    else:
+        # Count matching characters
+        matches = sum(1 for a, b in zip(ocr_text, expected) if a == b)
+        # Calculate percentage, adjust for length differences
+        length_diff = abs(len(ocr_text) - len(expected))
+        accuracy = int((matches / max_len) * 100) - (length_diff * 5)
+        accuracy = max(0, min(accuracy, 100))  # Keep within 0-100 range
+    
+    # Determine grade based on accuracy
+    grade = "F"
+    if accuracy >= 95:
+        grade = "S"
+    elif accuracy >= 85:
+        grade = "A"
+    elif accuracy >= 75:
+        grade = "B"
+    elif accuracy >= 60:
+        grade = "C"
+    elif accuracy >= 40:
+        grade = "D"
+    
+    feedback = f"Your submission matched approximately {accuracy}% of the expected text."
+    
+    return {
+        "grade": grade,
+        "accuracy_percentage": accuracy,
+        "feedback": feedback,
+        "corrected_text": expected
+    }
 
 # Function to handle state transitions
 def change_state(new_state):
@@ -387,7 +502,11 @@ elif st.session_state.page_state == 'practice':
         # Upload image
         st.write("Or upload an image of your handwritten Japanese:")
         uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
-    
+        
+        # Add manual entry option as a fallback
+        st.write("Or type directly if OCR doesn't work:")
+        manual_entry = st.text_input("Type Japanese text here:", "")
+
     # Submit button
     if st.button("Submit for Review"):
         with st.spinner("Processing submission..."):
@@ -402,19 +521,84 @@ elif st.session_state.page_state == 'practice':
                 image = Image.fromarray(img_data.astype('uint8'))
                 # Preprocess image
                 processed_image = preprocess_image(image)
+                
+                # Show debug view of processed image
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write("Original Image:")
+                    st.image(image, use_column_width=True)
+                with col2:
+                    st.write("Processed Image for OCR:")
+                    st.image(processed_image, use_column_width=True)
+                
                 # Run OCR
                 st.session_state.ocr_result = ocr(processed_image)
+                st.write("OCR detected text:", st.session_state.ocr_result)
                 
             elif tab2 and uploaded_file is not None:
-                # Read the uploaded file
-                image = Image.open(uploaded_file)
-                # Preprocess image
-                processed_image = preprocess_image(image)
-                # Run OCR
-                st.session_state.ocr_result = ocr(processed_image)
+                try:
+                    # Read the file bytes directly
+                    img_bytes = uploaded_file.read()
+                    uploaded_file.seek(0)  # Reset for next read
+        
+                    # Now open with PIL with error handling
+                    import io
+                    image = Image.open(io.BytesIO(img_bytes))
+        
+                    # Check image mode and convert to grayscale for consistency
+                    if image.mode == 'RGBA':
+                        image = image.convert('RGB')  # First convert RGBA to RGB
+                    
+                    # Display original image first to verify it loaded correctly
+                    st.write("Original Uploaded Image:")
+                    st.image(image, caption="Your uploaded image", use_column_width=True)
+                    
+                    # Also show the grayscale version that will be used for OCR
+                    st.write("Grayscale Version:")
+                    grayscale_image = image.convert('L')
+                    st.image(grayscale_image, caption="Grayscale version for OCR", use_column_width=True)
+        
+                    # Make a copy for processing
+                    img_for_processing = image.copy()
+        
+                    # Preprocess image
+                    processed_image = preprocess_image(img_for_processing)
+        
+                    # Show debug view of processed image
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write("Original Image:")
+                        # Check image mode and convert to grayscale if necessary
+                        if img_for_processing.mode != 'L':
+                            st.image(img_for_processing.convert('L'), use_column_width=True)
+                        else:
+                            st.image(img_for_processing, use_column_width=True)
+                    with col2:
+                        st.write("Processed Image for OCR:")
+                        st.image(processed_image, use_column_width=True)  # Display the processed PIL Image object
+        
+                    # Run OCR
+                    st.session_state.ocr_result = ocr(processed_image)
+                    st.write("OCR detected text:", st.session_state.ocr_result)
+        
+                except Exception as e:
+                    st.error(f"Error processing uploaded image: {str(e)}")
+                    st.error("Please try another image file or use manual entry.")
+                    
+                    # Check if manual entry is provided as fallback
+                    if manual_entry:
+                        st.info("Using manual entry instead of OCR.")
+                        st.session_state.ocr_result = manual_entry
+                    else:
+                        submit_valid = False
             
+            # Use manual entry if provided (even if no image was uploaded)
+            elif tab2 and manual_entry:
+                st.info("Using manual text entry.")
+                st.session_state.ocr_result = manual_entry
+                
             else:
-                st.error("Please draw or upload an image before submitting.")
+                st.error("Please draw, upload an image, or enter text manually before submitting.")
                 # Replace "return" with a flag to skip the rest of processing
                 submit_valid = False
             
