@@ -2,6 +2,19 @@
 
 AgentQnA is a RAG-based question answering service that leverages multiple AI agents, vector databases, and knowledge graphs to provide accurate and contextual answers to user queries.
 
+## Current Status ✅
+
+| Component              | Status      | Notes                                       |
+|------------------------|-------------|---------------------------------------------|
+| Backend API            | ✅ Working   | Accessible at http://localhost:8080         |
+| Frontend UI            | ✅ Working   | Accessible at http://localhost:3030         |
+| Query Endpoint         | ✅ Working   | Returns answers with sources                |
+| Chat Endpoint          | ✅ Working   | Handles conversational interactions         |
+| Health Endpoint        | ✅ Working   | System health monitoring                    |
+| Metrics Endpoint       | ✅ Working   | Basic metrics implemented                   |
+| Logging System         | ✅ Working   | Logs available in container and logs/ dir   |
+| Docker Containerization| ✅ Working   | Services running in containers              |
+
 ## Hybrid Deployment Architecture
 
 The AgentQnA system uses a hybrid approach that combines:

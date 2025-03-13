@@ -1,4 +1,6 @@
-# Tech Specs: AgentQnA Megaservice
+# AgentQnA Technical Specifications
+
+This document provides detailed technical information about the AgentQnA system, including architecture, API specifications, implementation details, and configuration options.
 
 ## Local Development Environment
 
@@ -18,14 +20,42 @@
 
 ## System Architecture
 
-*   **Frontend:** React-based user interface
-*   **Backend:** FastAPI service for handling requests
-*   **AI Engine:** 
-    *   LangChain for agent orchestration
-    *   Retrieval Augmented Generation (RAG) system
-    *   LLM integration (OpenAI, Anthropic, or local models)
-*   **Vector Database:** ChromaDB for storing embeddings
-*   **Document Processing:** Pipeline for ingesting and processing knowledge base documents
+AgentQnA uses a multi-component architecture to provide question-answering capabilities:
+
+### Core Components
+
+1. **FastAPI Backend**
+   - Handles all API requests
+   - Routes requests to appropriate agents
+   - Manages authentication and rate limiting
+   - Implements API endpoints
+
+2. **React Frontend**
+   - Provides user interface for queries
+   - Displays responses with source attribution
+   - Manages conversation history
+
+3. **Multi-Agent System**
+   - **Supervisor Agent**: Coordinates the overall question answering process
+   - **Worker Agents**: Specialize in different tasks (retrieval, synthesis, etc.)
+
+4. **Vector Database**
+   - ChromaDB implementation
+   - Stores document embeddings for semantic search
+   - Enables semantic retrieval of relevant context
+
+5. **Knowledge Graph**
+   - Represents structured relationships between entities
+   - Supports reasoning over connected information
+
+### Data Flow
+
+1. User submits query via frontend or API
+2. Backend preprocesses the query and routes to supervisor agent
+3. Supervisor agent determines required tools and delegates to worker agents
+4. Worker agents retrieve relevant context from vector store/knowledge graph
+5. Agents collaborate to formulate response
+6. Response with sources is returned to user
 
 ## Model Selection
 
