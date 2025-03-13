@@ -10,7 +10,7 @@
 
 ## System Requirements
 
-*   **Python:** 3.9+ 
+*   **Python:** 3.10 (specifically)
 *   **Node.js:** 18.0.0+
 *   **Memory:** Minimum 8GB, recommended 16GB
 *   **Storage:** At least 2GB of free space

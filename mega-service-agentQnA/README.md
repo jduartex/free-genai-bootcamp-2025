@@ -39,7 +39,7 @@ This hybrid approach optimizes development experience on macOS while ensuring co
   * 16 GB RAM recommended
   * 2+ GB free storage
 * **Software**:
-  * Python 3.9+
+  * Python 3.10 (specifically)
   * Node.js 18.0.0+
   * Docker Desktop for macOS
 * **API Keys**:
