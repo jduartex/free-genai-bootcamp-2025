@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  agentqna:
+    build: .
+    platform: linux/arm64
+    ports:
+      - "8000:8000"  # Backend API
+      - "3000:3000"  # Frontend
+    volumes:
+      - ./data:/app/data  # Document storage
+      - ./db:/app/db      # Vector database persistence
+      - ./logs:/app/logs  # Logs
+    env_file:
+      - .env
+    restart: unless-stopped
