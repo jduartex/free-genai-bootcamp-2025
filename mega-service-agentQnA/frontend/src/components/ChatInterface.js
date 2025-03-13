@@ -1,44 +1,27 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import './ChatInterface.css';
 
 function ChatInterface() {
   const [messages, setMessages] = useState([]);
-  const [inputValue, setInputValue] = useState('');
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const sendMessage = async (e) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    if (!input.trim()) return;
 
-    // Add user message to chat
-    const userMessage = { role: 'user', content: inputValue };
-    setMessages([...messages, userMessage]);
-    
-    // Clear input field and show loading state
-    setInputValue('');
+    const userMessage = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
     setIsLoading(true);
 
     try {
-      // Call API to get response
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: userMessage.content }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Something went wrong');
-      }
-
-      const data = await response.json();
-      
-      // Add bot response to chat
-      setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+      const response = await axios.post('/chat', { message: input });
+      setMessages(prev => [...prev, { role: 'agent', content: response.data.response }]);
     } catch (error) {
-      console.error('Error:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, there was an error processing your request.' }]);
+      console.error('Error sending message:', error);
+      setMessages(prev => [...prev, { role: 'agent', content: 'Sorry, there was an error processing your request.' }]);
     } finally {
       setIsLoading(false);
     }
@@ -46,41 +29,40 @@ function ChatInterface() {
 
   return (
     <div className="chat-container">
-      <div className="messages">
+      <div className="messages-container">
         {messages.length === 0 ? (
           <div className="welcome-message">
-            <h2>Welcome to AgentQnA!</h2>
-            <p>Ask me any question about your documents or data.</p>
+            <h2>Welcome to AgentQnA</h2>
+            <p>Ask me anything about your data!</p>
           </div>
         ) : (
           messages.map((msg, index) => (
             <div key={index} className={`message ${msg.role}`}>
-              <div className="message-content">
-                <strong>{msg.role === 'user' ? 'You:' : 'AgentQnA:'}</strong>
-                <p>{msg.content}</p>
-              </div>
+              <div className="message-content">{msg.content}</div>
             </div>
           ))
         )}
         {isLoading && (
-          <div className="message assistant loading">
+          <div className="message agent">
             <div className="message-content">
               <div className="typing-indicator">
-                <span></span><span></span><span></span>
+                <span></span>
+                <span></span>
+                <span></span>
               </div>
             </div>
           </div>
         )}
       </div>
-      <form onSubmit={handleSubmit} className="input-form">
+      <form onSubmit={sendMessage} className="input-form">
         <input
           type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Ask a question..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type your message..."
           disabled={isLoading}
         />
-        <button type="submit" disabled={isLoading || !inputValue.trim()}>
+        <button type="submit" disabled={isLoading}>
           Send
         </button>
       </form>

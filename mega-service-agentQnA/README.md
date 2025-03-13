@@ -168,12 +168,133 @@ mega-service-agentQnA/
                      └──────────────┘
 ```
 
+## Logging Configuration
+
+AgentQnA includes a comprehensive logging system that captures application activities, errors, API interactions, and performance metrics. The logging system is configured as follows:
+
+### Logging Setup
+
+1. Enable logging in your `.env` file:
+   ```
+   ENABLE_LOGGING=true
+   LOG_LEVEL=INFO  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+   ```
+
+2. Log files are automatically created in the `logs/` directory:
+   * `agent_activity.log`: Records agent operations and decisions
+   * `agent_errors.log`: Captures error messages and exceptions
+   * `api_requests.log`: Documents API requests and responses
+   * `performance.log`: Tracks performance metrics and response times
+
+3. Log rotation is configured automatically:
+   * Maximum log file size: 10MB
+   * Backup count: 5 (maintains last 5 archived log files)
+
+### Using the Logging System
+
+You can access the logging functionality in your code by importing the appropriate logger:
+
+```python
+from backend.utils import get_agent_logger, get_error_logger, get_api_logger, get_performance_logger
+
+# Get a logger
+logger = get_agent_logger()
+
+# Log messages
+logger.info("Agent started processing query")
+logger.error("Error occurred during document retrieval")
+```
+
+### Testing Logging Functionality
+
+To verify that the logging system is working correctly:
+
+```bash
+# Run the logging test script
+chmod +x scripts/test_logging.sh
+./scripts/test_logging.sh
+```
+
+This script will create test log entries in all log files and display their contents.
+
+### Viewing Logs
+
+You can view logs using standard command-line tools:
+
+```bash
+# View the full agent activity log
+cat logs/agent_activity.log
+
+# View the last 50 lines of the error log
+tail -n 50 logs/agent_errors.log
+
+# Follow new entries to the API log in real time
+tail -f logs/api_requests.log
+
+# Search for specific events in the performance log
+grep "processing time" logs/performance.log
+```
+
+For containerized components, access logs using Docker:
+```bash
+# View logs from all services
+docker-compose logs
+
+# View logs from a specific service
+docker-compose logs agent-supervisor
+
+# Follow container logs in real time
+docker-compose logs --follow
+```
+
+### Troubleshooting Logging Issues
+
+* **Empty logs folder**: 
+  * Check if `ENABLE_LOGGING=true` is set in your `.env` file
+  * Verify that your user has write permissions to the logs directory
+  * Run `./scripts/test_logging.sh` to test logging functionality
+  * For containerized services, logs may be stored in Docker volumes
+
+* **Missing log entries**: 
+  * Ensure the log level is appropriate (e.g., DEBUG for detailed information)
+  * Check if the specific component is configured to use the logging system
+  * Verify that the application has write access to log files
+
+* **Log file access errors**:
+  * Check file permissions on the logs directory
+  * Ensure adequate disk space is available
+  * Verify that log rotation is working correctly
+
 ## Troubleshooting
 
 * **Connection errors**: Ensure Docker is running and ports are available
 * **Authentication errors**: Verify your API keys in the `.env` file
 * **Performance issues**: Check system resources and Docker resource allocation
 * **Document ingestion fails**: Verify PDF file formats and size limits
+* **Query errors**: If you receive "Sorry, there was an error processing your request" responses:
+  * Verify the question relates to your ingested document domains
+  * Check Docker container logs: `docker-compose logs`
+  * Ensure all agent services are running with `docker ps`
+  * Try restarting the service with `./launch_openai_agents.sh --restart`
+* **Empty logs folder**: 
+  * Check Docker container logs as services may log there instead of to the local filesystem
+  * Verify your logging configuration in the application settings
+  * Ensure your user has write permissions to the logs directory
+
+## Query Limitations and Expected Use
+
+AgentQnA is designed to answer questions about documents you've uploaded to the system and connected knowledge sources. The system is not:
+
+* A general knowledge QA system for topics outside your document base
+1. Upload domain-specific documents related to your areas of interest
+2. Ask questions specifically about information contained in those documents
+3. Use clear, specific questions that reference concepts from your knowledge base
+4. Check the system logs if you receive error messages to identify specific issues
+
+Example of appropriate queries:
+* "Summarize the key points from the Q3 financial report I uploaded"
+* "What security protocols are mentioned in the network documentation?"
+* "Compare the performance metrics between Project A and Project B"
 
 ## Minimal Agent Setup
 

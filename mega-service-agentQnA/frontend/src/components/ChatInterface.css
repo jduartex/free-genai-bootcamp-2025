@@ -1,7 +1,10 @@
 .chat-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  height: 600px;
+  height: 80vh;
   border: 1px solid #ddd;
   border-radius: 8px;
   overflow: hidden;
@@ -17,14 +20,29 @@
   gap: 15px;
 }
 
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  padding: 10px;
+  border: 1px solid #e1e1e1;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
 .message {
+  margin-bottom: 15px;
   max-width: 80%;
-  padding: 12px 15px;
+  padding: 10px 15px;
   border-radius: 10px;
+  word-wrap: break-word;
   line-height: 1.5;
 }
 
 .message.user {
+  background-color: #e3f2fd;
+  margin-left: auto;
+  border-bottom-right-radius: 0;
   align-self: flex-end;
   background-color: #0084ff;
   color: white;
@@ -36,6 +54,12 @@
   color: #333;
 }
 
+.message.agent {
+  background-color: #f1f1f1;
+  margin-right: auto;
+  border-bottom-left-radius: 0;
+}
+
 .message-content p {
   margin: 5px 0 0 0;
 }
@@ -43,11 +67,12 @@
 .welcome-message {
   text-align: center;
   color: #666;
-  margin-top: 100px;
+  margin-top: 40px;
 }
 
 .input-form {
   display: flex;
+  margin-top: 10px;
   border-top: 1px solid #ddd;
   padding: 15px;
   background-color: white;
@@ -57,28 +82,29 @@
   flex: 1;
   padding: 12px 15px;
   border: 1px solid #ddd;
-  border-radius: 25px;
-  margin-right: 10px;
+  border-radius: 5px;
   font-size: 16px;
+  margin-right: 10px;
 }
 
 .input-form button {
-  background-color: #0084ff;
+  padding: 10px 20px;
+  background-color: #2196f3;
   color: white;
   border: none;
-  border-radius: 25px;
-  padding: 10px 20px;
+  border-radius: 5px;
   cursor: pointer;
   font-size: 16px;
 }
 
 .input-form button:disabled {
-  background-color: #cccccc;
+  background-color: #b0bec5;
   cursor: not-allowed;
 }
 
 .typing-indicator {
   display: flex;
+  padding: 5px;
   align-items: center;
   justify-content: center;
 }
@@ -86,11 +112,11 @@
 .typing-indicator span {
   height: 8px;
   width: 8px;
-  margin: 0 2px;
-  background-color: #333;
+  background-color: #666;
   border-radius: 50%;
-  opacity: 0.4;
-  animation: typing 1s infinite alternate;
+  margin: 0 2px;
+  display: inline-block;
+  animation: bounce 1.3s linear infinite;
 }
 
 .typing-indicator span:nth-child(2) {
@@ -106,6 +132,15 @@
     transform: translateY(0px);
   }
   100% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
     transform: translateY(-5px);
   }
 }

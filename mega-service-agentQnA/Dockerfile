@@ -49,6 +49,14 @@ COPY scripts/ scripts/
 # Create necessary directories
 RUN mkdir -p data db logs
 
+# Create necessary directories for logging
+RUN mkdir -p /app/logs
+RUN mkdir -p /app/backend/logs
+
+# Make sure the directories are writable
+RUN chmod -R 777 /app/logs
+RUN chmod -R 777 /app/backend/logs
+
 # Set up frontend if it exists
 COPY frontend/ frontend/
 WORKDIR /app/frontend
@@ -70,8 +78,15 @@ COPY .env.example .
 # Expose ports
 EXPOSE 8000 3000
 
-# Create entrypoint script with conditional frontend startup
+# Create entrypoint script with conditional frontend startup and log directory creation
 RUN echo '#!/bin/bash\n\
+# Create log directories\n\
+mkdir -p /app/logs\n\
+mkdir -p /app/backend/logs\n\
+chmod -R 777 /app/logs\n\
+chmod -R 777 /app/backend/logs\n\
+ln -sf /app/logs /app/backend/logs\n\
+\n\
 cd /app/backend\n\
 uvicorn main:app --host 0.0.0.0 --port 8000 &\n\
 if [ -f "/app/frontend/package.json" ]; then\n\

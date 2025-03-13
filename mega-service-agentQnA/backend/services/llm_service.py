@@ -1,5 +1,6 @@
-import logging
 import os
+import sys
+import logging
 from typing import Dict, List, Any, Optional
 from langchain.llms import OpenAI
 from langchain.embeddings.openai import OpenAIEmbeddings
@@ -7,11 +8,19 @@ from langchain.vectorstores import Chroma
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
-logger = logging.getLogger(__name__)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from backend.utils import get_agent_logger, get_error_logger
+
+# Get loggers
+logger = get_agent_logger()
+error_logger = get_error_logger()
 
 class LLMService:
+    """Service for interacting with language models and retrieving information"""
+    
     def __init__(self):
-        self.api_key = os.getenv("OPENAI_API_KEY")
+        """Initialize the LLM service"""
+        self.api_key = os.environ.get("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable not set")
         
@@ -40,8 +49,10 @@ class LLMService:
             logger.error(f"Error initializing vector database: {str(e)}")
             return None
     
-    def generate_answer(self, question: str, include_sources: bool = False) -> Dict[str, Any]:
-        """Generate an answer for the given question using RAG."""
+    def generate_answer(self, query: str, include_sources: bool = True) -> Dict[str, Any]:
+        """Generate an answer for a query using appropriate context"""
+        logger.info(f"Generating answer for query: {query}")
+        
         try:
             if not self.vector_db:
                 return {
@@ -75,7 +86,7 @@ class LLMService:
             )
             
             # Get answer
-            result = qa_chain({"query": question})
+            result = qa_chain({"query": query})
             
             # Format response
             response = {
@@ -95,8 +106,9 @@ class LLMService:
             return response
         
         except Exception as e:
-            logger.error(f"Error generating answer: {str(e)}")
+            error_msg = f"Error generating answer: {str(e)}"
+            error_logger.error(error_msg)
             return {
-                "answer": f"Error generating answer: {str(e)}",
+                "answer": "I'm sorry, I encountered an error while processing your query.",
                 "sources": []
             }

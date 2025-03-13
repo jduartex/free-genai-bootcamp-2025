@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AgentQnA Tester</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .container { display: flex; gap: 20px; }
+        .panel { flex: 1; border: 1px solid #ccc; padding: 15px; border-radius: 5px; }
+        textarea, input { width: 100%; padding: 8px; margin: 10px 0; }
+        button { padding: 8px 15px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+        pre { background: #f5f5f5; padding: 10px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>AgentQnA API Tester</h1>
+    
+    <div class="container">
+        <div class="panel">
+            <h2>Query Endpoint</h2>
+            <input id="queryInput" type="text" placeholder="Enter your question" value="What is the main feature of AgentQnA?">
+            <button onclick="sendQuery()">Send Query</button>
+            <h3>Response:</h3>
+            <pre id="queryResponse">Response will appear here...</pre>
+        </div>
+        
+        <div class="panel">
+            <h2>Chat Endpoint</h2>
+            <input id="chatInput" type="text" placeholder="Enter your message" value="Tell me about multi-agent architecture">
+            <button onclick="sendChat()">Send Message</button>
+            <h3>Response:</h3>
+            <pre id="chatResponse">Response will appear here...</pre>
+        </div>
+    </div>
+    
+    <script>
+        async function sendQuery() {
+            const query = document.getElementById('queryInput').value;
+            const response = document.getElementById('queryResponse');
+            
+            try {
+                const result = await fetch('http://localhost:8080/api/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, include_sources: true })
+                });
+                const data = await result.json();
+                response.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                response.textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        async function sendChat() {
+            const message = document.getElementById('chatInput').value;
+            const response = document.getElementById('chatResponse');
+            
+            try {
+                const result = await fetch('http://localhost:8080/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        messages: [{ role: 'user', content: message }]
+                    })
+                });
+                const data = await result.json();
+                response.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                response.textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
