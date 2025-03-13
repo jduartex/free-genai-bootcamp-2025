@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
     cmake \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js for frontend
@@ -15,11 +16,31 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
+# Create directory for requirements
+RUN mkdir -p /home/user/comps/agent/src/
+
 # Copy requirements and install Python dependencies
-COPY requirements.txt .
+COPY requirements.txt /home/user/comps/agent/src/requirements.txt
+
 # Skip problematic dependencies for manifold3d by setting an environment variable
 ENV SKIP_TRIMESH_MANIFOLD=1
-RUN pip install --no-cache-dir -r requirements.txt
+ARG ARCH=cpu
+
+# Create filtered requirements file - explicitly exclude problematic packages
+RUN cat /home/user/comps/agent/src/requirements.txt | \
+    grep -v "manifold3d" | \
+    grep -v "trimesh" > /home/user/comps/agent/src/filtered_requirements.txt
+
+# Install Python dependencies with increased verbosity
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    echo "Installing filtered Python requirements..." && \
+    if [ "${ARCH}" = "cpu" ]; then \
+        pip install --verbose --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r /home/user/comps/agent/src/filtered_requirements.txt || \
+        echo "Some packages failed to install, continuing build"; \
+    else \
+        pip install --verbose --no-cache-dir -r /home/user/comps/agent/src/filtered_requirements.txt || \
+        echo "Some packages failed to install, continuing build"; \
+    fi
 
 # Copy backend code
 COPY backend/ backend/

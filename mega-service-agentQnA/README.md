@@ -117,6 +117,7 @@ mega-service-agentQnA/
 * **run_ingest_data.sh**: Processes documents into the vector database
 * **launch_openai_agents.sh**: Launches all services with OpenAI models
 * **launch_agents.sh**: Alternative script for multi-agent setup
+* **launch_minimal_agent.sh**: Runs a lightweight version with minimal resources
 
 ### API Endpoints
 
@@ -174,6 +175,51 @@ mega-service-agentQnA/
 * **Performance issues**: Check system resources and Docker resource allocation
 * **Document ingestion fails**: Verify PDF file formats and size limits
 
+## Minimal Agent Setup
+
+The `launch_minimal_agent.sh` script provides a lightweight deployment option when full system resources aren't needed or available. This is useful for:
+
+* Development and testing on resource-constrained machines
+* Quick demos without full infrastructure setup
+* CI/CD pipeline testing
+* Focusing on specific agent functionality
+
+### Minimal Agent Setup Steps
+
+1. Ensure your environment is configured with the basic requirements
+   ```bash
+   ./setup.sh --minimal
+   ```
+
+2. Prepare a smaller test dataset (optional)
+   ```bash
+   cp test-documents/*.pdf data/minimal/
+   ./run_ingest_data.sh --subset minimal
+   ```
+
+3. Launch the minimal agent configuration
+   ```bash
+   ./launch_minimal_agent.sh
+   ```
+
+4. Access the minimal interface at http://localhost:8001
+
+The minimal setup uses:
+* Single combined agent instead of supervisor/worker architecture
+* In-memory vector storage rather than persistent ChromaDB
+* Limited toolset with core functionality only
+* Reduced token usage for OpenAI API calls
+
 ## Advanced Configuration
 
 For advanced configuration options, refer to the detailed [Tech-Specs.md](./Tech-Specs.md) document.
+
+## Version Control Guidelines
+
+When contributing to this repository, please note:
+
+* The `.gitignore` file specifies which files and directories are excluded from version control
+* Do not commit the `GenAIComps/` directory, as it contains large development components not needed for deployment
+* Never commit API keys, credentials, or `.env` files
+* Keep data files out of version control unless they are small example files
+* Commit documentation updates along with code changes

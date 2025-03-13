@@ -1,5 +1,23 @@
 #!/bin/bash
-# Script to ingest data into the vector database for AgentQnA
+
+set -e  # Exit immediately if a command exits with a non-zero status
+
+# Parse command line arguments
+SUBSET=""
+if [ "$1" = "--subset" ] && [ -n "$2" ]; then
+    SUBSET="--subset $2"
+    echo "Using subset: $2"
+fi
+
+# Define the correct path to the ingest script
+INGEST_SCRIPT="./backend/ingest.py"  # Correct path to your ingest.py file
+
+# Check if the ingest script exists
+if [ ! -f "$INGEST_SCRIPT" ]; then
+    echo "ERROR: Ingest script not found at $INGEST_SCRIPT"
+    echo "Please ensure the file exists and try again."
+    exit 1
+fi
 
 # Define working directory if not already set
 if [ -z "$WORKDIR" ]; then
@@ -10,12 +28,28 @@ fi
 cd $WORKDIR/GenAIComps
 
 # Activate virtual environment if it exists
-if [ -d "venv" ]; then
-  source venv/bin/activate
+if [ -d "./venv" ]; then
+    source ./venv/bin/activate
+elif [ -d "./GenAIComps/venv" ]; then
+    source ./GenAIComps/venv/bin/activate
+else
+    echo "WARNING: No virtual environment found. Using system Python."
 fi
 
-# Run the ingestion script
 echo "Starting document ingestion..."
-python examples/AgentQnA/ingest.py
 
-echo "Document ingestion complete. Vector database has been updated."
+# Run the ingest script with appropriate parameters
+python "$INGEST_SCRIPT" $SUBSET
+
+# Check the exit status
+if [ $? -eq 0 ]; then
+    echo "Document ingestion complete. Vector database has been updated."
+else
+    echo "ERROR: Document ingestion failed."
+    exit 1
+fi
+
+# Deactivate virtual environment if activated
+if [ -n "$VIRTUAL_ENV" ]; then
+    deactivate
+fi

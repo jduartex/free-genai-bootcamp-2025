@@ -90,3 +90,57 @@ Icon
 
 # API keys and secrets
 *.pem
+
+# Environment and configuration
+.env
+.env.*
+venv/
+env/
+*.pyc
+__pycache__/
+.python-version
+
+# Development folders
+GenAIComps/
+notebooks/
+.ipynb_checkpoints/
+
+# Generated and temporary files
+data/minimal/
+temp/
+.DS_Store
+*.swp
+*.swo
+logs/
+db/
+!db/.gitkeep
+
+# Dependencies
+node_modules/
+.npm
+package-lock.json
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Testing
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Documentation builds
+docs/_build/
+site/

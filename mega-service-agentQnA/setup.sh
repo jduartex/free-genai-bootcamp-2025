@@ -281,7 +281,6 @@ print_section "Setup Summary"
 
 # Check which components were successfully set up
 echo "✅ Directories created/verified"
-fi
 
 if [ "$DOCKER_AVAILABLE" = true ]; then
     echo "✅ Docker is available"
