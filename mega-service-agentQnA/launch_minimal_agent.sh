@@ -43,13 +43,13 @@ echo "Using temporary directory: $TEMP_DIR"
 cat > $TEMP_DIR/main.py << 'EOL'
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 import uvicorn
-import os
-import json
+from pydantic import BaseModel
 
 app = FastAPI()
+
+class ChatRequest(BaseModel):
+    message: str
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -57,39 +57,152 @@ async def root():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>OPEA Agent - Simplified</title>
+        <title>AgentQnA Chat Interface</title>
         <style>
-            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-            h1 { color: #2c3e50; }
-            .container { background-color: #f8f9fa; padding: 20px; border-radius: 5px; }
-            .info { margin-bottom: 20px; }
-            .api-url { background-color: #e9ecef; padding: 8px; border-radius: 4px; font-family: monospace; }
+            body { 
+                font-family: Arial, sans-serif; 
+                max-width: 800px; 
+                margin: 0 auto; 
+                padding: 20px;
+                background-color: #f5f5f5;
+            }
+            h1 { 
+                color: #2c3e50; 
+                text-align: center;
+                margin-bottom: 30px;
+            }
+            .chat-container { 
+                background-color: white;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            #messages { 
+                height: 400px;
+                overflow-y: auto;
+                border: 1px solid #ddd;
+                padding: 15px;
+                margin-bottom: 20px;
+                border-radius: 5px;
+                background-color: #fff;
+            }
+            .message {
+                margin-bottom: 10px;
+                padding: 8px 12px;
+                border-radius: 15px;
+                max-width: 80%;
+                line-height: 1.4;
+            }
+            .user-message {
+                background-color: #007bff;
+                color: white;
+                margin-left: auto;
+            }
+            .agent-message {
+                background-color: #e9ecef;
+                color: #212529;
+            }
+            .input-container {
+                display: flex;
+                gap: 10px;
+            }
+            #input { 
+                flex-grow: 1;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                font-size: 16px;
+            }
+            button { 
+                padding: 10px 20px;
+                background-color: #28a745;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 16px;
+            }
+            button:hover {
+                background-color: #218838;
+            }
+            .status-bar {
+                margin-top: 20px;
+                padding: 10px;
+                background-color: #e9ecef;
+                border-radius: 5px;
+                font-size: 14px;
+                color: #666;
+            }
         </style>
+        <script>
+            async function sendMessage() {
+                const input = document.getElementById('input');
+                const message = input.value.trim();
+                if (!message) return;
+                
+                const messages = document.getElementById('messages');
+                messages.innerHTML += `
+                    <div class="message user-message">${message}</div>
+                `;
+                input.value = '';
+                messages.scrollTop = messages.scrollHeight;
+
+                try {
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message })
+                    });
+                    const data = await response.json();
+                    messages.innerHTML += `
+                        <div class="message agent-message">${data.response}</div>
+                    `;
+                    messages.scrollTop = messages.scrollHeight;
+                } catch (error) {
+                    console.error('Error:', error);
+                    messages.innerHTML += `
+                        <div class="message agent-message" style="color: red;">
+                            Error: Could not get response from the agent
+                        </div>
+                    `;
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const input = document.getElementById('input');
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                });
+                input.focus();
+            });
+        </script>
     </head>
     <body>
-        <h1>OPEA Agent - Simplified Interface</h1>
-        <div class="container">
-            <div class="info">
-                <h2>Mock API Connection</h2>
-                <p>Mock API is available at: <span class="api-url">http://host.docker.internal:8080</span></p>
+        <h1>AgentQnA Chat Interface</h1>
+        <div class="chat-container">
+            <div id="messages"></div>
+            <div class="input-container">
+                <input type="text" id="input" placeholder="Type your message here...">
+                <button onclick="sendMessage()">Send</button>
             </div>
-            <div class="info">
-                <h2>Status</h2>
-                <p>Agent is running in compatibility mode due to architecture differences</p>
-                <p>This is a simplified version without JAX dependencies that were causing issues</p>
-            </div>
-            <div class="info">
-                <h2>Available Endpoints</h2>
-                <ul>
-                    <li><code>/status</code> - Check system status</li>
-                    <li><code>/docs</code> - API documentation</li>
-                </ul>
+            <div class="status-bar">
+                Status: Connected to minimal agent | Model: Test Mode
             </div>
         </div>
     </body>
     </html>
     """
     return html_content
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    # Simple echo response for now
+    return {
+        "response": f"I received your message: {request.message}\nThis is a mock response as the full model integration is not implemented in the minimal version."
+    }
 
 @app.get("/status")
 async def status():
@@ -110,7 +223,7 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir fastapi uvicorn jinja2
+RUN pip install --no-cache-dir fastapi uvicorn jinja2 pydantic
 
 COPY main.py .
 

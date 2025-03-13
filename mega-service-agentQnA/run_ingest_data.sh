@@ -9,8 +9,8 @@ if [ "$1" = "--subset" ] && [ -n "$2" ]; then
     echo "Using subset: $2"
 fi
 
-# Define the correct path to the ingest script
-INGEST_SCRIPT="./backend/ingest.py"  # Correct path to your ingest.py file
+# Define the correct path to the ingest script using an absolute path
+INGEST_SCRIPT="/Users/jduarte/Documents/GenAIBootcamp/free-genai-bootcamp-2025/mega-service-agentQnA/backend/ingest.py"
 
 # Check if the ingest script exists
 if [ ! -f "$INGEST_SCRIPT" ]; then
