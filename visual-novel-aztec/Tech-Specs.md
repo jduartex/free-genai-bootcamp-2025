@@ -84,7 +84,11 @@ A narrow, earthen escape tunnel that becomes accessible only after solving all p
 - **Time Limit**: 60-minute countdown timer
 - **Time Penalties**: -5 minutes for each incorrect answer
 - **Puzzle Types**: Symbol matching, pattern recognition, vocabulary challenges, cultural knowledge tests
-- **Hint System**: Progressive hints available at the cost of time
+- **Hint System**: Progressive hints available at the cost of time reduction
+  - Three-tiered hint system: vocabulary assistance first, grammar explanations second, and contextual clues third
+  - Each hint level costs additional time (1, 3, and 5 minutes respectively)
+  - Players can request specific help with vocabulary or grammar structures
+  - Visual highlighting of key elements after hint activation
 
 ### Japanese Language Integration
 - All puzzles require understanding of Japanese vocabulary, characters, or grammar
@@ -92,6 +96,14 @@ A narrow, earthen escape tunnel that becomes accessible only after solving all p
 - All dialogue is in Japanese with optional English subtitles
 - Difficulty scales from basic hiragana recognition to simple sentence comprehension
 - Contextual help provides translations of key terms when needed
+
+### Puzzle Design Progression
+- **Level 1**: Basic hiragana and katakana recognition, simple vocabulary matching
+- **Level 2**: Kanji recognition for JLPT N5 level, basic sentence structure puzzles
+- **Level 3**: Grammar-based challenges involving particle usage and verb conjugation
+- **Level 4**: Complex puzzle combining vocabulary, kanji, and grammar elements
+- Each puzzle increases in difficulty, forcing players to apply more advanced language skills
+- Answer validation includes partial recognition for "close" answers with feedback on corrections
 
 ### Progression System
 - 4 main puzzles must be solved in sequence
@@ -106,6 +118,10 @@ A narrow, earthen escape tunnel that becomes accessible only after solving all p
 - JavaScript/TypeScript
 - WebGL for rendering
 - LocalStorage for saving progress
+  - Saves current puzzle state and progression
+  - Stores remaining time (including negative values if time expires)
+  - Records collected inventory items and unlocked hints
+  - Enables players to resume their game session at any point
 - Web Audio API for sound management
 
 ### UI Requirements
@@ -120,6 +136,10 @@ A narrow, earthen escape tunnel that becomes accessible only after solving all p
 - Grammar point explanations
 - Cultural notes about both Aztec civilization and Japanese language
 - Practice exercises between puzzle segments
+- Feedback system showing correct/incorrect answers
+- Flexible answer validation that accepts minor errors with appropriate feedback
+- Progress dashboard showing mastered language elements
+- Spaced repetition for reinforcing previously learned content
 
 ## Art and Audio
 
@@ -128,6 +148,11 @@ A narrow, earthen escape tunnel that becomes accessible only after solving all p
 - Detailed backgrounds with interactive elements
 - Character portraits with multiple expressions
 - Visual cues for important puzzle elements
+- Animated character portraits using spine.js or Live2D technology
+  - Lip-sync animation for dialogue segments
+  - Expression transitions for emotional responses
+  - Simple gesture animations for emphasis
+  - Breathing animations for idle states
 
 ### Audio Requirements
 - Period-appropriate background music
