@@ -1,5 +1,10 @@
 .App {
   text-align: center;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
@@ -42,6 +47,8 @@ footer {
 }
 
 main {
+  flex: 1;
+  padding: 0 20px;
   min-height: 400px;
   display: grid;
   grid-template-columns: 300px 1fr;
@@ -62,4 +69,9 @@ main {
   main {
     grid-template-columns: 1fr;
   }
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.8rem;
 }

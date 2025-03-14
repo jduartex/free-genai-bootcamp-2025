@@ -1,10 +1,9 @@
 .chat-container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 20px;
   display: flex;
   flex-direction: column;
-  height: 80vh;
+  height: 70vh;
   border: 1px solid #ddd;
   border-radius: 8px;
   overflow: hidden;
@@ -23,29 +22,26 @@
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  margin-bottom: 20px;
-  padding: 10px;
-  border: 1px solid #e1e1e1;
-  border-radius: 5px;
+  padding: 20px;
   background-color: #f9f9f9;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .message {
-  margin-bottom: 15px;
-  max-width: 80%;
   padding: 10px 15px;
   border-radius: 10px;
+  max-width: 80%;
   word-wrap: break-word;
   line-height: 1.5;
 }
 
 .message.user {
-  background-color: #e3f2fd;
-  margin-left: auto;
-  border-bottom-right-radius: 0;
-  align-self: flex-end;
   background-color: #0084ff;
   color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 0;
 }
 
 .message.assistant {
@@ -56,7 +52,8 @@
 
 .message.agent {
   background-color: #f1f1f1;
-  margin-right: auto;
+  color: #333;
+  align-self: flex-start;
   border-bottom-left-radius: 0;
 }
 
@@ -67,56 +64,63 @@
 .welcome-message {
   text-align: center;
   color: #666;
-  margin-top: 40px;
+  padding: 20px 0;
+  margin: auto;
+}
+
+.welcome-message h2 {
+  margin-bottom: 10px;
 }
 
 .input-form {
   display: flex;
-  margin-top: 10px;
-  border-top: 1px solid #ddd;
   padding: 15px;
   background-color: white;
+  border-top: 1px solid #ddd;
 }
 
 .input-form input {
   flex: 1;
-  padding: 12px 15px;
+  padding: 10px 15px;
   border: 1px solid #ddd;
-  border-radius: 5px;
+  border-radius: 4px;
   font-size: 16px;
   margin-right: 10px;
 }
 
 .input-form button {
   padding: 10px 20px;
-  background-color: #2196f3;
+  background-color: #0084ff;
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 16px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.input-form button:hover:not(:disabled) {
+  background-color: #0073e6;
 }
 
 .input-form button:disabled {
-  background-color: #b0bec5;
+  background-color: #cccccc;
   cursor: not-allowed;
 }
 
 .typing-indicator {
   display: flex;
-  padding: 5px;
   align-items: center;
-  justify-content: center;
 }
 
 .typing-indicator span {
   height: 8px;
   width: 8px;
-  background-color: #666;
-  border-radius: 50%;
   margin: 0 2px;
+  background-color: #999;
+  border-radius: 50%;
   display: inline-block;
-  animation: bounce 1.3s linear infinite;
+  animation: bounce 1.2s infinite ease-in-out;
 }
 
 .typing-indicator span:nth-child(2) {
@@ -143,4 +147,25 @@
   30% {
     transform: translateY(-5px);
   }
+}
+
+.test-button {
+  margin-left: 10px;
+  padding: 10px 15px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.test-button:hover:not(:disabled) {
+  background-color: #5a6268;
+}
+
+.test-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
 }
