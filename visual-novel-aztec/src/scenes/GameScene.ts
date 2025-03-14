@@ -135,8 +135,8 @@ export class GameScene extends Phaser.Scene {
     this.events.on('puzzleSolved', (puzzleId: string, answer: number) => {
       this.gameState.solvedPuzzles.push(puzzleId);
       
-      // Play success sound
-      this.sound.play('success', { volume: 0.7 });
+      // Play success sound safely
+      this.playSoundSafe('success', 0.7);
       
       // Save progress
       saveGameProgress(
@@ -153,8 +153,8 @@ export class GameScene extends Phaser.Scene {
         this.gameState.remainingTime -= this.currentStoryData.timer.penalty;
         this.events.emit('updateTimer', this.gameState.remainingTime);
         
-        // Play fail sound
-        this.sound.play('fail', { volume: 0.5 });
+        // Play fail sound safely
+        this.playSoundSafe('fail', 0.5);
       }
     });
     
@@ -212,6 +212,19 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // Add helper method to safely play sounds
+  private playSoundSafe(key: string, volume: number = 0.5): void {
+    try {
+      if (this.cache.audio.exists(key)) {
+        this.sound.play(key, { volume });
+      } else {
+        console.warn(`Sound "${key}" not available`);
+      }
+    } catch (e) {
+      console.warn(`Error playing sound "${key}":`, e);
+    }
+  }
+
   private createInteractiveObjects(): void {
     // Clear existing objects
     for (const obj of this.interactiveObjects) {
@@ -248,20 +261,7 @@ export class GameScene extends Phaser.Scene {
         if (!this.gameState.solvedPuzzles.includes('puzzle1')) {
           this.events.emit('dialogueComplete', 'puzzle1-intro');
         } else {
-          this.scene.launch('DialogueScene', {
-            dialogId: 'window-examined',
-            storyData: {
-              ...this.currentStoryData,
-              dialog: {
-                'window-examined': {
-                  speakerId: 'narrator',
-                  japanese: "窓にある文字は「たいよう」と読めます。",
-                  english: "The symbols on the window spell 'taiyō' (sun).",
-                  default_next_id: this.gameState.currentDialog
-                }
-              }
-            }
-          });
+          this.showExaminedMessage('window', 'たいよう');
         }
       }
     );
@@ -279,40 +279,15 @@ export class GameScene extends Phaser.Scene {
             !this.gameState.solvedPuzzles.includes('puzzle2')) {
           this.events.emit('dialogueComplete', 'puzzle2-intro');
         } else if (this.gameState.solvedPuzzles.includes('puzzle2')) {
-          this.scene.launch('DialogueScene', {
-            dialogId: 'floor-examined',
-            storyData: {
-              ...this.currentStoryData,
-              dialog: {
-                'floor-examined': {
-                  speakerId: 'narrator',
-                  japanese: "床には鷲の絵が描かれています。「わし」という言葉を表しています。",
-                  english: "An eagle is drawn on the floor. It represents the word 'washi'.",
-                  default_next_id: this.gameState.currentDialog
-                }
-              }
-            }
-          });
+          this.showExaminedMessage('floor', 'わし');
         } else {
-          this.scene.launch('DialogueScene', {
-            dialogId: 'floor-too-early',
-            storyData: {
-              ...this.currentStoryData,
-              dialog: {
-                'floor-too-early': {
-                  speakerId: 'citlali',
-                  japanese: "まずは窓の近くを調べましょう。",
-                  english: "Let's first examine near the window.",
-                  default_next_id: this.gameState.currentDialog
-                }
-              }
-            }
-          });
+          this.showTooEarlyMessage();
         }
       }
     );
     this.interactiveObjects.push(floorPattern);
     
+    // Add bed and door as well
     // Create bed (for character interaction)
     const bed = new InteractiveObject(
       this,
@@ -321,20 +296,7 @@ export class GameScene extends Phaser.Scene {
       'bed',
       'ベッド (Bed)',
       () => {
-        this.scene.launch('DialogueScene', {
-          dialogId: 'bed-examined',
-          storyData: {
-            ...this.currentStoryData,
-            dialog: {
-              'bed-examined': {
-                speakerId: 'tlaloc',
-                japanese: "この硬いベッドでは眠れない。でも今は休んでいる場合ではない。",
-                english: "I can't sleep on this hard bed. But now is not the time to rest.",
-                default_next_id: this.gameState.currentDialog
-              }
-            }
-          }
-        });
+        this.showExaminedMessage('bed');
       }
     );
     this.interactiveObjects.push(bed);
@@ -355,20 +317,7 @@ export class GameScene extends Phaser.Scene {
         } else if (this.gameState.solvedPuzzles.includes('puzzle4')) {
           this.events.emit('dialogueComplete', 'final-scene');
         } else {
-          this.scene.launch('DialogueScene', {
-            dialogId: 'door-locked',
-            storyData: {
-              ...this.currentStoryData,
-              dialog: {
-                'door-locked': {
-                  speakerId: 'tlaloc',
-                  japanese: "ドアには4つの数字を入力する鍵がかかっている。すべての謎を解かなければならない。",
-                  english: "The door has a lock that requires 4 numbers. We must solve all the puzzles.",
-                  default_next_id: this.gameState.currentDialog
-                }
-              }
-            }
-          });
+          this.showExaminedMessage('door');
         }
       }
     );
@@ -461,38 +410,51 @@ export class GameScene extends Phaser.Scene {
   private setupAudio(): void {
     // Stop any currently playing ambient audio
     if (this.ambientSound && this.ambientSound.isPlaying) {
-      this.ambientSound.stop();
+      try {
+        this.ambientSound.stop();
+      } catch (e) {
+        console.warn('Error stopping ambient sound:', e);
+      }
     }
     
-    // Play appropriate ambient audio for the location
-    switch (this.currentStoryData.location_id) {
-      case 'prison-cell':
-        this.ambientSound = this.sound.add('prison-ambience', { 
-          loop: true, 
-          volume: 0.4 
-        });
-        break;
-      case 'aztec-village':
-        this.ambientSound = this.sound.add('village-ambience', { 
-          loop: true, 
-          volume: 0.4 
-        });
-        break;
-      case 'spanish-invasion':
-        this.ambientSound = this.sound.add('battle-ambience', { 
-          loop: true, 
-          volume: 0.4 
-        });
-        break;
-      case 'hidden-tunnel':
-        this.ambientSound = this.sound.add('tunnel-ambience', { 
-          loop: true, 
-          volume: 0.4 
-        });
-        break;
+    try {
+      // Determine which ambient sound to use based on location
+      let soundKey = 'prison-ambience'; // Default
+      
+      switch (this.currentStoryData.location_id) {
+        case 'prison-cell':
+          soundKey = 'prison-ambience';
+          break;
+        case 'aztec-village':
+          soundKey = 'village-ambience';
+          break;
+        case 'spanish-invasion':
+          soundKey = 'battle-ambience';
+          break;
+        case 'hidden-tunnel':
+          soundKey = 'tunnel-ambience';
+          break;
+      }
+      
+      // Check if the sound exists in cache before attempting to play
+      if (this.cache.audio.exists(soundKey)) {
+        this.ambientSound = this.sound.add(soundKey, { loop: true, volume: 0.4 });
+        
+        if (this.ambientSound) {
+          try {
+            this.ambientSound.play();
+          } catch (e) {
+            console.warn(`Error playing ${soundKey}:`, e);
+          }
+        }
+      } else {
+        console.warn(`Ambient sound "${soundKey}" not found in cache, using silent placeholder`);
+        // Use the click sound as a silent placeholder (we know this one exists)
+        this.ambientSound = this.sound.add('click', { loop: true, volume: 0 });
+      }
+    } catch (e) {
+      console.error('Error setting up ambient audio:', e);
     }
-    
-    this.ambientSound.play();
   }
   
   private handleEndOfScene(): void {
@@ -508,6 +470,75 @@ export class GameScene extends Phaser.Scene {
       if (progress === 1) {
         // When fade is complete, change to ending/credits scene
         this.scene.start('CreditsScene');
+      }
+    });
+  }
+
+  // Helper methods to show messages
+  private showExaminedMessage(objectType: string, relatedWord?: string): void {
+    const messages: Record<string, {
+      speakerId: string;
+      japanese: string;
+      english: string;
+      default_next_id: string;
+    }> = {
+      'window': {
+        speakerId: "narrator",
+        japanese: `窓にある文字は「${relatedWord || 'たいよう'}」と読めます。`,
+        english: `The symbols on the window spell '${relatedWord || 'taiyō'}' (sun).`,
+        default_next_id: this.gameState.currentDialog
+      },
+      'floor': {
+        speakerId: "narrator",
+        japanese: `床には鷲の絵が描かれています。「${relatedWord || 'わし'}」という言葉を表しています。`,
+        english: `An eagle is drawn on the floor. It represents the word '${relatedWord || 'washi'}'.`,
+        default_next_id: this.gameState.currentDialog
+      },
+      'bed': {
+        speakerId: "tlaloc",
+        japanese: "この硬いベッドでは眠れない。でも今は休んでいる場合ではない。",
+        english: "I can't sleep on this hard bed. But now is not the time to rest.",
+        default_next_id: this.gameState.currentDialog
+      },
+      'door': {
+        speakerId: "tlaloc",
+        japanese: "ドアには4つの数字を入力する鍵がかかっている。すべての謎を解かなければならない。",
+        english: "The door has a lock that requires 4 numbers. We must solve all the puzzles.",
+        default_next_id: this.gameState.currentDialog
+      }
+    };
+    
+    // Ensure the objectType is valid
+    if (!messages[objectType]) {
+      console.error(`Unknown object type: ${objectType}`);
+      return;
+    }
+    
+    // Launch dialog with appropriate message
+    this.scene.launch('DialogueScene', {
+      dialogId: `${objectType}-examined`,
+      storyData: {
+        ...this.currentStoryData,
+        dialog: {
+          [`${objectType}-examined`]: messages[objectType]
+        }
+      }
+    });
+  }
+
+  private showTooEarlyMessage(): void {
+    this.scene.launch('DialogueScene', {
+      dialogId: 'too-early',
+      storyData: {
+        ...this.currentStoryData,
+        dialog: {
+          'too-early': {
+            speakerId: "citlali",
+            japanese: "まずは窓の近くを調べましょう。",
+            english: "Let's first examine near the window.",
+            default_next_id: this.gameState.currentDialog
+          }
+        }
       }
     });
   }

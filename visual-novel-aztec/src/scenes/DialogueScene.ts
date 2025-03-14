@@ -209,8 +209,8 @@ export class DialogueScene extends Phaser.Scene {
         i++;
         
         // Play typing sound occasionally (not for every character)
-        if (i % 3 === 0 && this.sound.get('click')) {
-          this.sound.play('click', { volume: 0.1 });
+        if (i % 3 === 0) {
+          this.playSoundSafe('click', 0.1);
         }
         
         if (i === text.length) {
@@ -323,7 +323,8 @@ export class DialogueScene extends Phaser.Scene {
       buttonBg.setInteractive({ useHandCursor: true })
         .on('pointerover', () => {
           buttonBg.fillColor = 0x666666;
-          this.sound.play('hover', { volume: 0.3 });
+          // Safely play hover sound
+          this.playSoundSafe('hover', 0.3);
         })
         .on('pointerout', () => {
           buttonBg.fillColor = 0x333333;
@@ -339,9 +340,22 @@ export class DialogueScene extends Phaser.Scene {
     }
   }
 
+  // Add a helper method to safely play sounds
+  private playSoundSafe(key: string, volume: number = 0.5): void {
+    try {
+      if (this.cache.audio.exists(key) && this.sound.get(key)) {
+        this.sound.play(key, { volume });
+      } else {
+        console.warn(`Sound "${key}" not available`);
+      }
+    } catch (e) {
+      console.warn(`Error playing sound "${key}":`, e);
+    }
+  }
+
   private handleChoice(choice: DialogChoice): void {
     // Play selection sound
-    this.sound.play('click', { volume: 0.5 });
+    this.playSoundSafe('click', 0.5);
     
     // Clean up choices
     this.choiceButtons.forEach(button => button.destroy());

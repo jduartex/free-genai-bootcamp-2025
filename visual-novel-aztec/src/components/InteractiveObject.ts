@@ -98,8 +98,8 @@ export class InteractiveObject {
     this.label.setVisible(true);
     this.labelBg.setVisible(true);
     
-    // Play hover sound
-    this.scene.sound.play('hover', { volume: 0.3 });
+    // Play hover sound safely
+    this.playSoundSafe('hover', 0.3);
     
     // Add hover effect
     this.hoverTween = this.scene.tweens.add({
@@ -131,8 +131,8 @@ export class InteractiveObject {
   }
 
   onPointerDown(): void {
-    // Play click sound
-    this.scene.sound.play('click', { volume: 0.5 });
+    // Play click sound safely
+    this.playSoundSafe('click', 0.5);
     
     // Execute the interaction callback
     this.interactionCallback();
@@ -144,6 +144,20 @@ export class InteractiveObject {
       duration: 100,
       ease: 'Sine.easeOut'
     });
+  }
+
+  // Add a helper method to safely play sounds
+  private playSoundSafe(key: string, volume: number = 0.5): void {
+    try {
+      if (this.scene.cache.audio.exists(key)) {
+        this.scene.sound.play(key, { volume });
+      } else {
+        // Sound doesn't exist, just skip playing it
+        console.warn(`Sound "${key}" not available for interactive object`);
+      }
+    } catch (e) {
+      console.warn(`Error playing sound "${key}":`, e);
+    }
   }
 
   update(time: number, delta: number): void {
