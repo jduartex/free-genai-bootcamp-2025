@@ -26,38 +26,33 @@ function ChatInterface() {
     setIsLoading(true);
 
     try {
-      // Use relative URL instead of absolute URL to leverage the proxy setting
-      const response = await axios.post('/', { 
-        query: currentInput
+      // Updated for full agent which likely supports proper POST to /api/chat
+      const response = await axios.post('/api/chat', { 
+        messages: [{ role: 'user', content: currentInput }]
       });
       
-      // Process the response based on the minimal agent's response format
-      if (response.data) {
-        let agentResponse;
-        
-        // Handle various response formats from the container
-        if (typeof response.data === 'string') {
-          agentResponse = response.data;
-        } else if (typeof response.data === 'object') {
-          agentResponse = response.data.response || 
-                        response.data.answer || 
-                        response.data.result || 
-                        response.data.message || 
-                        JSON.stringify(response.data);
-        }
-        
+      // Full agent should return a proper response format
+      if (response.data && response.data.response) {
         setMessages(prevMessages => [
           ...prevMessages, 
-          { role: 'agent', content: agentResponse }
+          { role: 'agent', content: response.data.response }
+        ]);
+      } else if (response.data && response.data.message) {
+        setMessages(prevMessages => [
+          ...prevMessages, 
+          { 
+            role: response.data.message.role || 'agent', 
+            content: response.data.message.content 
+          }
         ]);
       } else {
-        throw new Error('Empty response from agent container');
+        throw new Error('Invalid response format');
       }
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages(prevMessages => [
         ...prevMessages, 
-        { role: 'agent', content: `Error: ${error.message}. Make sure the agent container is running properly.` }
+        { role: 'agent', content: `Error: ${error.message}. Make sure the full agent service is running properly.` }
       ]);
     } finally {
       setIsLoading(false);
@@ -68,37 +63,47 @@ function ChatInterface() {
     setInput(e.target.value);
   };
 
-  // Modify the test function to use relative URLs
+  // Updated test function to test full agent endpoints
   const testEndpoints = async () => {
     setIsLoading(true);
     
     try {
-      // Use relative URL instead of absolute URL
-      const rootResponse = await axios.get('/');
-      let containerInfo = "Container is running. ";
+      // Test both health and API endpoints that should be available in full agent
+      const endpoints = [
+        '/health',
+        '/api/health',
+        '/api/chat',
+        '/api/query'
+      ];
+      const results = [];
       
-      // Include the root response status in the information
-      containerInfo += `\n\nRoot endpoint status: ${rootResponse.status}`;
+      for (const endpoint of endpoints) {
+        try {
+          const resp = await axios.get(endpoint);
+          results.push(`✅ GET ${endpoint} - Status: ${resp.status}`);
+        } catch (err) {
+          results.push(`❌ GET ${endpoint} - Error: ${err.response?.status || err.message}`);
+        }
+      }
       
+      // Try a POST request to /api/chat
       try {
-        // Use relative URL instead of absolute URL
-        const testQueryResponse = await axios.post('/', { 
-          query: "This is a test query. Please respond with your API format." 
+        const chatResp = await axios.post('/api/chat', { 
+          messages: [{ role: 'user', content: 'Test message' }] 
         });
-        
-        containerInfo += `\n\nTest query response: ${JSON.stringify(testQueryResponse.data)}`;
+        results.push(`✅ POST /api/chat - Status: ${chatResp.status}`);
       } catch (err) {
-        containerInfo += `\n\nCouldn't test query format: ${err.message}`;
+        results.push(`❌ POST /api/chat - Error: ${err.response?.status || err.message}`);
       }
       
       setMessages(prev => [...prev, { 
         role: 'agent', 
-        content: containerInfo
+        content: `Full Agent API Test Results:\n\n${results.join('\n')}`
       }]);
     } catch (err) {
       setMessages(prev => [...prev, { 
         role: 'agent', 
-        content: 'Could not connect to backend server. Is it running at http://localhost:8000?' 
+        content: 'Could not connect to full agent server. Did you run the launch_agent_service_openai.sh script?' 
       }]);
     } finally {
       setIsLoading(false);

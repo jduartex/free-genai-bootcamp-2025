@@ -1,32 +1,27 @@
 /**
  * Configuration for backend API endpoints
- * Adjust these settings based on your Docker setup
+ * Updated for the full agent setup
  */
 
 // Base URL for the agent container
 export const AGENT_BASE_URL = process.env.REACT_APP_AGENT_URL || 'http://localhost:8000';
 
-// API endpoints based on the containerized minimal agent
+// API endpoints based on the full agent service
 export const API_ENDPOINTS = {
-  chat: '/', // Root endpoint for chat functionality
-  health: '/health', // May not be available in minimal agent
-  query: '/', // Same as chat for minimal agent
+  chat: '/api/chat',    // Full agent uses standard REST endpoint
+  health: '/health',    // Health check endpoint
+  query: '/api/query',  // Query endpoint for document questions
+  upload: '/api/upload' // Upload endpoint for documents
 };
 
-// Format payload for different backends
+// Format payload for the full agent
 export const formatPayload = (message, type = 'chat') => {
-  // Default format for minimal agent container
-  return { query: message };
-  
-  // Uncomment and adjust if using different container:
-  /*
   switch(type) {
     case 'chat':
-      return { message: message };
+      return { messages: [{ role: 'user', content: message }] };
     case 'query':
       return { query: message };
     default:
       return { message: message };
   }
-  */
 };
