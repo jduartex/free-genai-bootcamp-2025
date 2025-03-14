@@ -1,0 +1,25 @@
+# Core Dependencies
+fastapi==0.104.1
+uvicorn==0.23.2
+python-dotenv==1.0.0
+pydantic==2.4.2
+
+# LLM and Embeddings
+langchain==0.0.335
+openai==1.2.0
+
+# Vector Database
+chromadb==0.4.18
+
+# Document Processing
+pypdf2==3.0.1
+
+# Testing
+pytest==7.4.3
+
+# Logging and Monitoring
+python-json-logger==2.0.7
+
+# Web Utilities
+websockets==11.0.3
+httpx==0.24.1

@@ -1,0 +1,189 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+venv/
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn
+.yarn-integrity
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.example
+*.env
+
+# Editor/IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Application specific
+/data/*
+!/data/.gitkeep
+/db/*
+!/db/.gitkeep
+/logs/*
+!/logs/.gitkeep
+GenAIComps/
+
+# Docker
+.docker/
+
+# SQLite database
+*.sqlite
+*.sqlite3
+*.db
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# API keys and secrets
+*.pem
+
+# Environment and configuration
+.env
+.env.*
+venv/
+env/
+*.pyc
+__pycache__/
+.python-version
+
+# Development folders
+GenAIComps/
+notebooks/
+.ipynb_checkpoints/
+
+# Generated and temporary files
+data/minimal/
+temp/
+.DS_Store
+*.swp
+*.swo
+logs/
+db/
+!db/.gitkeep
+
+# Dependencies
+node_modules/
+.npm
+package-lock.json
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Testing
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Documentation builds
+docs/_build/
+site/
+
+# Additional Mac specific
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+*.icloud
+
+# Virtual environment extras
+.direnv
+.env-*
+*.virtualenv
+
+# Cache and temp files
+*.cache
+.sass-cache/
+.eslintcache
+*.log.*
+.pytest-cache/
+
+# Package managers
+yarn.lock
+poetry.lock
+Pipfile.lock
+.pdm.toml
+pdm.lock
+
+# Debug files
+.debug
+debug.log
+debug/
+
+# Local dev databases
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+
+# Local certificates
+*.crt
+*.key
+*.csr
+*.pem.key

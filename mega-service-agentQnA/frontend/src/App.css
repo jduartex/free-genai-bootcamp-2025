@@ -1,0 +1,77 @@
+.App {
+  text-align: center;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.App-header {
+  background-color: #282c34;
+  padding: 20px;
+  color: white;
+  margin-bottom: 20px;
+  border-radius: 4px;
+}
+
+.tabs {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.tabs button {
+  background-color: #4a5568;
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  margin: 0 5px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.tabs button.active {
+  background-color: #63b3ed;
+}
+
+footer {
+  margin-top: 30px;
+  padding: 10px;
+  color: #666;
+  border-top: 1px solid #ddd;
+}
+
+main {
+  flex: 1;
+  padding: 0 20px;
+  min-height: 400px;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+}
+
+.upload-section {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.chat-section {
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.8rem;
+}

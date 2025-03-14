@@ -1,0 +1,14 @@
+services:
+  agentqna:
+    build: .
+    platform: linux/arm64
+    ports:
+      - "8080:8000"  # Backend API - changed from 8000:8000 to avoid port conflict
+      - "3030:3000"  # Frontend - changed from 3000:3000 to avoid potential conflicts
+    volumes:
+      - ./data:/app/data  # Document storage
+      - ./db:/app/db      # Vector database persistence
+      - ./logs:/app/logs  # Logs
+    env_file:
+      - .env
+    restart: unless-stopped
