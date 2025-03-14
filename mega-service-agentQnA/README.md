@@ -357,3 +357,128 @@ When contributing to this repository, please note:
 * Never commit API keys, credentials, or `.env` files
 * Keep data files out of version control unless they are small example files
 * Commit documentation updates along with code changes
+
+# CRAG Minimal Agent
+
+This project provides a minimal agent that connects to the CRAG Mock API, with domain-specific routing capabilities.
+
+## Overview
+
+The minimal agent is a FastAPI application that serves as an intermediary between users and the CRAG Mock API. It provides:
+
+- A simple web interface for interactions
+- Domain-specific query routing
+- Automatic API endpoint discovery
+- Graceful handling of API initialization period
+
+## Quick Start
+
+The easiest way to get started is to use the all-in-one setup script:
+
+```bash
+./start_and_configure.sh
+```
+
+This script will:
+1. Create a dedicated Docker network
+2. Start the CRAG Mock API container
+3. Build and start the minimal agent container
+4. Install the domain adapter for intelligent query routing
+5. Configure the system for optimal functionality
+
+Once complete, access the web interface at: http://localhost:8000
+
+## Components
+
+### Minimal Agent
+
+A lightweight FastAPI application that provides:
+- Web interface for user interactions
+- REST API endpoint for chat functionality
+- Integration with the CRAG domain adapter
+
+### CRAG Mock API
+
+A containerized version of the CRAG API that provides:
+- Domain-specific endpoints for querying information
+- Multiple domains: movie, finance, music, sports, and general knowledge
+- OpenAPI documentation for endpoint discovery
+
+### Domain Adapter
+
+An intelligent middleware that:
+- Routes queries to the appropriate domain-specific endpoints
+- Determines the domain of each query using keyword analysis
+- Formats structured responses into readable text
+- Handles API initialization and connection issues
+
+## Available Scripts
+
+Several utility scripts are available to help manage the system:
+
+- `start_and_configure.sh`: Complete setup and configuration
+- `fix_domain_adapter.sh`: Fix issues with domain adapter installation
+- `fix_indentation.sh`: Fix indentation issues in code files
+- `show_mock_api_status.sh`: Check status of the Mock API
+- `container_dashboard.sh`: View status of all containers
+- `discover_correct_api_endpoints.sh`: Find working API endpoints
+- `test_valid_endpoints.sh`: Test API endpoints for validity
+- `fix_mock_api_crashes.sh`: Recover from Mock API container crashes
+
+## Common Issues and Solutions
+
+### Mock API Initialization
+
+The CRAG Mock API takes several minutes to fully initialize. During this period, you may see error messages about the API not being available. Please be patient.
+
+**Solution**: Wait for 5-10 minutes and try again. You can monitor initialization with:
+```bash
+docker logs -f crag-mock-api
+```
+
+### Indentation Errors
+
+If you encounter indentation errors when updating code:
+
+**Solution**: Run the indentation fixer:
+```bash
+./fix_indentation.sh
+```
+
+### API Connection Issues
+
+If the minimal agent cannot connect to the Mock API:
+
+**Solution**: Check network connectivity and run:
+```bash
+./fix_docker_networking.sh
+```
+
+### Domain Adapter Not Working
+
+If the domain adapter isn't routing queries correctly:
+
+**Solution**: Reinstall the domain adapter:
+```bash
+./fix_domain_adapter.sh
+```
+
+## Testing the System
+
+You can test the system using curl:
+
+```bash
+curl -s -X POST \
+     -H "Content-Type: application/json" \
+     -d '{"message":"Who directed the movie Inception?"}' \
+     http://localhost:8000/api/chat | jq
+```
+
+Or use the web interface at: http://localhost:8000
+
+## Monitoring
+
+To monitor the system:
+- Check minimal agent logs: `docker logs minimal-agent`
+- Check Mock API logs: `docker logs crag-mock-api`
+- View container status: `./container_dashboard.sh`
