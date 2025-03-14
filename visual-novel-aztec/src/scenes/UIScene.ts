@@ -433,7 +433,7 @@ export class UIScene extends Phaser.Scene {
     ).setOrigin(0.5);
     
     // Display inventory items or empty message
-    let inventoryContent;
+    let inventoryContent: Phaser.GameObjects.Text | Phaser.GameObjects.Group;
     
     if (this.inventoryItems.length === 0) {
       inventoryContent = this.add.text(
@@ -455,7 +455,9 @@ export class UIScene extends Phaser.Scene {
       const startX = this.cameras.main.width / 2 - ((itemSize + itemSpacing) * Math.min(itemsPerRow, this.inventoryItems.length) / 2) + (itemSize / 2);
       const startY = this.cameras.main.height / 2 - 50;
       
+      // Create a group for inventory items
       inventoryContent = this.add.group();
+      const group = inventoryContent as Phaser.GameObjects.Group;
       
       this.inventoryItems.forEach((item, index) => {
         const row = Math.floor(index / itemsPerRow);
@@ -487,9 +489,10 @@ export class UIScene extends Phaser.Scene {
           }
         ).setOrigin(0.5);
         
-        inventoryContent.add(itemBg);
-        inventoryContent.add(itemImage);
-        inventoryContent.add(itemName);
+        // Add each element to the group
+        group.add(itemBg);
+        group.add(itemImage);
+        group.add(itemName);
       });
     }
     

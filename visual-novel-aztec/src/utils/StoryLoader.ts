@@ -16,6 +16,9 @@ export async function loadStoryData(): Promise<void> {
   try {
     // Load mappings first
     const mappingsResponse = await fetch('/story/mappings.json');
+    if (!mappingsResponse.ok) {
+      throw new Error(`Failed to load mappings: ${mappingsResponse.statusText}`);
+    }
     const mappings = await mappingsResponse.json();
     StoryStore.mappings = mappings;
 
@@ -24,6 +27,9 @@ export async function loadStoryData(): Promise<void> {
     
     for (const sceneName of scenesList) {
       const sceneResponse = await fetch(`/story/${sceneName}.json`);
+      if (!sceneResponse.ok) {
+        throw new Error(`Failed to load scene ${sceneName}: ${sceneResponse.statusText}`);
+      }
       const sceneData = await sceneResponse.json();
       StoryStore.scenes.set(sceneName, sceneData);
     }

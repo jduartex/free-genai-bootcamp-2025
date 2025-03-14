@@ -3,10 +3,10 @@ import { loadGameProgress } from '../utils/StoryLoader';
 
 export class MenuScene extends Phaser.Scene {
   private titleText!: Phaser.GameObjects.Text;
-  private startButton!: Phaser.GameObjects.Image;
-  private continueButton!: Phaser.GameObjects.Image;
-  private optionsButton!: Phaser.GameObjects.Image;
-  private creditsButton!: Phaser.GameObjects.Image;
+  private startButton!: Phaser.GameObjects.Container; // Fixed type
+  private continueButton!: Phaser.GameObjects.Container; // Fixed type
+  private optionsButton!: Phaser.GameObjects.Container; // Fixed type
+  private creditsButton!: Phaser.GameObjects.Container; // Fixed type
   private backgroundMusic!: Phaser.Sound.BaseSound;
 
   constructor() {
@@ -126,9 +126,26 @@ export class MenuScene extends Phaser.Scene {
       ease: 'Sine.easeInOut'
     });
 
-    // Play background music
-    this.backgroundMusic = this.sound.add('theme', { loop: true, volume: 0.5 });
-    this.backgroundMusic.play();
+    // Play background music - adding safety checks
+    try {
+      if (this.cache.audio.exists('theme')) {
+        this.backgroundMusic = this.sound.add('theme', { loop: true, volume: 0.5 });
+        if (this.backgroundMusic) {
+          try {
+            // The play method returns a boolean, not a Promise, so we can't use .catch()
+            this.backgroundMusic.play();
+          } catch (error: unknown) {
+            console.warn('Error playing theme music:', error);
+          }
+        }
+      } else {
+        console.warn('Theme music not found in cache, using silent placeholder');
+        // Create a silent background music object
+        this.backgroundMusic = this.sound.add('click', { loop: true, volume: 0 });
+      }
+    } catch (error: unknown) {
+      console.error('Failed to create background music:', error);
+    }
   }
 
   private createButton(
@@ -149,7 +166,15 @@ export class MenuScene extends Phaser.Scene {
       .on('pointerover', () => {
         bg.setTexture('button-hover');
         buttonText.setScale(1.1);
-        this.sound.play('click', { volume: 0.5 });
+        
+        // Play sound only if it exists and is properly loaded
+        if (this.sound.get('click') && this.cache.audio.exists('click')) {
+          try {
+            this.sound.play('click', { volume: 0.5 });
+          } catch (e) {
+            console.warn('Could not play sound: click', e);
+          }
+        }
       })
       .on('pointerout', () => {
         bg.setTexture('button');
@@ -167,14 +192,32 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private startGame(): void {
-    this.backgroundMusic.stop();
+    // Stop background music safely
+    if (this.backgroundMusic) {
+      try {
+        if (this.backgroundMusic.isPlaying) {
+          this.backgroundMusic.stop();
+        }
+      } catch (e) {
+        console.warn('Error stopping background music:', e);
+      }
+    }
     this.scene.start('GameScene', { sceneId: 'scene001', dialogId: 'x00' });
   }
 
   private continueGame(): void {
     const savedGame = loadGameProgress();
     if (savedGame) {
-      this.backgroundMusic.stop();
+      // Stop background music safely
+      if (this.backgroundMusic) {
+        try {
+          if (this.backgroundMusic.isPlaying) {
+            this.backgroundMusic.stop();
+          }
+        } catch (e) {
+          console.warn('Error stopping background music:', e);
+        }
+      }
       this.scene.start('GameScene', { 
         sceneId: savedGame.sceneId, 
         dialogId: savedGame.dialogId,

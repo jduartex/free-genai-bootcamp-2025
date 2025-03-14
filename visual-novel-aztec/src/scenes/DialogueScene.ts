@@ -7,7 +7,7 @@ export class DialogueScene extends Phaser.Scene {
   private characterNameText!: Phaser.GameObjects.Text;
   private dialogText!: Phaser.GameObjects.Text;
   private englishText!: Phaser.GameObjects.Text;
-  private characterPortrait!: Phaser.GameObjects.Sprite | Phaser.GameObjects.Spine;
+  private characterPortrait!: Phaser.GameObjects.Sprite; // Fixed: Removed Spine type
   private continueIndicator!: Phaser.GameObjects.Text;
   private choiceButtons: Phaser.GameObjects.Container[] = [];
   private currentEntry!: DialogEntry;
@@ -180,46 +180,22 @@ export class DialogueScene extends Phaser.Scene {
     const x = this.cameras.main.width * 0.15;
     const y = this.cameras.main.height * 0.4;
     
-    if (this.useSpineAnimations && 
-        (this.currentEntry.speakerId === 'tlaloc' || 
-         this.currentEntry.speakerId === 'citlali')) {
-      
-      // Use spine animation if available
-      const spineKey = `${this.currentEntry.speakerId}-spine`;
-      
-      this.characterPortrait = this.add.spine(
-        x, y, spineKey, 'idle', true
-      ) as Phaser.GameObjects.Spine;
-      
-      // Play talking animation
-      if (this.characterPortrait.findAnimation('talk')) {
-        this.characterPortrait.play('talk', true);
-        
-        // Switch back to idle when dialog finishes
-        this.events.once('typingComplete', () => {
-          if (this.characterPortrait && this.characterPortrait.findAnimation('idle')) {
-            (this.characterPortrait as Phaser.GameObjects.Spine).play('idle', true);
-          }
-        });
-      }
-      
-    } else {
-      // Fall back to static image
-      this.characterPortrait = this.add.sprite(
-        x, y, this.currentEntry.speakerId
-      ).setOrigin(0.5, 0.5)
-      .setDisplaySize(300, 400);
-      
-      // Add a simple animation to make the static image less static
-      this.tweens.add({
-        targets: this.characterPortrait,
-        y: y - 5,
-        duration: 2000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
-    }
+    // Note: We're disabling spine animations for now until we add the plugin properly
+    // Always use static image
+    this.characterPortrait = this.add.sprite(
+      x, y, this.currentEntry.speakerId
+    ).setOrigin(0.5, 0.5)
+    .setDisplaySize(300, 400);
+    
+    // Add a simple animation to make the static image less static
+    this.tweens.add({
+      targets: this.characterPortrait,
+      y: y - 5,
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
   }
 
   private typeWriterEffect(text: string): void {
@@ -233,7 +209,7 @@ export class DialogueScene extends Phaser.Scene {
         i++;
         
         // Play typing sound occasionally (not for every character)
-        if (i % 3 === 0) {
+        if (i % 3 === 0 && this.sound.get('click')) {
           this.sound.play('click', { volume: 0.1 });
         }
         

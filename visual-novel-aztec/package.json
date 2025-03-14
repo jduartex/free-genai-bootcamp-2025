@@ -4,8 +4,9 @@
   "description": "An educational Japanese language learning visual novel with escape room mechanics",
   "main": "index.js",
   "scripts": {
+    "setup": "node src/utils/CopyJsonFiles.js",
     "build": "webpack --config webpack.config.js",
-    "start": "webpack-dev-server --config webpack.config.js --open",
+    "start": "npm run setup && webpack-dev-server --config webpack.config.js --open",
     "test": "jest",
     "lint": "eslint . --ext .ts"
   },
@@ -21,7 +22,7 @@
   "license": "MIT",
   "dependencies": {
     "phaser": "^3.60.0",
-    "spine-ts": "^4.1.0",
+    "@esotericsoftware/spine-phaser": "^4.2.15",
     "webfontloader": "^1.6.28"
   },
   "devDependencies": {

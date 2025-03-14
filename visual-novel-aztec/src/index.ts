@@ -6,6 +6,11 @@ import { MenuScene } from './scenes/MenuScene';
 import { GameScene } from './scenes/GameScene';
 import { UIScene } from './scenes/UIScene';
 import { DialogueScene } from './scenes/DialogueScene';
+import { CreditsScene } from './scenes/CreditsScene';
+
+// Note: To properly use Spine animations, we would need to set up the Spine plugin
+// For now, we're using static images instead
+// This will be added in a future update when we have proper Spine assets
 
 // Load required fonts
 WebFontLoader.load({
@@ -32,7 +37,8 @@ function startGame(): void {
       MenuScene, 
       GameScene,
       DialogueScene,
-      UIScene
+      UIScene,
+      CreditsScene
     ]
   });
 
