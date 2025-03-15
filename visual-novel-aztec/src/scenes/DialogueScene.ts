@@ -8,6 +8,11 @@ interface DialogSceneData {
   storyData: StoryData;
 }
 
+interface Character {
+  sprite?: Phaser.GameObjects.Sprite;
+  // Add any other character properties you need
+}
+
 export class DialogueScene extends Phaser.Scene {
   private dialogBox!: Phaser.GameObjects.Image;
   private characterNameText!: Phaser.GameObjects.Text;
@@ -23,6 +28,10 @@ export class DialogueScene extends Phaser.Scene {
   private showEnglish: boolean = true;
   private dialogSound!: Phaser.Sound.BaseSound;
   private useSpineAnimations: boolean = false;
+  private speakingTween: Phaser.Tweens.Tween | undefined;
+  private speakingIndicator: Phaser.GameObjects.Arc | undefined;
+  private audioWaveform: Phaser.GameObjects.Rectangle[] | undefined;
+  private characters: Map<string, Character> = new Map(); // Add characters Map
   
   constructor() {
     super({ key: 'DialogueScene' });
@@ -169,6 +178,9 @@ export class DialogueScene extends Phaser.Scene {
     
     // Setup vocabulary tooltip system
     this.setupVocabularyTooltips();
+    
+    // Create audio waveform visualization
+    this.createAudioWaveform();
     
     // Load and play audio if available
     this.loadAndPlayAudio();
@@ -460,6 +472,9 @@ export class DialogueScene extends Phaser.Scene {
     console.log(`🔍 Trying alternative audio paths for: ${audioKey}`);
     let loadedAny = false;
     
+    // First, create a silent audio placeholder to ensure something will work
+    this.createSilentAudioPlaceholder(audioKey);
+    
     alternatives.forEach((path, index) => {
       // Create a unique key for each attempt
       const altKey = `${audioKey}_alt${index}`;
@@ -484,6 +499,145 @@ export class DialogueScene extends Phaser.Scene {
     });
   }
   
+  // Create a silent audio placeholder that will decode successfully
+  private createSilentAudioPlaceholder(audioKey: string): void {
+    try {
+      // This is a valid base64-encoded silent MP3 file (0.5 seconds)
+      const silentAudioBase64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADQgD///////////////////////////////////////////8AAAA8TEFNRTMuMTAwAQAAAAAAAAAAABSAJAJAQgAAgAAAA0L2YLwxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
+      
+      // Create a temporary Audio element from the base64 string
+      const tempAudio = new Audio(silentAudioBase64);
+      
+      // Force a decode of the audio to create a valid blob
+      tempAudio.load();
+      
+      // Add directly to the cache
+      const cachedAudio = this.cache.audio.get(audioKey);
+      if (!cachedAudio) {
+        // If we could add to the cache directly, we would
+        // For now, load the base64 data
+        this.load.audio(audioKey, silentAudioBase64);
+        this.load.start();
+        console.log(`📝 Created silent placeholder for ${audioKey}`);
+      }
+    } catch (error) {
+      console.error(`❌ Could not create silent audio:`, error);
+    }
+  }
+
+  private playDialogueAudio(key: string): void {
+    try {
+      // Stop any currently playing dialogue audio
+      if (this.dialogSound && this.dialogSound.isPlaying) {
+        this.dialogSound.stop();
+      }
+      
+      // Check if audio actually exists before attempting to play
+      if (!this.cache.audio.exists(key)) {
+        console.warn(`⚠️ Cannot play audio that doesn't exist in cache: ${key}`);
+        // Create a silent placeholder before giving up
+        this.createSilentAudioPlaceholder(key);
+        this.time.delayedCall(100, () => {
+          if (this.cache.audio.exists(key)) {
+            this.continuePlayingDialogueAudio(key);
+          } else {
+            console.error(`❌ Still can't play audio: ${key}`);
+          }
+        });
+        return;
+      }
+      
+      this.continuePlayingDialogueAudio(key);
+    } catch (error) {
+      console.error(`❌ Error in playDialogueAudio:`, error);
+      // Still display text even if audio fails
+      if (this.characterPortrait && this.currentEntry.speakerId !== 'narrator') {
+        // Fix: Pass the character ID instead of the sprite object
+        this.addSpeakingAnimation(this.currentEntry.speakerId);
+      }
+      this.time.delayedCall(5000, () => {
+        if (this.characterPortrait) {
+          this.stopSpeakingAnimation();
+        }
+      });
+    }
+  }
+
+  private continuePlayingDialogueAudio(key: string): void {
+    try {
+      // Play the new dialogue audio with additional error handling
+      console.log(`🔊 Attempting to play audio: ${key}`);
+      
+      try {
+        this.dialogSound = this.sound.add(key, { volume: 1.0 });
+      } catch (addError) {
+        console.error(`❌ Failed to add sound: ${key}`, addError);
+        return;
+      }
+      
+      // Add visual feedback when audio is playing
+      if (this.characterPortrait && this.currentEntry.speakerId !== 'narrator') {
+        this.addSpeakingAnimation(this.currentEntry.speakerId);
+      }
+      
+      this.dialogSound.once('play', () => {
+        console.log(`✅ Audio playing: ${key}`);
+        // Start audio visualization
+        this.showAudioWaveform(true);
+      });
+      
+      this.dialogSound.once('complete', () => {
+        console.log(`✅ Audio completed: ${key}`);
+        // Stop speaking animation
+        if (this.characterPortrait) {
+          this.stopSpeakingAnimation();
+        }
+        // Hide audio visualization
+        this.showAudioWaveform(false);
+      });
+      
+      this.dialogSound.once('loaderror', (error: any) => {
+        console.error(`❌ Failed to play audio: ${key}`, error);
+        // Stop speaking animation on error
+        if (this.characterPortrait) {
+          this.stopSpeakingAnimation();
+        }
+      });
+      
+      // Verify sound was added successfully
+      if (!this.dialogSound) {
+        console.error(`❌ Failed to add sound: ${key}`);
+        return;
+      }
+      
+      // Force a user interaction for mobile browsers
+      let success = false;
+      try {
+        success = this.dialogSound.play();
+      } catch (playError) {
+        console.error(`❌ Exception during play: ${key}`, playError);
+      }
+      
+      console.log(`🎵 Audio play result: ${success}`);
+      
+      // Still continue even if audio failed
+      this.events.emit('typingComplete');
+      
+      // Sync text typing with audio if timing data available
+      if (this.currentEntry.words && this.currentEntry.words.length > 0) {
+        this.syncTextWithAudio(this.dialogSound);
+      }
+    } catch (error) {
+      console.error(`❌ Error playing dialogue audio:`, error);
+      // Stop speaking animation on error
+      if (this.characterPortrait) {
+        this.stopSpeakingAnimation();
+      }
+      // Still emit the typing complete event so the game continues
+      this.events.emit('typingComplete');
+    }
+  }
+
   private loadWithSoundManager(audioKey: string): void {
     try {
       // Get SoundManager instance if available - fixing the incorrect access
@@ -508,50 +662,6 @@ export class DialogueScene extends Phaser.Scene {
     } catch (error) {
       console.error(`❌ Error using SoundManager:`, error);
       this.generateAndLoadAudio(audioKey, this.currentEntry.japanese);
-    }
-  }
-
-  private playDialogueAudio(key: string): void {
-    try {
-      // Stop any currently playing dialogue audio
-      if (this.dialogSound && this.dialogSound.isPlaying) {
-        this.dialogSound.stop();
-      }
-      
-      // Check if audio actually exists before attempting to play
-      if (!this.cache.audio.exists(key)) {
-        console.warn(`⚠️ Cannot play audio that doesn't exist in cache: ${key}`);
-        return;
-      }
-      
-      // Play the new dialogue audio with additional error handling
-      console.log(`🔊 Attempting to play audio: ${key}`);
-      this.dialogSound = this.sound.add(key, { volume: 1.0 });
-      
-      this.dialogSound.once('play', () => {
-        console.log(`✅ Audio playing: ${key}`);
-      });
-      
-      this.dialogSound.once('loaderror', (error: any) => {
-        console.error(`❌ Failed to play audio: ${key}`, error);
-      });
-      
-      // Verify sound was added successfully
-      if (!this.dialogSound) {
-        console.error(`❌ Failed to add sound: ${key}`);
-        return;
-      }
-      
-      // Force a user interaction for mobile browsers
-      const success = this.dialogSound.play();
-      console.log(`🎵 Audio play result: ${success}`);
-      
-      // Sync text typing with audio if timing data available
-      if (this.currentEntry.words && this.currentEntry.words.length > 0) {
-        this.syncTextWithAudio(this.dialogSound);
-      }
-    } catch (error) {
-      console.error(`❌ Error playing dialogue audio:`, error);
     }
   }
 
@@ -597,5 +707,174 @@ export class DialogueScene extends Phaser.Scene {
         this.dialogText.text += word;
       });
     });
+  }
+
+  /**
+   * Adds a speaking animation to the character with the given ID
+   */
+  private addSpeakingAnimation(characterId: string): void {
+    try {
+      // For the simple case, store the character portrait in the characters map if not already done
+      if (!this.characters.has(characterId) && this.characterPortrait) {
+        this.characters.set(characterId, { sprite: this.characterPortrait });
+      }
+      
+      // Check if we have a valid animation system first
+      const character = this.characters.get(characterId);
+      
+      // First attempt: Try to use the character sprite's animation if it exists
+      if (character?.sprite?.anims && typeof character.sprite.anims.play === 'function') {
+        // Check if the animation exists before playing it
+        if (character.sprite.anims.animationManager.exists(`${characterId}-speaking`)) {
+          character.sprite.anims.play(`${characterId}-speaking`, true);
+          return;
+        }
+      }
+      
+      // Second attempt: Try the characterPortrait directly if it exists
+      if (this.characterPortrait?.anims && typeof this.characterPortrait.anims.play === 'function') {
+        // Check if the animation exists before playing it
+        if (this.characterPortrait.anims.animationManager.exists(`${characterId}-speaking`)) {
+          this.characterPortrait.anims.play(`${characterId}-speaking`, true);
+          return;
+        }
+      }
+      
+      // Fallback: Create a simple speaking effect using tweens if no animation is available
+      if (this.characterPortrait && !this.speakingTween) {
+        this.speakingTween = this.tweens.add({
+          targets: this.characterPortrait,
+          scaleX: this.characterPortrait.scaleX * 1.02,
+          scaleY: this.characterPortrait.scaleY * 1.02,
+          duration: 300,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+        
+        // Also create a simple speaking indicator if it doesn't exist
+        if (!this.speakingIndicator) {
+          const x = this.characterPortrait.x + 50;
+          const y = this.characterPortrait.y - 100;
+          this.speakingIndicator = this.add.circle(x, y, 10, 0xffffff, 0.7);
+          // Make it pulse
+          this.tweens.add({
+            targets: this.speakingIndicator,
+            alpha: 0.3,
+            scale: 1.3,
+            duration: 600,
+            yoyo: true,
+            repeat: -1
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error in addSpeakingAnimation:", error);
+      // Ensure we don't crash the game for animation issues
+    }
+  }
+
+  /**
+   * Stops the speaking animation for the specified character or all characters
+   */
+  private stopSpeakingAnimation(characterId?: string): void {
+    try {
+      // First, stop any tween animation if it exists
+      if (this.speakingTween) {
+        this.speakingTween.stop();
+        this.speakingTween = undefined;
+        
+        // Reset character portrait scale if needed
+        if (this.characterPortrait) {
+          this.characterPortrait.setScale(1); // Reset to normal scale
+        }
+      }
+      
+      // Hide speaking indicator if it exists
+      if (this.speakingIndicator) {
+        this.speakingIndicator.setVisible(false);
+      }
+      
+      // Now try to stop sprite animations
+      if (characterId) {
+        const character = this.characters.get(characterId);
+        if (character?.sprite?.anims && typeof character.sprite.anims.stop === 'function') {
+          character.sprite.anims.stop();
+        }
+      } else {
+        // Stop animations for all characters
+        this.characters.forEach((character: Character) => {
+          if (character?.sprite?.anims && typeof character.sprite.anims.stop === 'function') {
+            character.sprite.anims.stop();
+          }
+        });
+        
+        // Also stop the main character portrait animation if it exists
+        if (this.characterPortrait?.anims && typeof this.characterPortrait.anims.stop === 'function') {
+          this.characterPortrait.anims.stop();
+        }
+      }
+    } catch (error) {
+      console.error("Error in stopSpeakingAnimation:", error);
+      // Ensure we don't crash the game for animation issues
+    }
+  }
+
+  /**
+   * Creates the audio waveform visualization elements
+   */
+  private createAudioWaveform(): void {
+    // Clean up existing waveform if any
+    if (this.audioWaveform) {
+      this.audioWaveform.forEach(rect => rect.destroy());
+    }
+    
+    // Create new waveform visualization
+    const numBars = 5;
+    const barWidth = 4;
+    const barSpacing = 4;
+    const barHeight = 20;
+    const startX = this.cameras.main.width - 50;
+    const startY = this.cameras.main.height - 80;
+    
+    this.audioWaveform = [];
+    
+    for (let i = 0; i < numBars; i++) {
+      const x = startX + i * (barWidth + barSpacing);
+      const rect = this.add.rectangle(x, startY, barWidth, barHeight, 0xffffff, 0.7);
+      rect.setVisible(false);
+      this.audioWaveform.push(rect);
+    }
+  }
+
+  /**
+   * Shows or hides the audio waveform visualization
+   */
+  private showAudioWaveform(visible: boolean): void {
+    if (this.audioWaveform && this.audioWaveform.length > 0) {
+      // Show/hide all bars
+      this.audioWaveform.forEach(rect => rect.setVisible(visible));
+      
+      // If showing, create animation effect
+      if (visible) {
+        this.audioWaveform.forEach((rect, index) => {
+          // Create a unique animation for each bar
+          this.tweens.add({
+            targets: rect,
+            scaleY: Math.random() * 1.5 + 0.5, // Random height between 0.5 and 2.0
+            duration: 300 + Math.random() * 200, // Random duration between 300-500ms
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut',
+            delay: index * 50 // Stagger the animations
+          });
+        });
+      } else {
+        // Stop all animations when hiding
+        this.audioWaveform.forEach(rect => {
+          this.tweens.killTweensOf(rect);
+        });
+      }
+    }
   }
 }

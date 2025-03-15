@@ -227,8 +227,8 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private showOptions(): void {
-    // In a more complete implementation, this would open an options menu
-    console.log('Options menu');
+    // Start the settings scene
+    this.scene.start('SettingsScene', { returnScene: 'MenuScene' });
   }
 
   private showCredits(): void {

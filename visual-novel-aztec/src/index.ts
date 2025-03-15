@@ -1,12 +1,14 @@
 import Phaser from 'phaser';
 import WebFontLoader from 'webfontloader';
 import { GameConfig } from './config/GameConfig';
+import { PreloadScene } from './scenes/PreloadScene';
 import { LoadScene } from './scenes/LoadScene';
 import { MenuScene } from './scenes/MenuScene';
 import { GameScene } from './scenes/GameScene';
 import { UIScene } from './scenes/UIScene';
 import { DialogueScene } from './scenes/DialogueScene';
 import { CreditsScene } from './scenes/CreditsScene';
+import { SettingsScene } from './scenes/SettingsScene';
 import { SoundManager } from './utils/SoundManager';
 
 // Note: To properly use Spine animations, we would need to set up the Spine plugin
@@ -34,12 +36,14 @@ function startGame(): void {
   const game = new Phaser.Game({
     ...GameConfig,
     scene: [
+      PreloadScene,  // Start with PreloadScene for audio initialization
       LoadScene, 
       MenuScene, 
       GameScene,
       DialogueScene,
       UIScene,
-      CreditsScene
+      CreditsScene,
+      SettingsScene
     ]
   });
   
