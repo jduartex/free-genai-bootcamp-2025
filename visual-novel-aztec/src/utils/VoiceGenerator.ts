@@ -2,6 +2,7 @@ import AWS from 'aws-sdk';
 import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
+import { fileURLToPath } from 'url';
 
 const writeFile = promisify(fs.writeFile);
 
@@ -40,7 +41,13 @@ export class VoiceGenerator {
       const data = await this.polly.synthesizeSpeech(params).promise();
       
       if (data.AudioStream instanceof Buffer) {
-        const outputPath = path.resolve(__dirname, `../../public/assets/audio/dialogue/${dialogId}.mp3`);
+        // Fix: Use import.meta.url instead of __dirname in ESM
+        const moduleURL = import.meta.url;
+        const modulePath = fileURLToPath(moduleURL);
+        const moduleDir = path.dirname(modulePath);
+        
+        const outputPath = path.resolve(moduleDir, `../../public/assets/audio/dialogue/${dialogId}.mp3`);
+        
         // Ensure directory exists
         fs.mkdirSync(path.dirname(outputPath), { recursive: true });
         

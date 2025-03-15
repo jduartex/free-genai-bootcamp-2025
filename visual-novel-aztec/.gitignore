@@ -40,12 +40,19 @@ logs
 /temp
 /assets/raw
 /audio/raw
+
+# Audio files - ignore all by default
 *.mp3
 *.wav
 *.ogg
-!public/**/*.mp3
-!public/**/*.wav
-!public/**/*.ogg
+
+# AI-generated audio files
+/public/assets/audio/dialogue/*.mp3
+
+# Exception: Keep essential audio assets in version control
+!public/assets/audio/music/*.mp3
+!public/assets/audio/sfx/*.mp3
+!public/assets/audio/ui/*.mp3
 
 # Local development files
 local.settings.json
