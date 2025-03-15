@@ -1,14 +1,10 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { CleanWebpackPlugin } from 'clean-webpack-plugin';
-import HtmlWebpackPlugin from 'html-webpack-plugin';
-import CopyWebpackPlugin from 'copy-webpack-plugin';
-import webpack from 'webpack'; // Import webpack
+const path = require('path');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const webpack = require('webpack');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-export default {
+module.exports = {
   mode: 'development',
   entry: './src/index.ts',
   output: {
@@ -29,15 +25,18 @@ export default {
     ]
   },
   resolve: {
-    extensions: ['.ts', '.js'],
+    extensions: ['.ts', '.tsx', '.js'],
     alias: {
       '@': path.resolve(__dirname, 'src'),
       'process': 'process/browser'
     },
     fallback: {
+      "os": false,
+      "crypto": false,
       "fs": false,
-      "path": false,
-      "url": false
+      "path": require.resolve("path-browserify"),
+      "stream": require.resolve("stream-browserify"),
+      "buffer": require.resolve("buffer/")
     }
   },
   devServer: {
@@ -68,6 +67,10 @@ export default {
     }),
     new webpack.ProvidePlugin({
       process: 'process/browser'
+    }),
+    // Add buffer plugin for browser compatibility
+    new webpack.ProvidePlugin({
+      Buffer: ['buffer', 'Buffer'],
     }),
     // Add a plugin to define process.env
     new webpack.DefinePlugin({

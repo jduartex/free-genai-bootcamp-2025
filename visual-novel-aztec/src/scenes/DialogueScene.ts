@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { DialogEntry, DialogChoice, StoryData } from '../types/StoryTypes';
 import { getCharacterName } from '../utils/StoryLoader';
 import { VoiceGenerator } from '../utils/VoiceGenerator'; // Import VoiceGenerator
+import { UIGenerator } from '../utils/UIGenerator';
+import { ImageVariationGenerator } from '../utils/ImageVariationGenerator';
 
 interface DialogSceneData {
   dialogId: string;
@@ -32,6 +34,8 @@ export class DialogueScene extends Phaser.Scene {
   private speakingIndicator: Phaser.GameObjects.Arc | undefined;
   private audioWaveform: Phaser.GameObjects.Rectangle[] | undefined;
   private characters: Map<string, Character> = new Map(); // Add characters Map
+  private uiGenerator!: UIGenerator;
+  private imageVariationGenerator!: ImageVariationGenerator;
   
   constructor() {
     super({ key: 'DialogueScene' });
@@ -50,6 +54,10 @@ export class DialogueScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Initialize Bedrock utilities
+    this.uiGenerator = UIGenerator.getInstance();
+    this.imageVariationGenerator = ImageVariationGenerator.getInstance();
+
     // Create dialog box background
     this.dialogBox = this.add.image(
       this.cameras.main.width / 2, 
@@ -58,6 +66,9 @@ export class DialogueScene extends Phaser.Scene {
     ).setOrigin(0.5, 0.5)
     .setDisplaySize(this.cameras.main.width - 40, 200);
     
+    // Use Bedrock to generate a themed dialog box
+    this.generateThemedDialogBox("Aztec stone with hieroglyphics");
+
     // Create character name
     const speakerName = getCharacterName(this.currentEntry.speakerId);
     this.characterNameText = this.add.text(
@@ -502,13 +513,13 @@ export class DialogueScene extends Phaser.Scene {
   // Create a silent audio placeholder that will decode successfully
   private createSilentAudioPlaceholder(audioKey: string): void {
     try {
-      // This is a valid base64-encoded silent MP3 file (0.5 seconds)
-      const silentAudioBase64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADQgD///////////////////////////////////////////8AAAA8TEFNRTMuMTAwAQAAAAAAAAAAABSAJAJAQgAAgAAAA0L2YLwxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
-      
-      // Create a temporary Audio element from the base64 string
-      const tempAudio = new Audio(silentAudioBase64);
+      // This is a valid base64-encoded silent MP3 file (shorter version)
+      const silentAudioBase64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADQgD///////////////////////////////////////////8AAAA8TEFNRTMuMTAwAQAAAAAAAAAAABSAJAJAQgAAgAAAA0L2YLwxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
       
       // Force a decode of the audio to create a valid blob
+      const tempAudio = new Audio(silentAudioBase64);
+      
+      // Force a load of the audio
       tempAudio.load();
       
       // Add directly to the cache
@@ -525,6 +536,32 @@ export class DialogueScene extends Phaser.Scene {
     }
   }
 
+  // Add missing method: createAudioWaveform
+  private createAudioWaveform(): void {
+    // Clean up existing waveform if any
+    if (this.audioWaveform) {
+      this.audioWaveform.forEach(rect => rect.destroy());
+    }
+    
+    // Create new waveform visualization
+    const numBars = 5;
+    const barWidth = 4;
+    const barSpacing = 4;
+    const barHeight = 20;
+    const startX = this.cameras.main.width - 50;
+    const startY = this.cameras.main.height - 80;
+    
+    this.audioWaveform = [];
+    
+    for (let i = 0; i < numBars; i++) {
+      const x = startX + i * (barWidth + barSpacing);
+      const rect = this.add.rectangle(x, startY, barWidth, barHeight, 0xffffff, 0.7);
+      rect.setVisible(false);
+      this.audioWaveform.push(rect);
+    }
+  }
+
+  // Add missing method: playDialogueAudio
   private playDialogueAudio(key: string): void {
     try {
       // Stop any currently playing dialogue audio
@@ -563,6 +600,7 @@ export class DialogueScene extends Phaser.Scene {
     }
   }
 
+  // Add missing helper method: continuePlayingDialogueAudio
   private continuePlayingDialogueAudio(key: string): void {
     try {
       // Play the new dialogue audio with additional error handling
@@ -638,6 +676,7 @@ export class DialogueScene extends Phaser.Scene {
     }
   }
 
+  // Add missing method: loadWithSoundManager
   private loadWithSoundManager(audioKey: string): void {
     try {
       // Get SoundManager instance if available - fixing the incorrect access
@@ -665,191 +704,7 @@ export class DialogueScene extends Phaser.Scene {
     }
   }
 
-  private async generateAndLoadAudio(key: string, text: string): Promise<void> {
-    try {
-      console.log(`Generating audio for: ${key}`);
-      const characterVoice = VoiceGenerator.getVoiceForCharacter(this.currentEntry.speakerId);
-      
-      // Generate the voice (this will return the path where the audio should be)
-      const audioPath = await VoiceGenerator.generateVoiceForDialogue(
-        key,
-        text,
-        'ja-JP',
-        characterVoice
-      );
-      
-      console.log(`Generated audio path: ${audioPath}`);
-      
-      // Load the audio (should already be pre-generated, but try anyway)
-      this.load.audio(key, audioPath);
-      this.load.once('complete', () => {
-        this.playDialogueAudio(key);
-      });
-      this.load.start();
-    } catch (error) {
-      console.error('Error generating and loading audio:', error);
-    }
-  }
-
-  private syncTextWithAudio(audio: Phaser.Sound.BaseSound): void {
-    // Only if words array with timing data is available
-    if (!this.currentEntry.words || this.currentEntry.words.length === 0) return;
-    
-    // Clear existing text
-    this.dialogText.setText('');
-    
-    // Set up markers for each word
-    this.currentEntry.words.forEach((wordData: {word: string, start: number}) => {
-      const { word, start } = wordData;
-      
-      // Create a timeout to show each word at the right time
-      this.time.delayedCall(start * 1000, () => {
-        this.dialogText.text += word;
-      });
-    });
-  }
-
-  /**
-   * Adds a speaking animation to the character with the given ID
-   */
-  private addSpeakingAnimation(characterId: string): void {
-    try {
-      // For the simple case, store the character portrait in the characters map if not already done
-      if (!this.characters.has(characterId) && this.characterPortrait) {
-        this.characters.set(characterId, { sprite: this.characterPortrait });
-      }
-      
-      // Check if we have a valid animation system first
-      const character = this.characters.get(characterId);
-      
-      // First attempt: Try to use the character sprite's animation if it exists
-      if (character?.sprite?.anims && typeof character.sprite.anims.play === 'function') {
-        // Check if the animation exists before playing it
-        if (character.sprite.anims.animationManager.exists(`${characterId}-speaking`)) {
-          character.sprite.anims.play(`${characterId}-speaking`, true);
-          return;
-        }
-      }
-      
-      // Second attempt: Try the characterPortrait directly if it exists
-      if (this.characterPortrait?.anims && typeof this.characterPortrait.anims.play === 'function') {
-        // Check if the animation exists before playing it
-        if (this.characterPortrait.anims.animationManager.exists(`${characterId}-speaking`)) {
-          this.characterPortrait.anims.play(`${characterId}-speaking`, true);
-          return;
-        }
-      }
-      
-      // Fallback: Create a simple speaking effect using tweens if no animation is available
-      if (this.characterPortrait && !this.speakingTween) {
-        this.speakingTween = this.tweens.add({
-          targets: this.characterPortrait,
-          scaleX: this.characterPortrait.scaleX * 1.02,
-          scaleY: this.characterPortrait.scaleY * 1.02,
-          duration: 300,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
-        
-        // Also create a simple speaking indicator if it doesn't exist
-        if (!this.speakingIndicator) {
-          const x = this.characterPortrait.x + 50;
-          const y = this.characterPortrait.y - 100;
-          this.speakingIndicator = this.add.circle(x, y, 10, 0xffffff, 0.7);
-          // Make it pulse
-          this.tweens.add({
-            targets: this.speakingIndicator,
-            alpha: 0.3,
-            scale: 1.3,
-            duration: 600,
-            yoyo: true,
-            repeat: -1
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error in addSpeakingAnimation:", error);
-      // Ensure we don't crash the game for animation issues
-    }
-  }
-
-  /**
-   * Stops the speaking animation for the specified character or all characters
-   */
-  private stopSpeakingAnimation(characterId?: string): void {
-    try {
-      // First, stop any tween animation if it exists
-      if (this.speakingTween) {
-        this.speakingTween.stop();
-        this.speakingTween = undefined;
-        
-        // Reset character portrait scale if needed
-        if (this.characterPortrait) {
-          this.characterPortrait.setScale(1); // Reset to normal scale
-        }
-      }
-      
-      // Hide speaking indicator if it exists
-      if (this.speakingIndicator) {
-        this.speakingIndicator.setVisible(false);
-      }
-      
-      // Now try to stop sprite animations
-      if (characterId) {
-        const character = this.characters.get(characterId);
-        if (character?.sprite?.anims && typeof character.sprite.anims.stop === 'function') {
-          character.sprite.anims.stop();
-        }
-      } else {
-        // Stop animations for all characters
-        this.characters.forEach((character: Character) => {
-          if (character?.sprite?.anims && typeof character.sprite.anims.stop === 'function') {
-            character.sprite.anims.stop();
-          }
-        });
-        
-        // Also stop the main character portrait animation if it exists
-        if (this.characterPortrait?.anims && typeof this.characterPortrait.anims.stop === 'function') {
-          this.characterPortrait.anims.stop();
-        }
-      }
-    } catch (error) {
-      console.error("Error in stopSpeakingAnimation:", error);
-      // Ensure we don't crash the game for animation issues
-    }
-  }
-
-  /**
-   * Creates the audio waveform visualization elements
-   */
-  private createAudioWaveform(): void {
-    // Clean up existing waveform if any
-    if (this.audioWaveform) {
-      this.audioWaveform.forEach(rect => rect.destroy());
-    }
-    
-    // Create new waveform visualization
-    const numBars = 5;
-    const barWidth = 4;
-    const barSpacing = 4;
-    const barHeight = 20;
-    const startX = this.cameras.main.width - 50;
-    const startY = this.cameras.main.height - 80;
-    
-    this.audioWaveform = [];
-    
-    for (let i = 0; i < numBars; i++) {
-      const x = startX + i * (barWidth + barSpacing);
-      const rect = this.add.rectangle(x, startY, barWidth, barHeight, 0xffffff, 0.7);
-      rect.setVisible(false);
-      this.audioWaveform.push(rect);
-    }
-  }
-
-  /**
-   * Shows or hides the audio waveform visualization
-   */
+  // Add missing method: showAudioWaveform
   private showAudioWaveform(visible: boolean): void {
     if (this.audioWaveform && this.audioWaveform.length > 0) {
       // Show/hide all bars
@@ -876,5 +731,168 @@ export class DialogueScene extends Phaser.Scene {
         });
       }
     }
+  }
+
+  // Add missing method: generateAndLoadAudio
+  private async generateAndLoadAudio(key: string, text: string): Promise<void> {
+    try {
+      console.log(`Generating audio for: ${key}`);
+      const characterVoice = VoiceGenerator.getVoiceForCharacter(this.currentEntry.speakerId);
+      
+      // Generate the voice (this will return the path where the audio should be)
+      const audioPath = await VoiceGenerator.generateVoiceForDialogue(
+        key,
+        text,
+        'ja-JP',
+        characterVoice
+      );
+      
+      console.log(`Generated audio path: ${audioPath}`);
+      
+      // Load the audio (should already be pre-generated, but try anyway)
+      this.load.audio(key, audioPath);
+      this.load.once('complete', () => {
+        this.playDialogueAudio(key);
+      });
+      this.load.start();
+    } catch (error) {
+      console.error('Error generating and loading audio:', error);
+    }
+  }
+
+  // Simplified method to fix the image generation flow
+  private generateThemedDialogBox(theme: string): void {
+    try {
+      // Generate dialog box background
+      this.uiGenerator.generateDialogBox(theme)
+        .then(dialogBoxBase64 => {
+          if (!dialogBoxBase64.startsWith("assets/")) { // Check if it's not a fallback path
+            // Create a temporary key for the texture
+            const textureKey = `dialog_box_${Date.now()}`;
+            
+            // Apply to the dialog box
+            this.uiGenerator.applyImageToGameObject(
+              this, 
+              this.dialogBox,
+              dialogBoxBase64,
+              textureKey
+            );
+          } else {
+            // If we got a path instead of base64, load it normally
+            this.load.image('fallback-dialog', dialogBoxBase64);
+            this.load.once('complete', () => {
+              this.dialogBox.setTexture('fallback-dialog');
+            });
+            this.load.start();
+          }
+        })
+        .catch(error => {
+          console.error("Could not generate themed dialog box:", error);
+          // The default dialog box remains if generation fails
+        });
+    } catch (error) {
+      console.error("Error in generateThemedDialogBox:", error);
+      // The default dialog box remains if generation fails
+    }
+  }
+
+  /**
+   * Add the speaking animation to a character portrait
+   * @param characterId The character ID (not the sprite)
+   */
+  private addSpeakingAnimation(characterId: string): void {
+    // If we're already animating, don't start another animation
+    if (this.speakingTween && this.speakingTween.isPlaying()) {
+      return;
+    }
+
+    // Safety check for character portrait
+    if (!this.characterPortrait) {
+      return;
+    }
+
+    // Create speaking indicator (mouth animation)
+    if (!this.speakingIndicator) {
+      const x = this.characterPortrait.x;
+      const y = this.characterPortrait.y + 50; // Position at character's mouth area
+      
+      this.speakingIndicator = this.add.circle(
+        x, y, 5, 0xff0000, 0.7
+      ).setVisible(false);
+    }
+
+    // Subtle scaling animation effect
+    this.speakingTween = this.tweens.add({
+      targets: this.characterPortrait,
+      scaleX: 1.02,
+      scaleY: 1.02,
+      duration: 300,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1
+    });
+  }
+
+  /**
+   * Stop the speaking animation
+   */
+  private stopSpeakingAnimation(): void {
+    // Stop the tween
+    if (this.speakingTween) {
+      this.speakingTween.stop();
+      
+      // Reset character scale
+      if (this.characterPortrait) {
+        this.characterPortrait.setScale(1);
+      }
+    }
+    
+    // Hide the speaking indicator
+    if (this.speakingIndicator) {
+      this.speakingIndicator.setVisible(false);
+    }
+    
+    // Hide audio visualization
+    this.showAudioWaveform(false);
+  }
+
+  /**
+   * Synchronize text display with audio playback using word timing data
+   * @param sound The currently playing dialogue sound
+   */
+  private syncTextWithAudio(sound: Phaser.Sound.BaseSound): void {
+    // Check if we have word timing data
+    if (!this.currentEntry.words || this.currentEntry.words.length === 0) {
+      return;
+    }
+
+    // Get the words array with timing information
+    const words = this.currentEntry.words;
+    
+    // Set up a timer to highlight each word at its corresponding time
+    words.forEach(wordData => {
+      // Calculate when to highlight based on audio start time
+      const highlightTime = wordData.start * 1000; // Convert to ms
+      
+      // Create a timer event to highlight this word
+      this.time.delayedCall(highlightTime, () => {
+        // Only proceed if audio is still playing
+        if (sound.isPlaying) {
+          this.highlightWord(wordData.word);
+        }
+      });
+    });
+  }
+
+  /**
+   * Highlight a specific word in the dialogue text
+   * @param word The word to highlight
+   */
+  private highlightWord(word: string): void {
+    // For now, just log the word (actual implementation would highlight in the UI)
+    console.log(`Highlighting word: ${word}`);
+    
+    // A complete implementation would locate the word in the text and apply
+    // a temporary highlight effect or color change
   }
 }
