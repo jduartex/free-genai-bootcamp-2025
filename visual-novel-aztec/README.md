@@ -37,6 +37,68 @@ This project demonstrates the integration of various AI tools for game developme
 - **Ollama** (with Llama 3) for generating dialogue and puzzles
 - **AWS Bedrock Claude** for cultural and educational content
 
+## Project Structure
+
+```mermaid
+graph TD
+    subgraph visual-novel-aztec
+    A[public/] --> B(assets/)
+    B --> B1(audio/)
+    B1 --> B1a(dialogue/)
+    B1 --> B1b(music/)
+    B1 --> B1c(sfx/)
+    B1 --> B1d(ui/)
+    B --> B2(characters/)
+    B --> B3(scenes/)
+    B --> B4(ui/)
+    A --> C(story/)
+    C --> C1(mappings.json)
+    C --> C2(scene001.json)
+    D[src/] --> E(components/)
+    E --> E1(InteractiveObject.ts)
+    E --> E2(InventoryItem.ts)
+    E --> E3(VocabularyTracker.ts)
+    D --> F(config/)
+    F --> F1(GameConfig.ts)
+    D --> G(scenes/)
+    G --> G1(LoadScene.ts)
+    G --> G2(MenuScene.ts)
+    G --> G3(GameScene.ts)
+    G --> G4(DialogueScene.ts)
+    G --> G5(UIScene.ts)
+    G --> G6(PracticeScene.ts)
+    G --> G7(CreditsScene.ts)
+    D --> H(scripts/)
+    H --> H1(test-voice-generator.ts)
+    D --> I(types/)
+    I --> I1(StoryTypes.ts)
+    D --> J(utils/)
+    J --> J1(AIAssetGenerator.ts)
+    J --> J2(AssetLoader.ts)
+    J --> J3(BedrockAI.ts)
+    J --> J4(CopyJsonFiles.js)
+    J --> J5(DialogueGenerator.ts)
+    J --> J6(PlaceholderGenerator.ts)
+    J --> J7(ProgressTracker.ts)
+    J --> J8(StoryLoader.ts)
+    J --> J9(VoiceGenerator.ts)
+    D --> K(index.html)
+    D --> L(index.ts)
+    M[tools/] --> N(generate-assets.ts)
+    M --> O(generate-placeholders.ts)
+    P[characters/] --> Q(tlaloc.txt)
+    P --> R(citlali.txt)
+    S[story/] --> T(scene001.json)
+    S --> U(scene002.json)
+    V(webpack.config.js)
+    W(tsconfig.json)
+    X(package.json)
+    Y(.env)
+    Z(.gitignore)
+    AA(README.md)
+    end
+```
+
 ## Getting Started
 
 ### Prerequisites

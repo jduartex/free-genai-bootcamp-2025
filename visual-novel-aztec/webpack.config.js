@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { CleanWebpackPlugin } from 'clean-webpack-plugin';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import CopyWebpackPlugin from 'copy-webpack-plugin';
+import webpack from 'webpack'; // Import webpack
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,7 +31,13 @@ export default {
   resolve: {
     extensions: ['.ts', '.js'],
     alias: {
-      '@': path.resolve(__dirname, 'src')
+      '@': path.resolve(__dirname, 'src'),
+      'process': 'process/browser'
+    },
+    fallback: {
+      "fs": false,
+      "path": false,
+      "url": false
     }
   },
   devServer: {
@@ -58,6 +65,13 @@ export default {
         { from: 'src/assets', to: 'assets', noErrorOnMissing: true },
         { from: 'public', to: '.', noErrorOnMissing: true }
       ]
+    }),
+    new webpack.ProvidePlugin({
+      process: 'process/browser'
+    }),
+    // Add a plugin to define process.env
+    new webpack.DefinePlugin({
+      'process.env': JSON.stringify(process.env)
     })
   ],
   optimization: {

@@ -7,6 +7,7 @@ import { GameScene } from './scenes/GameScene';
 import { UIScene } from './scenes/UIScene';
 import { DialogueScene } from './scenes/DialogueScene';
 import { CreditsScene } from './scenes/CreditsScene';
+import { SoundManager } from './utils/SoundManager';
 
 // Note: To properly use Spine animations, we would need to set up the Spine plugin
 // For now, we're using static images instead
@@ -41,6 +42,9 @@ function startGame(): void {
       CreditsScene
     ]
   });
+  
+  // Make game available globally for audio unlock
+  (window as any).game = game;
 
   // Handle window resize
   const resize = (): void => {
@@ -54,4 +58,7 @@ function startGame(): void {
 
   window.addEventListener('resize', resize);
   resize();
+  
+  // Make SoundManager available globally
+  (window as any).SoundManager = SoundManager;
 }

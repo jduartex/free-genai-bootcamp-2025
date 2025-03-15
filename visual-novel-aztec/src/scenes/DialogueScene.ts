@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { DialogEntry, DialogChoice, StoryData } from '../types/StoryTypes';
 import { getCharacterName } from '../utils/StoryLoader';
+import { VoiceGenerator } from '../utils/VoiceGenerator'; // Import VoiceGenerator
 
 interface DialogSceneData {
   dialogId: string;
@@ -412,21 +413,101 @@ export class DialogueScene extends Phaser.Scene {
     const { id: sceneId } = this.currentStoryData;
     const audioKey = `${sceneId}_${dialogId}_ja`;
     
+    console.log(`🔊 Attempting to load dialogue audio: ${audioKey}`);
+    
     // Check if audio exists in cache or attempt to load it
     if (!this.cache.audio.exists(audioKey)) {
       const audioPath = `assets/audio/dialogue/${audioKey}.mp3`;
       
-      try {
-        this.load.audio(audioKey, audioPath);
-        this.load.once('complete', () => {
-          this.playDialogueAudio(audioKey);
-        });
-        this.load.start();
-      } catch (error) {
-        console.warn(`Audio file not found: ${audioPath}`);
-      }
+      console.log(`🔊 File not in cache, loading from: ${audioPath}`);
+      
+      // Try to load the audio file
+      this.load.audio(audioKey, audioPath);
+      
+      // Debug to verify the file is being loaded
+      this.load.on('filecomplete', (key: string, type: string, data: any) => {
+        if (key === audioKey) {
+          console.log(`🔊 Successfully loaded audio: ${key}`);
+          this.playDialogueAudio(key);
+        }
+      });
+      
+      this.load.on('loaderror', (file: Phaser.Loader.File) => {
+        console.error(`❌ Error loading audio file: ${file.key}`, file.src);
+        
+        if (file.key === audioKey) {
+          this.tryAlternativeAudioPaths(audioKey, file.src);
+        }
+      });
+      
+      this.load.start();
     } else {
+      console.log(`🔊 Audio already in cache, playing: ${audioKey}`);
       this.playDialogueAudio(audioKey);
+    }
+  }
+
+  // Add method to try different audio paths
+  private tryAlternativeAudioPaths(audioKey: string, originalPath: string): void {
+    const alternatives = [
+      `/assets/audio/dialogue/${audioKey}.mp3`,
+      `./assets/audio/dialogue/${audioKey}.mp3`,
+      `../assets/audio/dialogue/${audioKey}.mp3`,
+      `/public/assets/audio/dialogue/${audioKey}.mp3`,
+      `./public/assets/audio/dialogue/${audioKey}.mp3`
+    ];
+    
+    console.log(`🔍 Trying alternative audio paths for: ${audioKey}`);
+    let loadedAny = false;
+    
+    alternatives.forEach((path, index) => {
+      // Create a unique key for each attempt
+      const altKey = `${audioKey}_alt${index}`;
+      
+      this.load.audio(altKey, path);
+      
+      this.load.once('filecomplete-audio-' + altKey, () => {
+        console.log(`✅ Alternative path loaded successfully: ${path}`);
+        this.playDialogueAudio(altKey);
+        loadedAny = true;
+      });
+    });
+    
+    this.load.start();
+    
+    // If all alternatives fail, try using SoundManager
+    this.time.delayedCall(1000, () => {
+      if (!loadedAny) {
+        console.log(`🔊 Trying to load with SoundManager fallback`);
+        this.loadWithSoundManager(audioKey);
+      }
+    });
+  }
+  
+  private loadWithSoundManager(audioKey: string): void {
+    try {
+      // Get SoundManager instance if available - fixing the incorrect access
+      const SoundManager = (window as any).SoundManager; // Use only the global reference
+      
+      if (SoundManager && SoundManager.getInstance) {
+        const soundManager = SoundManager.getInstance();
+        const audioPath = `assets/audio/dialogue/${audioKey}.mp3`;
+        
+        soundManager.loadAudio(audioKey, audioPath)
+          .then(() => {
+            console.log(`🎧 SoundManager loaded: ${audioKey}`);
+            this.playDialogueAudio(audioKey);
+          })
+          .catch((error: any) => {
+            console.error(`❌ SoundManager failed to load: ${audioKey}`, error);
+            this.generateAndLoadAudio(audioKey, this.currentEntry.japanese);
+          });
+      } else {
+        this.generateAndLoadAudio(audioKey, this.currentEntry.japanese);
+      }
+    } catch (error) {
+      console.error(`❌ Error using SoundManager:`, error);
+      this.generateAndLoadAudio(audioKey, this.currentEntry.japanese);
     }
   }
 
@@ -437,16 +518,66 @@ export class DialogueScene extends Phaser.Scene {
         this.dialogSound.stop();
       }
       
-      // Play the new dialogue audio
+      // Check if audio actually exists before attempting to play
+      if (!this.cache.audio.exists(key)) {
+        console.warn(`⚠️ Cannot play audio that doesn't exist in cache: ${key}`);
+        return;
+      }
+      
+      // Play the new dialogue audio with additional error handling
+      console.log(`🔊 Attempting to play audio: ${key}`);
       this.dialogSound = this.sound.add(key, { volume: 1.0 });
-      this.dialogSound.play();
+      
+      this.dialogSound.once('play', () => {
+        console.log(`✅ Audio playing: ${key}`);
+      });
+      
+      this.dialogSound.once('loaderror', (error: any) => {
+        console.error(`❌ Failed to play audio: ${key}`, error);
+      });
+      
+      // Verify sound was added successfully
+      if (!this.dialogSound) {
+        console.error(`❌ Failed to add sound: ${key}`);
+        return;
+      }
+      
+      // Force a user interaction for mobile browsers
+      const success = this.dialogSound.play();
+      console.log(`🎵 Audio play result: ${success}`);
       
       // Sync text typing with audio if timing data available
       if (this.currentEntry.words && this.currentEntry.words.length > 0) {
         this.syncTextWithAudio(this.dialogSound);
       }
     } catch (error) {
-      console.error('Error playing dialogue audio:', error);
+      console.error(`❌ Error playing dialogue audio:`, error);
+    }
+  }
+
+  private async generateAndLoadAudio(key: string, text: string): Promise<void> {
+    try {
+      console.log(`Generating audio for: ${key}`);
+      const characterVoice = VoiceGenerator.getVoiceForCharacter(this.currentEntry.speakerId);
+      
+      // Generate the voice (this will return the path where the audio should be)
+      const audioPath = await VoiceGenerator.generateVoiceForDialogue(
+        key,
+        text,
+        'ja-JP',
+        characterVoice
+      );
+      
+      console.log(`Generated audio path: ${audioPath}`);
+      
+      // Load the audio (should already be pre-generated, but try anyway)
+      this.load.audio(key, audioPath);
+      this.load.once('complete', () => {
+        this.playDialogueAudio(key);
+      });
+      this.load.start();
+    } catch (error) {
+      console.error('Error generating and loading audio:', error);
     }
   }
 

@@ -1,4 +1,4 @@
-import { VoiceGenerator } from '../utils/VoiceGenerator.js';
+import { NodeVoiceGenerator } from '../../tools/node-voice-generator.js';
 import * as dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -45,7 +45,7 @@ const sampleDialogues = [
 async function testVoiceGeneration() {
   try {
     console.log('Initializing AWS SDK and Voice Generator...');
-    VoiceGenerator.initialize();
+    NodeVoiceGenerator.initialize();
     
     console.log('Starting voice generation tests...');
     console.log('--------------------------------');
@@ -56,12 +56,12 @@ async function testVoiceGeneration() {
       console.log(`Text: ${dialogue.text}`);
       console.log(`Translation: ${dialogue.translation}`);
       
-      const characterVoice = VoiceGenerator.getVoiceForCharacter(dialogue.character);
+      const characterVoice = NodeVoiceGenerator.getVoiceForCharacter(dialogue.character);
       console.log(`Selected voice: ${characterVoice}`);
       
       try {
         console.log('Generating voice...');
-        const outputPath = await VoiceGenerator.generateVoiceForDialogue(
+        const outputPath = await NodeVoiceGenerator.generateVoiceForDialogue(
           dialogue.id,
           dialogue.text,
           dialogue.language as 'ja-JP' | 'en-US',

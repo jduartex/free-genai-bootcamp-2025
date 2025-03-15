@@ -1,7 +1,7 @@
 // @ts-check
 
 import { AIAssetGenerator } from '../src/utils/AIAssetGenerator.js';
-import { VoiceGenerator } from '../src/utils/VoiceGenerator.js';
+import { NodeVoiceGenerator } from './node-voice-generator.js';
 import type { StoryData, DialogEntry } from '../src/types/StoryTypes.js';
 import fs from 'fs';
 import path from 'path';
@@ -65,8 +65,9 @@ async function generateAllAssets(): Promise<void> {
     await Promise.allSettled([...backgroundPromises, ...characterPromises]);
     
     // Voice generation would go here if AWS credentials are set up
-    // For now, skip this part as it requires AWS API access
-    console.log('Skipping voice generation (requires AWS credentials)');
+    // Initialize the NodeVoiceGenerator
+    console.log('Initializing NodeVoiceGenerator for voice generation...');
+    NodeVoiceGenerator.initialize();
     
     console.log('Asset generation complete!');
   } catch (error) {
@@ -85,6 +86,7 @@ function ensureDirectories(): void {
   fs.mkdirSync(path.resolve(assetsDir, 'scenes'), { recursive: true });
   fs.mkdirSync(path.resolve(assetsDir, 'characters'), { recursive: true });
   fs.mkdirSync(path.resolve(assetsDir, 'audio'), { recursive: true });
+  fs.mkdirSync(path.resolve(assetsDir, 'audio/dialogue'), { recursive: true });
   fs.mkdirSync(path.resolve(assetsDir, 'ui'), { recursive: true });
 }
 

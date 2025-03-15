@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { loadStoryData } from '../utils/StoryLoader';
 import { generatePlaceholders } from '../utils/PlaceholderGenerator';
+import { SoundManager } from '../utils/SoundManager';
 
 export class LoadScene extends Phaser.Scene {
   private progressBar!: HTMLElement;
@@ -53,6 +54,9 @@ export class LoadScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Initialize the sound manager
+    SoundManager.init(this);
+    
     // Generate placeholder assets
     generatePlaceholders(this);
     
