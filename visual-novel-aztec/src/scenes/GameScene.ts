@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { getScene, saveGameProgress } from '../utils/StoryLoader';
 import { InteractiveObject } from '../components/InteractiveObject';
 import { StoryData, GameState } from '../types/StoryTypes';
+import { UIGenerator } from '../utils/UIGenerator';
 
 export class GameScene extends Phaser.Scene {
   private background!: Phaser.GameObjects.Image;
@@ -36,9 +37,14 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
-  create(): void {
+  async create(): Promise<void> {
     // Setup background based on location
-    this.setupBackground(this.currentStoryData.location_id);
+    await this.loadScene(this.currentStoryData.location_id);
+    
+    // Enable character generation by default for testing
+    if (localStorage.getItem('useGeneratedCharacters') === null) {
+      localStorage.setItem('useGeneratedCharacters', 'true');
+    }
     
     // Start dialogue scene
     this.scene.launch('DialogueScene', {
@@ -80,30 +86,55 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private setupBackground(locationId: string): void {
-    // Clear any existing background
-    if (this.background) {
-      this.background.destroy();
-    }
-
-    // Set the new background
-    this.background = this.add.image(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2,
-      locationId
-    )
-    .setOrigin(0.5)
-    .setDisplaySize(this.cameras.main.width, this.cameras.main.height);
+  private async loadScene(sceneId: string): Promise<void> {
+    // Generate background with Bedrock
+    const uiGenerator = UIGenerator.getInstance();
+    const sceneDescription = this.getSceneDescription(sceneId); // Define this method to return scene descriptions
     
-    // Add a subtle animation to make the scene feel alive
-    this.tweens.add({
-      targets: this.background,
-      scale: { from: 1.0, to: 1.05 },
-      duration: 20000,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
+    try {
+      const backgroundBase64 = await uiGenerator.generateBackgroundImage(
+        "Ancient Aztec", 
+        sceneDescription
+      );
+      
+      // Create a unique key for this background
+      const bgKey = `bg_${sceneId}_${Date.now()}`;
+      
+      // Add background image to scene
+      const background = this.add.image(
+        this.cameras.main.width / 2,
+        this.cameras.main.height / 2,
+        'default-background' // Default background initially
+      ).setOrigin(0.5);
+      
+      // Apply the generated image
+      await uiGenerator.applyImageToGameObject(
+        this,
+        background,
+        backgroundBase64,
+        bgKey
+      );
+    } catch (error) {
+      console.error("Error generating background:", error);
+      // Use default background
+      this.add.image(
+        this.cameras.main.width / 2,
+        this.cameras.main.height / 2,
+        'default-background'
+      ).setOrigin(0.5);
+    }
+  }
+
+  private getSceneDescription(sceneId: string): string {
+    const sceneDescriptions: Record<string, string> = {
+      'village': 'bustling Aztec village with market stalls and stone temples',
+      'prison': 'dark stone prison cell with a small window showing sunlight',
+      'temple': 'grand Aztec temple interior with ornate stone carvings and altars',
+      'jungle': 'dense jungle path with ancient stone ruins partially covered by vegetation',
+      // Add more scenes as needed
+    };
+    
+    return sceneDescriptions[sceneId] || 'detailed Aztec scene';
   }
 
   private setupEventListeners(): void {
@@ -192,7 +223,7 @@ export class GameScene extends Phaser.Scene {
     
     // Listen for location change events
     this.events.on('changeLocation', (locationId: string) => {
-      this.setupBackground(locationId);
+      this.loadScene(locationId); // Changed from setupBackground to loadScene
       this.createInteractiveObjects();
     });
     

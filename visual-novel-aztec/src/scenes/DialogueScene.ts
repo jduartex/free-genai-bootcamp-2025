@@ -197,7 +197,7 @@ export class DialogueScene extends Phaser.Scene {
     this.loadAndPlayAudio();
   }
 
-  private createCharacterPortrait(): void {
+  private async createCharacterPortrait(): Promise<void> {
     // Remove existing portrait if any
     if (this.characterPortrait) {
       this.characterPortrait.destroy();
@@ -208,18 +208,47 @@ export class DialogueScene extends Phaser.Scene {
       return;
     }
     
-    // Create character portrait
     const x = this.cameras.main.width * 0.15;
     const y = this.cameras.main.height * 0.4;
     
-    // Note: We're disabling spine animations for now until we add the plugin properly
-    // Always use static image
-    this.characterPortrait = this.add.sprite(
-      x, y, this.currentEntry.speakerId
-    ).setOrigin(0.5, 0.5)
-    .setDisplaySize(300, 400);
+    // First create a placeholder sprite
+    this.characterPortrait = this.add.sprite(x, y, this.currentEntry.speakerId)
+      .setOrigin(0.5, 0.5)
+      .setDisplaySize(300, 400);
     
-    // Add a simple animation to make the static image less static
+    // Generate character with Bedrock if enabled in settings
+    const useGeneratedCharacters = localStorage.getItem('useGeneratedCharacters') === 'true';
+    
+    if (useGeneratedCharacters) {
+      try {
+        // Check if we have a cache of this character
+        const imageKey = `generated_${this.currentEntry.speakerId}`;
+        
+        // Try to generate character variation if not already cached
+        const generator = this.imageVariationGenerator;
+        const characterBase64 = await generator.generateCharacterExpression(
+          this,
+          this.currentEntry.speakerId,
+          'neutral', // Default expression
+          this.currentEntry.speakerId // Use existing texture as base
+        );
+        
+        if (characterBase64) {
+          await generator.applyExpressionToSprite(
+            this,
+            this.characterPortrait,
+            characterBase64,
+            imageKey
+          );
+          console.log(`Generated character: ${this.currentEntry.speakerId}`);
+        }
+      } catch (error) {
+        console.warn(`Could not generate character: ${this.currentEntry.speakerId}`, error);
+        // Keep using default sprite
+      }
+    }
+    
+    // Add a simple animation to make the image less static
     this.tweens.add({
       targets: this.characterPortrait,
       y: y - 5,
@@ -514,10 +543,13 @@ export class DialogueScene extends Phaser.Scene {
   private createSilentAudioPlaceholder(audioKey: string): void {
     try {
       // This is a valid base64-encoded silent MP3 file (shorter version)
-      const silentAudioBase64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADQgD///////////////////////////////////////////8AAAA8TEFNRTMuMTAwAQAAAAAAAAAAABSAJAJAQgAAgAAAA0L2YLwxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+      const silentAudioBase64 = "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADQgD///////////////////////////////////////////8AAAA8TEFNRTMuMTAwAQAAAAAAAAAAABSAJAJAQgAAgAAAA0L2YLwxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+      
+      // Create a valid data URI for the audio
+      const audioSrc = `data:audio/mp3;base64,${silentAudioBase64}`;
       
       // Force a decode of the audio to create a valid blob
-      const tempAudio = new Audio(silentAudioBase64);
+      const tempAudio = new Audio(audioSrc);
       
       // Force a load of the audio
       tempAudio.load();
@@ -525,14 +557,31 @@ export class DialogueScene extends Phaser.Scene {
       // Add directly to the cache
       const cachedAudio = this.cache.audio.get(audioKey);
       if (!cachedAudio) {
-        // If we could add to the cache directly, we would
-        // For now, load the base64 data
-        this.load.audio(audioKey, silentAudioBase64);
+        // Instead of loading base64 data directly, create and load a blob
+        const byteCharacters = atob(silentAudioBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'audio/mp3' });
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Use the blob URL instead
+        this.load.audio(audioKey, blobUrl);
         this.load.start();
         console.log(`📝 Created silent placeholder for ${audioKey}`);
       }
     } catch (error) {
       console.error(`❌ Could not create silent audio:`, error);
+      // Fallback to an empty placeholder that won't cause errors
+      try {
+        this.cache.audio.add(audioKey, new Audio());
+      } catch (e) {
+        console.warn("Failed to add empty audio placeholder:", e);
+      }
     }
   }
 

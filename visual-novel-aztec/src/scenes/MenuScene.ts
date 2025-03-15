@@ -146,6 +146,36 @@ export class MenuScene extends Phaser.Scene {
     } catch (error: unknown) {
       console.error('Failed to create background music:', error);
     }
+
+    // DEV ONLY: Add AWS credentials for testing (REMOVE IN PRODUCTION!)
+    if (process.env.NODE_ENV === 'development') {
+      const devCredentials = document.createElement('div');
+      devCredentials.innerHTML = `
+        <div style="position:fixed;bottom:10px;left:10px;font-size:12px;background:#333;color:#fff;padding:5px;z-index:1000">
+          <p>AWS Credentials for testing:</p>
+          <button id="add-credentials">Add Credentials</button>
+          <button id="clear-credentials">Clear</button>
+        </div>
+      `;
+      document.body.appendChild(devCredentials);
+      
+      // Add event listeners
+      document.getElementById('add-credentials')?.addEventListener('click', () => {
+        const accessKey = prompt('Enter AWS Access Key:');
+        const secretKey = prompt('Enter AWS Secret Key:');
+        if (accessKey && secretKey) {
+          localStorage.setItem('AWS_ACCESS_KEY_ID', accessKey);
+          localStorage.setItem('AWS_SECRET_ACCESS_KEY', secretKey);
+          alert('Credentials stored in localStorage. Refresh the page.');
+        }
+      });
+      
+      document.getElementById('clear-credentials')?.addEventListener('click', () => {
+        localStorage.removeItem('AWS_ACCESS_KEY_ID');
+        localStorage.removeItem('AWS_SECRET_ACCESS_KEY');
+        alert('Credentials cleared from localStorage. Refresh the page.');
+      });
+    }
   }
 
   private createButton(

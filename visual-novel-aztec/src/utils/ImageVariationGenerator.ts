@@ -1,6 +1,6 @@
 import { BedrockService } from '../services/BedrockService';
-import { AssetCache } from './AssetCache';
 import Phaser from 'phaser';
+import { AssetCache } from './AssetCache';
 
 /**
  * ImageVariationGenerator - Creates character image variations using AWS Bedrock

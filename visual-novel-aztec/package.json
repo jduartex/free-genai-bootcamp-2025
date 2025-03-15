@@ -16,9 +16,9 @@
     "generate:assets": "node --loader ts-node/esm tools/generate-assets.ts",
     "generate:dialogue": "node --loader ts-node/esm tools/generate-dialogue.ts",
     "generate:images": "node --loader ts-node/esm tools/generate-images.ts",
-    "generate:placeholders": "node --loader ts-node/esm tools/generate-placeholders.ts",
+    "generate:placeholders": "node src/utils/GenerateAllPlaceholders.js",
     "generate:audio": "node --loader ts-node/esm tools/pre-generate-audio.ts",
-    "prestart": "npm run generate:audio",
+    "prestart": "npm run generate:placeholders",
     "test:bedrock": "node src/test/bedrock-node-test.js",
     "test:bedrock:ts": "node --loader ts-node/esm src/test/bedrock-tester.ts",
     "test:bedrock:js": "node src/test/bedrock-test.js"
@@ -66,6 +66,7 @@
     "typescript": "^5.2.2",
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.1"
+    "webpack-dev-server": "^4.15.1",
+    "canvas": "^2.11.2"
   }
 }

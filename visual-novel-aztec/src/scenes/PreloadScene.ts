@@ -1,81 +1,87 @@
 import Phaser from 'phaser';
-import { SoundManager } from '../utils/SoundManager';
 
 export class PreloadScene extends Phaser.Scene {
+  private loadingBar!: Phaser.GameObjects.Graphics;
   private loadingText!: Phaser.GameObjects.Text;
-  private progressBar!: Phaser.GameObjects.Graphics;
-  private audioUnlocked: boolean = false;
-
+  
   constructor() {
     super({ key: 'PreloadScene' });
   }
 
   preload(): void {
-    // Create loading visuals
-    this.createLoadingUI();
+    // Create loading bar
+    this.createLoadingBar();
     
-    // First create valid placeholder audio files before loading anything else
-    this.createPlaceholderAudioFiles();
+    // Load fonts via WebFontLoader (handled in index.ts)
     
-    // Track loading progress
-    this.load.on('progress', (value: number) => {
-      this.progressBar.clear();
-      this.progressBar.fillStyle(0xffffff, 1);
-      this.progressBar.fillRect(
-        this.cameras.main.width / 4, 
-        this.cameras.main.height / 2, 
-        (this.cameras.main.width / 2) * value, 
-        30
-      );
-      this.loadingText.setText(`Loading audio: ${Math.floor(value * 100)}%`);
-    });
+    // Load UI elements
+    this.load.image('button', 'assets/ui/default_button.png');
+    this.load.image('button-hover', 'assets/ui/default_button.png'); // Use same for now
+    this.load.image('dialog-box', 'assets/ui/default_dialog.png');
     
-    // Preload essential audio files
-    this.preloadAudioAssets();
+    // Load background images
+    this.load.image('aztec-village', 'assets/backgrounds/village.png');
+    this.load.image('prison-cell', 'assets/backgrounds/prison.png');
+    this.load.image('temple', 'assets/backgrounds/temple.png');
+    this.load.image('default-background', 'assets/backgrounds/default.png');
+    
+    // Load character images
+    this.load.image('tlaloc', 'assets/characters/tlaloc.png');
+    this.load.image('citlali', 'assets/characters/citlali.png');
+    this.load.image('diego', 'assets/characters/diego.png');
+    this.load.image('narrator', 'assets/characters/narrator.png');
+    
+    // Load interactive objects
+    this.load.image('window', 'assets/objects/window.png');
+    this.load.image('floor-pattern', 'assets/objects/floor-pattern.png');
+    this.load.image('bed', 'assets/objects/bed.png');
+    this.load.image('door', 'assets/objects/door.png');
+    this.load.image('return-arrow', 'assets/objects/return-arrow.png');
+    this.load.image('exit', 'assets/objects/exit.png');
+
+    // Load audio with error handling and fallbacks
+    this.loadAudioWithFallbacks('click', 'assets/audio/ui/click.mp3');
+    this.loadAudioWithFallbacks('hover', 'assets/audio/ui/hover.mp3');
+    this.loadAudioWithFallbacks('success', 'assets/audio/ui/success.mp3');
+    this.loadAudioWithFallbacks('fail', 'assets/audio/ui/fail.mp3');
+    this.loadAudioWithFallbacks('unlock', 'assets/audio/ui/unlock.mp3');
+    this.loadAudioWithFallbacks('theme', 'assets/audio/ui/theme.mp3');
+    this.loadAudioWithFallbacks('prison-ambience', 'assets/audio/ambience/prison-ambience.mp3');
+    this.loadAudioWithFallbacks('village-ambience', 'assets/audio/ambience/village-ambience.mp3');
+    this.loadAudioWithFallbacks('battle-ambience', 'assets/audio/ambience/battle-ambience.mp3');
+    this.loadAudioWithFallbacks('tunnel-ambience', 'assets/audio/ambience/tunnel-ambience.mp3');
+    this.loadAudioWithFallbacks('warning', 'assets/audio/ui/warning.mp3');
+    this.loadAudioWithFallbacks('pickup', 'assets/audio/ui/pickup.mp3');
   }
 
   create(): void {
-    // Initialize SoundManager
-    SoundManager.init(this);
-    
-    // Setup audio unlock mechanism
+    // Audio unlock for mobile browsers
     this.setupAudioUnlock();
     
-    // Check if we're on desktop or already unlocked
-    if (!this.isMobileBrowser() || this.audioUnlocked) {
-      this.continueToLoadScene();
-    } else {
-      this.showAudioUnlockPrompt();
-    }
+    // Wait a short moment to ensure everything is ready
+    this.time.delayedCall(500, () => {
+      // Transition to menu scene
+      this.scene.start('MenuScene');
+    });
   }
 
-  private createLoadingUI(): void {
-    // Background
-    this.add.rectangle(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2,
-      this.cameras.main.width,
-      this.cameras.main.height,
-      0x000000
-    );
+  private createLoadingBar(): void {
+    const { width, height } = this.cameras.main;
     
-    // Title
-    this.add.text(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 3,
-      'Aztec Escape',
-      {
-        fontFamily: 'Arial',
-        fontSize: '32px',
-        color: '#ffffff'
-      }
-    ).setOrigin(0.5);
+    // Create loading bar background
+    const barWidth = width * 0.8;
+    const barHeight = 30;
+    const barX = (width - barWidth) / 2;
+    const barY = height / 2;
     
-    // Loading text
+    this.loadingBar = this.add.graphics();
+    this.loadingBar.setDepth(1);
+    
+    // Add loading text
     this.loadingText = this.add.text(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2 - 50,
-      'Loading audio: 0%',
+      width / 2,
+      barY - 40,
+      'Loading Assets...',
       {
         fontFamily: 'Arial',
         fontSize: '24px',
@@ -83,214 +89,161 @@ export class PreloadScene extends Phaser.Scene {
       }
     ).setOrigin(0.5);
     
-    // Progress bar background
-    this.add.rectangle(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2,
-      this.cameras.main.width / 2,
-      30,
-      0x666666
-    ).setOrigin(0.5);
-    
-    // Progress bar
-    this.progressBar = this.add.graphics();
-  }
-
-  private preloadAudioAssets(): void {
-    // Create UI audio directory if needed
-    const uiAudioPath = 'assets/audio/ui';
-    
-    // Load essential UI sounds with more robust loading paths and fallback to base64 encoded silent audio
-    this.load.audio('click', this.getSilentAudioBase64());
-    this.load.audio('hover', this.getSilentAudioBase64());
-    this.load.audio('success', this.getSilentAudioBase64());
-    this.load.audio('fail', this.getSilentAudioBase64());
-    this.load.audio('theme', this.getSilentAudioBase64());
-    this.load.audio('unlock', this.getSilentAudioBase64());
-    
-    // Try loading actual files if they exist
-    this.load.once('complete', () => {
-      // Now try to load the actual files - if they fail, we already have placeholders
-      this.load.audio('click', [`${uiAudioPath}/click.mp3`, `${uiAudioPath}/click.ogg`]);
-      this.load.audio('hover', [`${uiAudioPath}/hover.mp3`, `${uiAudioPath}/hover.ogg`]);
-      this.load.audio('success', [`${uiAudioPath}/success.mp3`, `${uiAudioPath}/success.ogg`]);
-      this.load.audio('fail', [`${uiAudioPath}/fail.mp3`, `${uiAudioPath}/fail.ogg`]);
+    // Update loading bar as assets load
+    this.load.on('progress', (value: number) => {
+      // Draw background
+      this.loadingBar.clear();
+      this.loadingBar.fillStyle(0x333333, 1);
+      this.loadingBar.fillRect(barX, barY, barWidth, barHeight);
       
-      // Load actual music and ambient sounds
-      this.load.audio('theme', 'assets/audio/music/theme.mp3');
-      this.load.audio('prison-ambience', 'assets/audio/ambience/prison.mp3');
-      
-      // Don't let errors stop the game
-      this.load.on('loaderror', (fileObj: any) => {
-        console.warn(`Failed to load audio "${fileObj.key}", using placeholder`);
-      });
-      
-      // Start the second load operation
-      this.load.start();
+      // Draw progress bar
+      this.loadingBar.fillStyle(0x00ff00, 1);
+      this.loadingBar.fillRect(barX, barY, barWidth * value, barHeight);
+    });
+    
+    // Clean up when loading is complete
+    this.load.on('complete', () => {
+      this.loadingBar.destroy();
+      this.loadingText.destroy();
     });
   }
   
-  private createPlaceholderAudioFiles(): void {
-    // Create guaranteed valid placeholder audio files for essential sounds
-    const requiredSounds = ['click', 'hover', 'success', 'fail', 'unlock', 'theme', 'prison-ambience'];
+  // Better audio loading with fallbacks and silent placeholder
+  private loadAudioWithFallbacks(key: string, path: string): void {
+    // First try to load the actual sound
+    this.load.audio(key, path);
     
-    requiredSounds.forEach(key => {
-      // Add the audio directly to the cache
-      this.cache.audio.add(key, this.createSilentAudioElement());
-      console.log(`Created guaranteed placeholder for ${key}`);
+    // Create a guaranteed placeholder on file error
+    this.load.once('fileerror-audio-' + key, () => {
+      console.log(`Creating guaranteed placeholder for ${key}`);
+      this.createSilentAudioPlaceholder(key);
     });
   }
   
-  // Create a valid silent audio element that will decode successfully
-  private createSilentAudioElement(): HTMLAudioElement {
-    const audio = document.createElement('audio');
-    // Use a base64 encoded silent MP3
-    audio.src = this.getSilentAudioBase64();
-    return audio;
-  }
-  
-  // Return a base64 encoded silent MP3 (0.5 seconds)
-  private getSilentAudioBase64(): string {
-    // This is a valid 0.5 second silent MP3 file encoded as base64
-    return "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADQgD///////////////////////////////////////////8AAAA8TEFNRTMuMTAwAQAAAAAAAAAAABSAJAJAQgAAgAAAA0L2YLwxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
-  }
-
-  // Method to create an empty sound as fallback
-  private createPlaceholderSound(key: string): void {
+  // Create a proper silent audio file
+  private createSilentAudioPlaceholder(key: string): void {
     try {
-      // Create a silent sound using AudioContext
-      if ('AudioContext' in window || 'webkitAudioContext' in window) {
-        const audioContext = 'AudioContext' in window 
-          ? new AudioContext() 
-          : new (window as any).webkitAudioContext();
+      // Create a proper AudioBuffer with actual audio data (1 frame of silence)
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const silenceBuffer = audioContext.createBuffer(2, 44100, 44100);
+      
+      // Export the buffer to a Blob
+      const offlineContext = new OfflineAudioContext(2, 44100, 44100);
+      const source = offlineContext.createBufferSource();
+      source.buffer = silenceBuffer;
+      source.connect(offlineContext.destination);
+      source.start(0);
+      
+      offlineContext.startRendering().then(renderedBuffer => {
+        // Convert AudioBuffer to WAV format
+        const wav = this.audioBufferToWav(renderedBuffer);
+        const blob = new Blob([wav], { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
         
-        // Create a short, silent buffer (0.1 seconds)
-        const sampleRate = audioContext.sampleRate;
-        const buffer = audioContext.createBuffer(1, sampleRate * 0.1, sampleRate);
-        
-        // Fill with silence (zeros)
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < data.length; i++) {
-          data[i] = 0;
-        }
-        
-        // Add to cache manually via a hack
-        // This is a workaround - in a real production app, ensure actual sound files exist
-        if (this.cache.audio && typeof this.cache.audio.add === 'function') {
-          this.cache.audio.add(key, buffer);
-          console.log(`Created empty sound placeholder for: ${key}`);
-        }
-      }
-    } catch (e) {
-      console.error(`Failed to create placeholder for ${key}:`, e);
+        // Load this into Phaser's cache
+        this.load.audio(key, url);
+        this.load.start(); // Important: start the loader to process the new file
+      }).catch(e => {
+        console.error(`Failed to render audio buffer for ${key}:`, e);
+      });
+    } catch (error) {
+      console.error(`Error creating placeholder audio for ${key}:`, error);
     }
   }
-
+  
+  // Convert AudioBuffer to WAV format for better browser compatibility
+  private audioBufferToWav(buffer: AudioBuffer): ArrayBuffer {
+    const numChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const format = 1; // PCM
+    const bitDepth = 16;
+    
+    const bytesPerSample = bitDepth / 8;
+    const blockAlign = numChannels * bytesPerSample;
+    
+    // Get the data from each channel
+    const channelData = [];
+    for (let i = 0; i < numChannels; i++) {
+      channelData.push(buffer.getChannelData(i));
+    }
+    
+    // Calculate the total file size
+    const dataSize = buffer.length * numChannels * bytesPerSample;
+    const fileSize = 44 + dataSize;
+    
+    // Create a buffer for the WAV file
+    const wav = new ArrayBuffer(fileSize);
+    const view = new DataView(wav);
+    
+    // Write WAV header
+    this.writeString(view, 0, 'RIFF');
+    view.setUint32(4, fileSize - 8, true);
+    this.writeString(view, 8, 'WAVE');
+    this.writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, format, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * blockAlign, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitDepth, true);
+    this.writeString(view, 36, 'data');
+    view.setUint32(40, dataSize, true);
+    
+    // Write audio data
+    const offset = 44;
+    for (let i = 0; i < buffer.length; i++) {
+      for (let c = 0; c < numChannels; c++) {
+        const sample = Math.max(-1, Math.min(1, channelData[c][i]));
+        const int16 = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+        view.setInt16(offset + (i * blockAlign) + (c * bytesPerSample), int16, true);
+      }
+    }
+    
+    return wav;
+  }
+  
+  // Helper to write string to DataView
+  private writeString(view: DataView, offset: number, string: string): void {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  }
+  
+  // Set up audio unlock for browsers that require user interaction
   private setupAudioUnlock(): void {
-    // Listen for audio unlock event
-    this.sound.once('unlocked', () => {
-      console.log('🔊 Audio unlocked automatically');
-      this.audioUnlocked = true;
-      
-      // If we're showing the prompt, continue to next scene
-      const unlockPrompt = document.getElementById('audio-unlock');
-      if (unlockPrompt && unlockPrompt.style.display !== 'none') {
-        this.continueToLoadScene();
-      }
-    });
-    
-    // Listen for custom unlock event from HTML element
-    this.game.events.on('audioUnlocked', () => {
-      console.log('🔊 Audio unlocked via button');
-      this.audioUnlocked = true;
-      this.continueToLoadScene();
-    });
-    
-    // Try to play a silent sound to trigger unlock
-    try {
-      if (this.cache.audio.exists('unlock')) {
-        const unlockSound = this.sound.add('unlock', { volume: 0.01 });
-        unlockSound.play();
-      }
-    } catch (e) {
-      console.warn('Failed to play unlock sound:', e);
-    }
-  }
-
-  private isMobileBrowser(): boolean {
-    // Basic check for mobile browsers
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  }
-
-  private showAudioUnlockPrompt(): void {
-    // Show the HTML unlock button
-    const unlockPrompt = document.getElementById('audio-unlock');
-    if (unlockPrompt) {
-      unlockPrompt.style.display = 'block';
-      
-      // Add text to explain why this is needed
-      this.add.text(
-        this.cameras.main.width / 2,
-        this.cameras.main.height * 0.7,
-        'Audio requires user interaction on mobile devices.\nPlease tap the "Enable Audio" button below.',
-        {
-          fontFamily: 'Arial',
-          fontSize: '18px',
-          color: '#ffffff',
-          align: 'center'
-        }
-      ).setOrigin(0.5);
-    } else {
-      // If HTML element doesn't exist, create an in-game button
-      const unlockButton = this.add.rectangle(
-        this.cameras.main.width / 2,
-        this.cameras.main.height * 0.7,
-        300,
-        60,
-        0x4CAF50
-      ).setInteractive({ useHandCursor: true });
-      
-      this.add.text(
-        this.cameras.main.width / 2,
-        this.cameras.main.height * 0.7,
-        'Enable Audio',
-        {
-          fontFamily: 'Arial',
-          fontSize: '24px',
-          color: '#ffffff'
-        }
-      ).setOrigin(0.5);
-      
-      unlockButton.on('pointerdown', () => {
+    const unlockAudio = () => {
+      try {
         // Try to play a sound to unlock audio
-        try {
-          if (this.cache.audio.exists('unlock')) {
-            const unlockSound = this.sound.add('unlock', { volume: 0.01 });
-            unlockSound.play();
-            this.time.delayedCall(100, () => {
-              this.continueToLoadScene();
-            });
-          } else {
-            this.continueToLoadScene();
-          }
-        } catch (e) {
-          console.warn('Error during manual unlock:', e);
-          this.continueToLoadScene();
+        if (this.cache.audio.exists('unlock')) {
+          this.sound.play('unlock', { volume: 0 });
+          console.log('🔊 Audio unlocked by user interaction');
         }
-      });
-    }
-  }
-
-  private continueToLoadScene(): void {
-    const unlockPrompt = document.getElementById('audio-unlock');
-    if (unlockPrompt) {
-      unlockPrompt.style.display = 'none';
-    }
+      } catch (e) {
+        console.error('Failed to unlock audio:', e);
+      }
+      
+      // Remove the event listeners
+      document.body.removeEventListener('touchstart', unlockAudio);
+      document.body.removeEventListener('touchend', unlockAudio);
+      document.body.removeEventListener('click', unlockAudio);
+      document.body.removeEventListener('keydown', unlockAudio);
+    };
     
-    // Fade out and start LoadScene
-    this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => {
-      this.scene.start('LoadScene');
-    });
+    // Try to automatically unlock audio
+    try {
+      const sound = this.sound.add('click', { volume: 0 });
+      sound.play();
+      sound.stop();
+      console.log('🔊 Audio unlocked automatically');
+    } catch (e) {
+      console.warn('Could not unlock audio automatically', e);
+      
+      // Add event listeners for user interaction
+      document.body.addEventListener('touchstart', unlockAudio, false);
+      document.body.addEventListener('touchend', unlockAudio, false);
+      document.body.addEventListener('click', unlockAudio, false);
+      document.body.addEventListener('keydown', unlockAudio, false);
+    }
   }
 }

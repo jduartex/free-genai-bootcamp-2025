@@ -117,9 +117,11 @@ export class UIGenerator {
     // Check cache first
     const cachedBackground = this.cache.getItem(cacheKey);
     if (cachedBackground) {
+      console.log(`🖼️ Using cached background for ${scene}`);
       return cachedBackground;
     }
     
+    console.log(`🔄 Generating background for ${scene} with theme ${theme}...`);
     const prompt = `A detailed ${scene} scene with ${theme} aesthetic. Beautiful background for a visual novel game. Aztec setting with appropriate architecture and ambiance.`;
     const negativePrompt = "text, words, people, characters, blur, distortion";
     
@@ -131,12 +133,15 @@ export class UIGenerator {
         576   // Height - 16:9 aspect ratio (must be multiple of 64)
       );
       
+      // Log if we received an actual base64 string or a placeholder path
+      console.log(`📥 Received background response for ${scene}: ${backgroundBase64.startsWith('assets') ? 'placeholder path' : 'base64 data'}`);
+      
       // Cache the result
       this.cache.setItem(cacheKey, backgroundBase64);
       
       return backgroundBase64;
     } catch (error) {
-      console.error("Failed to generate background:", error);
+      console.error(`❌ Failed to generate background for ${scene}:`, error);
       return "assets/backgrounds/default.png";
     }
   }
@@ -147,18 +152,50 @@ export class UIGenerator {
   public async applyImageToGameObject(
     scene: Phaser.Scene, 
     gameObject: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite,
-    imageBase64: string,
+    imageBase64OrPath: string,
     textureKey: string
   ): Promise<void> {
     return new Promise((resolve) => {
-      // Convert base64 to texture
-      const image = new Image();
-      image.onload = () => {
-        scene.textures.addImage(textureKey, image);
-        gameObject.setTexture(textureKey);
+      try {
+        // Check if it's a path or base64
+        if (imageBase64OrPath.startsWith('assets/') || imageBase64OrPath.startsWith('/assets/')) {
+          // It's a file path, load it normally
+          if (!scene.textures.exists(textureKey)) {
+            scene.load.image(textureKey, imageBase64OrPath);
+            scene.load.once('complete', () => {
+              gameObject.setTexture(textureKey);
+              resolve();
+            });
+            scene.load.start();
+          } else {
+            gameObject.setTexture(textureKey);
+            resolve();
+          }
+        } else {
+          // It's base64 data, convert to texture
+          const image = new Image();
+          image.onload = () => {
+            if (scene.textures.exists(textureKey)) {
+              scene.textures.remove(textureKey);
+            }
+            scene.textures.addImage(textureKey, image);
+            gameObject.setTexture(textureKey);
+            resolve();
+          };
+          image.onerror = () => {
+            console.error("Failed to load image data");
+            // Use a default texture as fallback
+            if (scene.textures.exists('default-background')) {
+              gameObject.setTexture('default-background');
+            }
+            resolve();
+          };
+          image.src = `data:image/png;base64,${imageBase64OrPath}`;
+        }
+      } catch (error) {
+        console.error("Error in applyImageToGameObject:", error);
         resolve();
-      };
-      image.src = `data:image/png;base64,${imageBase64}`;
+      }
     });
   }
 }

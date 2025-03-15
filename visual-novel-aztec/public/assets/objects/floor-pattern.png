@@ -1,0 +1,7 @@
+<svg width="300" height="150" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100%" height="100%" fill="#AA8866"/>
+    <rect width="100%" height="100%" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="24px" font-family="Arial, sans-serif">
+      Floor Pattern
+    </text>
+  </svg>

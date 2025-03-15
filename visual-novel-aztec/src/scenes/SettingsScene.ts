@@ -74,6 +74,17 @@ export class SettingsScene extends Phaser.Scene {
     this.createVolumeSlider('Effects Volume', volumes.effects, 'effects', 40, leftOffset);
     this.createVolumeSlider('Voice Volume', volumes.voice, 'voice', 120, leftOffset);
     
+    // Add toggle for AI-generated characters
+    const useGeneratedCharacters = localStorage.getItem('useGeneratedCharacters') === 'true';
+    this.createToggle(
+      'Generate Character Art', 
+      useGeneratedCharacters,
+      (isOn) => {
+        localStorage.setItem('useGeneratedCharacters', isOn.toString());
+      },
+      160 // y-offset value
+    );
+
     // Create test sound button - positioned further down to fit in panel
     this.createTestSoundButton();
     
@@ -448,5 +459,59 @@ export class SettingsScene extends Phaser.Scene {
   
   private returnToMenu(): void {
     this.scene.start(this.returnScene);
+  }
+
+  private createToggle(label: string, initialValue: boolean, onChange: (value: boolean) => void, yOffset: number): void {
+    // Add label
+    this.add.text(
+      this.cameras.main.width / 2 - 230,
+      this.cameras.main.height / 2 + yOffset,
+      label,
+      {
+        fontFamily: 'Crimson Text',
+        fontSize: '20px',
+        color: '#ffffff'
+      }
+    ).setOrigin(0, 0.5);
+    
+    // Create toggle background
+    const toggleBg = this.add.rectangle(
+      this.cameras.main.width / 2 + 80,
+      this.cameras.main.height / 2 + yOffset,
+      60,
+      30,
+      initialValue ? 0x4CAF50 : 0x666666
+    ).setStrokeStyle(2, 0xffffff);
+    
+    // Create toggle button
+    const toggleButton = this.add.circle(
+      toggleBg.x + (initialValue ? 15 : -15),
+      toggleBg.y,
+      12,
+      0xffffff
+    );
+    
+    // Make toggle interactive
+    toggleBg.setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => {
+        const newValue = toggleButton.x < toggleBg.x; // If button is on left, toggle to right
+        
+        // Animate toggle
+        this.tweens.add({
+          targets: toggleButton,
+          x: toggleBg.x + (newValue ? 15 : -15),
+          duration: 100,
+          ease: 'Power1'
+        });
+        
+        // Change background color
+        toggleBg.fillColor = newValue ? 0x4CAF50 : 0x666666;
+        
+        // Call onChange handler
+        onChange(newValue);
+        
+        // Play sound
+        this.playSoundSafe('click', 0.2);
+      });
   }
 }
