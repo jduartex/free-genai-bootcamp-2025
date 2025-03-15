@@ -2,13 +2,21 @@
   "name": "aztec-escape",
   "version": "1.0.0",
   "description": "An educational Japanese language learning visual novel with escape room mechanics",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "main": "index.js",
   "scripts": {
     "setup": "node src/utils/CopyJsonFiles.js",
     "build": "webpack --config webpack.config.js",
     "start": "npm run setup && webpack-dev-server --config webpack.config.js --open",
     "test": "jest",
-    "lint": "eslint . --ext .ts"
+    "lint": "eslint . --ext .ts",
+    "generate:assets": "node --loader ts-node/esm tools/generate-assets.ts",
+    "generate:dialogue": "node --loader ts-node/esm tools/generate-dialogue.ts", 
+    "generate:images": "node --loader ts-node/esm tools/generate-images.ts",
+    "generate:placeholders": "node --loader ts-node/esm tools/generate-placeholders.ts"
   },
   "keywords": [
     "phaser",
@@ -23,7 +31,10 @@
   "dependencies": {
     "phaser": "^3.60.0",
     "@esotericsoftware/spine-phaser": "^4.2.15",
-    "webfontloader": "^1.6.28"
+    "webfontloader": "^1.6.28",
+    "aws-sdk": "^2.1377.0",
+    "axios": "^1.4.0",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.5",
@@ -41,6 +52,9 @@
     "typescript": "^5.2.2",
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.1"
+    "webpack-dev-server": "^4.15.1",
+    "@types/aws-sdk": "^2.7.0",
+    "@types/uuid": "^9.0.1",
+    "ts-node": "^10.9.1"
   }
 }

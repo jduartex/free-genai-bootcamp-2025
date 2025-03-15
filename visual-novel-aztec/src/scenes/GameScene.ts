@@ -542,4 +542,49 @@ export class GameScene extends Phaser.Scene {
       }
     });
   }
+
+  // Add a method for dynamic dialogue generation
+  private async generateNPCDialogue(characterId: string, situation: string): Promise<void> {
+    try {
+      // This would be implemented to call the API in a production setting
+      // For now, we'll use placeholder dialogue
+      const dialogueOptions = [
+        {
+          speakerId: characterId,
+          japanese: "助けが必要ですか？",
+          english: "Do you need help?",
+          default_next_id: this.gameState.currentDialog
+        },
+        {
+          speakerId: characterId,
+          japanese: "この先には危険がありますよ。",
+          english: "There is danger ahead.",
+          default_next_id: this.gameState.currentDialog
+        },
+        {
+          speakerId: characterId,
+          japanese: "早く行きましょう、時間がありません。",
+          english: "Let's go quickly, we don't have much time.",
+          default_next_id: this.gameState.currentDialog
+        }
+      ];
+      
+      // Randomly select one dialogue option
+      const randomIndex = Math.floor(Math.random() * dialogueOptions.length);
+      const selectedDialogue = dialogueOptions[randomIndex];
+      
+      // Launch dialogue scene with the generated content
+      this.scene.launch('DialogueScene', {
+        dialogId: 'generated-dialogue',
+        storyData: {
+          ...this.currentStoryData,
+          dialog: {
+            'generated-dialogue': selectedDialogue
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Failed to generate dialogue:', error);
+    }
+  }
 }

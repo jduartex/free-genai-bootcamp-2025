@@ -62,7 +62,7 @@ export class LoadScene extends Phaser.Scene {
         // Start the game
         this.scene.start('MenuScene');
       })
-      .catch(error => {
+      .catch((error: Error) => {
         console.error('Failed to load story data:', error);
         
         // Create dummy story data

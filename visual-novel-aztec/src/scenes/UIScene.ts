@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { TimerConfig } from '../types/StoryTypes';
 
+// ...existing code...
+
 export class UIScene extends Phaser.Scene {
   private timerText!: Phaser.GameObjects.Text;
   private timerImage!: Phaser.GameObjects.Image;

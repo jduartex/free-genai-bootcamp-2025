@@ -2,6 +2,11 @@ import Phaser from 'phaser';
 import { DialogEntry, DialogChoice, StoryData } from '../types/StoryTypes';
 import { getCharacterName } from '../utils/StoryLoader';
 
+interface DialogSceneData {
+  dialogId: string;
+  storyData: StoryData;
+}
+
 export class DialogueScene extends Phaser.Scene {
   private dialogBox!: Phaser.GameObjects.Image;
   private characterNameText!: Phaser.GameObjects.Text;
@@ -22,7 +27,7 @@ export class DialogueScene extends Phaser.Scene {
     super({ key: 'DialogueScene' });
   }
 
-  init(data: { dialogId: string; storyData: StoryData }): void {
+  init(data: DialogSceneData): void {
     this.currentStoryData = data.storyData;
     this.currentEntry = this.currentStoryData.dialog[data.dialogId];
     
@@ -163,6 +168,9 @@ export class DialogueScene extends Phaser.Scene {
     
     // Setup vocabulary tooltip system
     this.setupVocabularyTooltips();
+    
+    // Load and play audio if available
+    this.loadAndPlayAudio();
   }
 
   private createCharacterPortrait(): void {
@@ -276,7 +284,7 @@ export class DialogueScene extends Phaser.Scene {
     const totalHeight = choices.length * buttonHeight + (choices.length - 1) * buttonSpacing;
     let startY = (this.cameras.main.height - totalHeight) / 2;
     
-    choices.forEach((choice, index) => {
+    choices.forEach((choice: DialogChoice, index: number) => {
       const y = startY + index * (buttonHeight + buttonSpacing);
       
       const choiceContainer = this.add.container(this.cameras.main.width / 2, y);
@@ -395,5 +403,68 @@ export class DialogueScene extends Phaser.Scene {
     // Create interactive areas for each word in the dialog
     // This would allow clicking on words to see translations
     // For now, this is a placeholder for future implementation
+  }
+  
+  private loadAndPlayAudio(): void {
+    // Fix the type error by casting the settings.data to our interface
+    const sceneData = this.scene.settings.data as DialogSceneData;
+    const { dialogId } = sceneData;
+    const { id: sceneId } = this.currentStoryData;
+    const audioKey = `${sceneId}_${dialogId}_ja`;
+    
+    // Check if audio exists in cache or attempt to load it
+    if (!this.cache.audio.exists(audioKey)) {
+      const audioPath = `assets/audio/dialogue/${audioKey}.mp3`;
+      
+      try {
+        this.load.audio(audioKey, audioPath);
+        this.load.once('complete', () => {
+          this.playDialogueAudio(audioKey);
+        });
+        this.load.start();
+      } catch (error) {
+        console.warn(`Audio file not found: ${audioPath}`);
+      }
+    } else {
+      this.playDialogueAudio(audioKey);
+    }
+  }
+
+  private playDialogueAudio(key: string): void {
+    try {
+      // Stop any currently playing dialogue audio
+      if (this.dialogSound && this.dialogSound.isPlaying) {
+        this.dialogSound.stop();
+      }
+      
+      // Play the new dialogue audio
+      this.dialogSound = this.sound.add(key, { volume: 1.0 });
+      this.dialogSound.play();
+      
+      // Sync text typing with audio if timing data available
+      if (this.currentEntry.words && this.currentEntry.words.length > 0) {
+        this.syncTextWithAudio(this.dialogSound);
+      }
+    } catch (error) {
+      console.error('Error playing dialogue audio:', error);
+    }
+  }
+
+  private syncTextWithAudio(audio: Phaser.Sound.BaseSound): void {
+    // Only if words array with timing data is available
+    if (!this.currentEntry.words || this.currentEntry.words.length === 0) return;
+    
+    // Clear existing text
+    this.dialogText.setText('');
+    
+    // Set up markers for each word
+    this.currentEntry.words.forEach((wordData: {word: string, start: number}) => {
+      const { word, start } = wordData;
+      
+      // Create a timeout to show each word at the right time
+      this.time.delayedCall(start * 1000, () => {
+        this.dialogText.text += word;
+      });
+    });
   }
 }

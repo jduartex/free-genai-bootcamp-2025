@@ -160,11 +160,47 @@ A narrow, earthen escape tunnel that becomes accessible only after solving all p
 - Sound effects for interactions and puzzle solving
 - Ambient prison sounds for immersion
 
+## AI Integration for Game Development
+
+### AI Asset Generation
+- **Stable Diffusion** for generating background scenes and character portraits
+  - Custom prompts optimized for Aztec and Spanish colonial aesthetics
+  - Style consistency maintained through negative prompting
+  - Resolution settings for backgrounds (1280x720) and characters (512x768)
+  - Multi-step workflow for refinement and variation generation
+
+### Voice Synthesis
+- **Amazon Polly** for character dialogue
+  - Neural TTS voices mapped to specific characters:
+    - Tlaloc: Takumi (Japanese male)
+    - Citlali: Kazuha (Japanese female)
+    - Diego: Sergio (Spanish male)
+    - Narrator: Joanna (English female)
+  - Pronunciation refinement for Japanese text
+  - Automatic naming and organization of audio files
+
+### Dynamic Content Generation
+- **Ollama/Llama 3** for procedural dialogue generation
+  - Character-specific dialogue generation based on context
+  - Puzzle content generation for varied difficulty levels
+  - Multi-language output (Japanese with English translations)
+
+### Cultural Content
+- **AWS Bedrock (Claude)** for historical Aztec facts
+  - Context-aware cultural information
+  - Educational content integration
+  - Historical accuracy verification
+
+### Asset Generation Tools
+- Command-line tools for batch asset generation
+- Integration with CI/CD pipeline for automated updates
+- Development helpers for prototyping and placeholder generation
+
 ## Development Priorities
 
 1. Core escape room mechanics and puzzle implementation
 2. Japanese language integration and educational content
 3. Character development and storyline
-4. Art and audio assets
+4. Art and audio assets (with AI generation assistance)
 5. Testing and balancing puzzle difficulty
 6. UI polish and accessibility features
