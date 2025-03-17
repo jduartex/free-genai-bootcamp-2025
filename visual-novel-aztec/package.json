@@ -18,7 +18,9 @@
     "generate:images": "node --loader ts-node/esm tools/generate-images.ts",
     "generate:placeholders": "node --loader ts-node/esm tools/generate-placeholders.ts",
     "generate:audio": "node --loader ts-node/esm tools/pre-generate-audio.ts",
-    "prestart": "npm run generate:audio"
+    "prestart": "npm run generate:audio",
+    "test:bedrock": "node test/bedrock-node-test.js",
+    "list:models": "node test/list-bedrock-models.js"
   },
   "keywords": [
     "phaser",
@@ -31,6 +33,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-bedrock": "^3.763.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.758.0",
     "@esotericsoftware/spine-phaser": "^4.2.15",
     "aws-sdk": "^2.1377.0",
     "axios": "^1.4.0",
