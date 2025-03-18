@@ -16,15 +16,6 @@ export function generatePlaceholders(scene: Phaser.Scene): void {
   // Generate interactive elements
   createPlaceholderCircle(scene, 'window', 0xffff00);
   createPlaceholderCircle(scene, 'floor-pattern', 0xffaa00);
-  createPlaceholderCircle(scene, 'bed', 0x00ffff);
-  createPlaceholderCircle(scene, 'door', 0xff00ff);
-  createPlaceholderCircle(scene, 'temple', 0x00ff00);
-  createPlaceholderCircle(scene, 'return-arrow', 0xff0000);
-  createPlaceholderCircle(scene, 'exit', 0x00ff00);
-
-  // Generate character placeholders
-  createPlaceholderCharacter(scene, 'tlaloc', 0x3366ff);
-  createPlaceholderCharacter(scene, 'citlali', 0xff6699);
 }
 
 function createPlaceholderBackground(scene: Phaser.Scene, key: string, color: number): void {
@@ -46,38 +37,6 @@ function createPlaceholderBackground(scene: Phaser.Scene, key: string, color: nu
   
   // Generate texture
   graphics.generateTexture(key, 1280, 720);
-  graphics.destroy();
-  text.destroy();
-}
-
-function createPlaceholderCharacter(scene: Phaser.Scene, key: string, color: number): void {
-  const graphics = scene.add.graphics();
-  
-  // Body
-  graphics.fillStyle(color, 1);
-  graphics.fillRect(100, 50, 300, 400);
-  
-  // Head
-  graphics.fillStyle(0xffcc99, 1);
-  graphics.fillCircle(250, 100, 50);
-  
-  // Outline
-  graphics.lineStyle(4, 0x000000, 1);
-  graphics.strokeRect(100, 50, 300, 400);
-  graphics.strokeCircle(250, 100, 50);
-  
-  // Add name
-  const text = scene.add.text(
-    250, 250, key,
-    { 
-      fontFamily: 'Arial',
-      fontSize: '32px',
-      color: '#ffffff'
-    }
-  ).setOrigin(0.5);
-  
-  // Generate texture
-  graphics.generateTexture(key, 500, 500);
   graphics.destroy();
   text.destroy();
 }

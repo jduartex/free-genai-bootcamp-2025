@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { DialogEntry, DialogChoice, StoryData } from '../types/StoryTypes';
 import { getCharacterName } from '../utils/StoryLoader';
 import { VoiceGenerator } from '../utils/VoiceGenerator'; // Import VoiceGenerator
+import { SoundManager } from '../utils/SoundManager'; // Add this import
 
 interface DialogSceneData {
   dialogId: string;
@@ -13,33 +14,65 @@ interface Character {
   // Add any other character properties you need
 }
 
+interface InventoryItem {
+  id: string;
+  name: string;
+  description: string;
+  image: Phaser.GameObjects.Image | null;
+  icon: Phaser.GameObjects.Image | null;
+}
+
+interface WordData {
+  word: string;
+  start: number;
+}
+
 export class DialogueScene extends Phaser.Scene {
-  private dialogBox!: Phaser.GameObjects.Image;
-  private characterNameText!: Phaser.GameObjects.Text;
-  private dialogText!: Phaser.GameObjects.Text;
-  private englishText!: Phaser.GameObjects.Text;
-  private characterPortrait!: Phaser.GameObjects.Sprite; // Fixed: Removed Spine type
-  private continueIndicator!: Phaser.GameObjects.Text;
-  private choiceButtons: Phaser.GameObjects.Container[] = [];
-  private currentEntry!: DialogEntry;
-  private currentStoryData!: StoryData;
-  private typingSpeed: number = 30; // ms per character
-  private isTyping: boolean = false;
-  private showEnglish: boolean = true;
-  private dialogSound!: Phaser.Sound.BaseSound;
-  private useSpineAnimations: boolean = false;
-  private speakingTween: Phaser.Tweens.Tween | undefined;
-  private speakingIndicator: Phaser.GameObjects.Arc | undefined;
-  private audioWaveform: Phaser.GameObjects.Rectangle[] | undefined;
-  private characters: Map<string, Character> = new Map(); // Add characters Map
-  
+  // Define all properties once with appropriate visibility
+  public dialogBox!: Phaser.GameObjects.Image;
+  public characterNameText!: Phaser.GameObjects.Text;
+  public dialogText!: Phaser.GameObjects.Text;
+  public englishText!: Phaser.GameObjects.Text;
+  public characterPortrait: Phaser.GameObjects.Sprite | null = null;
+  public continueIndicator: Phaser.GameObjects.Text | null = null;
+  public choiceButtons: Phaser.GameObjects.Container[] = [];
+  public currentEntry!: DialogEntry;
+  public currentStoryData!: StoryData;
+  public typingSpeed: number = 30;
+  public isTyping: boolean = false;
+  public showEnglish: boolean = true;
+  public dialogSound: Phaser.Sound.BaseSound | null = null;  // Add this missing property
+  public useSpineAnimations: boolean = false;
+  public speakingTween: Phaser.Tweens.Tween | null = null;
+  public speakingIndicator: Phaser.GameObjects.Sprite | Phaser.GameObjects.Arc | null = null;
+  public audioWaveform: Phaser.GameObjects.Rectangle[] = [];  // Add this missing property
+  public characters: Map<string, Character> = new Map();
+  public inventoryItems: InventoryItem[] = [];  // Add this missing property
+  public remainingTime: number = 0;
+  public dialogId: string = '';
+
   constructor() {
     super({ key: 'DialogueScene' });
+    
+    // Initialize properties to prevent undefined errors
+    this.isTyping = false;
+    this.typingSpeed = 50;
+    this.showEnglish = false;
+    this.choiceButtons = [];
+    this.inventoryItems = [];
+    this.characters = new Map();
+    this.audioWaveform = [];
+    this.dialogSound = null;
+    this.characterPortrait = null;
+    this.continueIndicator = null;
+    this.speakingTween = null;
+    this.speakingIndicator = null;
   }
 
   init(data: DialogSceneData): void {
     this.currentStoryData = data.storyData;
-    this.currentEntry = this.currentStoryData.dialog[data.dialogId];
+    this.currentEntry = this.currentStoryData.dialog[data.dialogId]; // Fix: Ensure currentEntry is assigned
+    this.dialogId = data.dialogId;
     
     // Check if we have spine animations
     this.useSpineAnimations = this.textures.exists('tlaloc-spine') && 
@@ -133,7 +166,7 @@ export class DialogueScene extends Phaser.Scene {
       }
     ).setVisible(false)
     .setInteractive({ useHandCursor: true })
-    .on('pointerdown', () => this.advanceDialog());
+    .on('pointerdown', () => this.advanceDialog()) as Phaser.GameObjects.Text;
     
     // Add click event on dialog box for advancing dialog
     this.dialogBox.setInteractive({ useHandCursor: true })
@@ -163,16 +196,18 @@ export class DialogueScene extends Phaser.Scene {
       this.events.once('typingComplete', this.createChoiceButtons, this);
     } else {
       this.events.once('typingComplete', () => {
-        this.continueIndicator.setVisible(true);
-        this.continueIndicator.setAlpha(0);
-        this.tweens.add({
-          targets: this.continueIndicator,
-          alpha: 1,
-          duration: 500,
-          ease: 'Sine.easeInOut',
-          yoyo: true,
-          repeat: -1
-        });
+        if (this.continueIndicator) {
+          this.continueIndicator.setVisible(true);
+          this.continueIndicator.setAlpha(0);
+          this.tweens.add({
+            targets: this.continueIndicator,
+            alpha: 1,
+            duration: 500,
+            ease: 'Sine.easeInOut',
+            yoyo: true,
+            repeat: -1
+          });
+        }
       });
     }
     
@@ -364,10 +399,16 @@ export class DialogueScene extends Phaser.Scene {
   // Add a helper method to safely play sounds
   private playSoundSafe(key: string, volume: number = 0.5): void {
     try {
-      if (this.cache.audio.exists(key) && this.sound.get(key)) {
-        this.sound.play(key, { volume });
+      // First check if sound system is available
+      if (!this.sound || !this.sound.locked) {
+        // Then check if the specific sound exists
+        if (this.cache.audio.exists(key)) {
+          this.sound.play(key, { volume });
+        } else {
+          console.warn(`Sound "${key}" not available, but sound system is ready`);
+        }
       } else {
-        console.warn(`Sound "${key}" not available`);
+        console.warn(`Sound system is locked, cannot play "${key}"`);
       }
     } catch (e) {
       console.warn(`Error playing sound "${key}":`, e);
@@ -503,7 +544,7 @@ export class DialogueScene extends Phaser.Scene {
   private createSilentAudioPlaceholder(audioKey: string): void {
     try {
       // This is a valid base64-encoded silent MP3 file (0.5 seconds)
-      const silentAudioBase64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADQgD///////////////////////////////////////////8AAAA8TEFNRTMuMTAwAQAAAAAAAAAAABSAJAJAQgAAgAAAA0L2YLwxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
+      const silentAudioBase64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADQgD///////////////////////////////////////////8AAAA8TEFNRTMuMTAwAQAAAAAAAAAAABSAJAJAQgAAgAAAA0L2YLwxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
       
       // Create a temporary Audio element from the base64 string
       const tempAudio = new Audio(silentAudioBase64);
@@ -527,6 +568,13 @@ export class DialogueScene extends Phaser.Scene {
 
   private playDialogueAudio(key: string): void {
     try {
+      // Guard against invalid key
+      if (!key || typeof key !== 'string') {
+        console.warn(`⚠️ Invalid audio key: ${key}`);
+        this.events.emit('typingComplete');
+        return;
+      }
+      
       // Stop any currently playing dialogue audio
       if (this.dialogSound && this.dialogSound.isPlaying) {
         this.dialogSound.stop();
@@ -542,6 +590,8 @@ export class DialogueScene extends Phaser.Scene {
             this.continuePlayingDialogueAudio(key);
           } else {
             console.error(`❌ Still can't play audio: ${key}`);
+            // Still emit the typing complete event so the game continues
+            this.events.emit('typingComplete');
           }
         });
         return;
@@ -550,65 +600,18 @@ export class DialogueScene extends Phaser.Scene {
       this.continuePlayingDialogueAudio(key);
     } catch (error) {
       console.error(`❌ Error in playDialogueAudio:`, error);
-      // Still display text even if audio fails
-      if (this.characterPortrait && this.currentEntry.speakerId !== 'narrator') {
-        // Fix: Pass the character ID instead of the sprite object
-        this.addSpeakingAnimation(this.currentEntry.speakerId);
-      }
-      this.time.delayedCall(5000, () => {
-        if (this.characterPortrait) {
-          this.stopSpeakingAnimation();
-        }
-      });
+      // Still emit the typing complete event so the game continues
+      this.events.emit('typingComplete');
     }
   }
 
   private continuePlayingDialogueAudio(key: string): void {
     try {
-      // Play the new dialogue audio with additional error handling
-      console.log(`🔊 Attempting to play audio: ${key}`);
-      
-      try {
-        this.dialogSound = this.sound.add(key, { volume: 1.0 });
-      } catch (addError) {
-        console.error(`❌ Failed to add sound: ${key}`, addError);
-        return;
-      }
-      
-      // Add visual feedback when audio is playing
-      if (this.characterPortrait && this.currentEntry.speakerId !== 'narrator') {
-        this.addSpeakingAnimation(this.currentEntry.speakerId);
-      }
-      
-      this.dialogSound.once('play', () => {
-        console.log(`✅ Audio playing: ${key}`);
-        // Start audio visualization
-        this.showAudioWaveform(true);
+      // Create and configure the sound
+      this.dialogSound = this.sound.add(key, {
+        volume: 0.8,
+        rate: 1.0
       });
-      
-      this.dialogSound.once('complete', () => {
-        console.log(`✅ Audio completed: ${key}`);
-        // Stop speaking animation
-        if (this.characterPortrait) {
-          this.stopSpeakingAnimation();
-        }
-        // Hide audio visualization
-        this.showAudioWaveform(false);
-      });
-      
-      this.dialogSound.once('loaderror', (error: any) => {
-        console.error(`❌ Failed to play audio: ${key}`, error);
-        // Stop speaking animation on error
-        if (this.characterPortrait) {
-          this.stopSpeakingAnimation();
-        }
-      });
-      
-      // Verify sound was added successfully
-      if (!this.dialogSound) {
-        console.error(`❌ Failed to add sound: ${key}`);
-        return;
-      }
       
       // Force a user interaction for mobile browsers
       let success = false;
@@ -624,14 +627,14 @@ export class DialogueScene extends Phaser.Scene {
       this.events.emit('typingComplete');
       
       // Sync text typing with audio if timing data available
-      if (this.currentEntry.words && this.currentEntry.words.length > 0) {
+      if (this.currentEntry?.words && this.currentEntry.words.length > 0) {
         this.syncTextWithAudio(this.dialogSound);
       }
     } catch (error) {
       console.error(`❌ Error playing dialogue audio:`, error);
       // Stop speaking animation on error
-      if (this.characterPortrait) {
-        this.stopSpeakingAnimation();
+      if (this.currentEntry?.speakerId) {
+        this.stopSpeakingAnimation(this.currentEntry.speakerId);
       }
       // Still emit the typing complete event so the game continues
       this.events.emit('typingComplete');
@@ -640,11 +643,10 @@ export class DialogueScene extends Phaser.Scene {
 
   private loadWithSoundManager(audioKey: string): void {
     try {
-      // Get SoundManager instance if available - fixing the incorrect access
-      const SoundManager = (window as any).SoundManager; // Use only the global reference
+      // Get SoundManager instance from the imported class
+      const soundManager = SoundManager.getInstance();
       
-      if (SoundManager && SoundManager.getInstance) {
-        const soundManager = SoundManager.getInstance();
+      if (soundManager) {
         const audioPath = `assets/audio/dialogue/${audioKey}.mp3`;
         
         soundManager.loadAudio(audioKey, audioPath)
@@ -652,7 +654,7 @@ export class DialogueScene extends Phaser.Scene {
             console.log(`🎧 SoundManager loaded: ${audioKey}`);
             this.playDialogueAudio(audioKey);
           })
-          .catch((error: any) => {
+          .catch((error: Error) => {
             console.error(`❌ SoundManager failed to load: ${audioKey}`, error);
             this.generateAndLoadAudio(audioKey, this.currentEntry.japanese);
           });
@@ -699,7 +701,7 @@ export class DialogueScene extends Phaser.Scene {
     this.dialogText.setText('');
     
     // Set up markers for each word
-    this.currentEntry.words.forEach((wordData: {word: string, start: number}) => {
+    this.currentEntry.words.forEach((wordData: WordData) => {
       const { word, start } = wordData;
       
       // Create a timeout to show each word at the right time
@@ -825,8 +827,9 @@ export class DialogueScene extends Phaser.Scene {
    */
   private createAudioWaveform(): void {
     // Clean up existing waveform if any
-    if (this.audioWaveform) {
+    if (this.audioWaveform.length > 0) {
       this.audioWaveform.forEach(rect => rect.destroy());
+      this.audioWaveform = [];
     }
     
     // Create new waveform visualization
@@ -836,8 +839,6 @@ export class DialogueScene extends Phaser.Scene {
     const barHeight = 20;
     const startX = this.cameras.main.width - 50;
     const startY = this.cameras.main.height - 80;
-    
-    this.audioWaveform = [];
     
     for (let i = 0; i < numBars; i++) {
       const x = startX + i * (barWidth + barSpacing);
@@ -851,7 +852,7 @@ export class DialogueScene extends Phaser.Scene {
    * Shows or hides the audio waveform visualization
    */
   private showAudioWaveform(visible: boolean): void {
-    if (this.audioWaveform && this.audioWaveform.length > 0) {
+    if (this.audioWaveform.length > 0) {
       // Show/hide all bars
       this.audioWaveform.forEach(rect => rect.setVisible(visible));
       
@@ -876,5 +877,118 @@ export class DialogueScene extends Phaser.Scene {
         });
       }
     }
+  }
+
+  private createHintButton(x: number, y: number, label: string, cost: number, hintLevel: number): void {
+    // ...existing code...
+  }
+
+  private showInventory(): void {
+    // ...existing code...
+    
+    // Display inventory items
+    if (this.inventoryItems.length === 0) {
+      // ...existing code...
+    } else {
+      this.inventoryItems.forEach((item: InventoryItem, index: number) => {
+        // ...existing code...
+      });
+    }
+    
+    // ...existing code...
+  }
+
+  private showItemDetail(itemId: string): void {
+    // Find the item
+    const item = this.inventoryItems.find((i: InventoryItem) => i.id === itemId);
+    if (!item) return;
+    // ...existing code...
+  }
+
+  /**
+   * Add an item to the inventory
+   * @param itemId - The ID of the item to add
+   */
+  public addInventoryItem(itemId: string): void {
+    // ...existing code...
+  }
+
+  /**
+   * Get display name for an item
+   * @param itemId - The item ID
+   * @returns The display name for the item
+   */
+  private getItemName(itemId: string): string {
+    // In a production game, this would come from a data source
+    const itemNames: Record<string, string> = {
+      'key': 'Prison Key',
+      'map': 'Treasure Map',
+      'codex': 'Aztec Codex',
+      'pendant': 'Jade Pendant',
+      'tool': 'Stone Tool'
+    };
+    
+    return itemNames[itemId as keyof typeof itemNames] || `Item ${itemId}`;
+  }
+  
+  /**
+   * Get description for an item
+   * @param itemId - The item ID
+   * @returns The description for the item
+   */
+  private getItemDescription(itemId: string): string {
+    // In a production game, this would come from a data source
+    const itemDescriptions: Record<string, string> = {
+      'key': 'A rusty key that might open a prison cell.',
+      'map': 'A map showing what appears to be hidden tunnels.',
+      'codex': 'An ancient Aztec manuscript with important symbols.',
+      'pendant': 'A beautiful jade pendant with mystical properties.',
+      'tool': 'A stone tool that can help remove obstacles.'
+    };
+    
+    return itemDescriptions[itemId as keyof typeof itemDescriptions] || `No description available for ${itemId}.`;
+  }
+
+  // Fix cleanup when scene is shutdown or destroyed
+  shutdown(): void {
+    // Stop all tweens
+    this.tweens.killAll();
+    
+    // Stop all timers
+    this.time.removeAllEvents();
+    
+    // Stop all sounds - ensure dialogSound exists before checking it
+    if (this.dialogSound && this.dialogSound.isPlaying) {
+      this.dialogSound.stop();
+    }
+    
+    // Stop all animations - fix call to stopSpeakingAnimation by passing an argument
+    this.stopSpeakingAnimation(this.currentEntry?.speakerId); // Pass current speaker ID
+    
+    // Clear event listeners
+    this.events.removeAllListeners();
+  }
+
+  // Also handle destroy for complete cleanup
+  destroy(): void {
+    this.shutdown();
+    // No need to call super.destroy() as it doesn't exist in Phaser.Scene
+  }
+
+  // Add this method to fix the error with generateVoiceForDialogue
+  generateVoiceForDialogue(dialogId: string, text: string): string {
+    // Forward to the correct method
+    return VoiceGenerator.generateVoiceFile(dialogId, text);
+  }
+  
+  // If there's a method overload issue (line 798)
+  continueStoryWithDefaultOption(): void {
+    // Implementation that takes no parameters
+    this.continueStory(undefined);
+  }
+
+  // Assuming continueStory exists and takes an optional parameter
+  continueStory(option?: any): void {
+    // Implementation
   }
 }

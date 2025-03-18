@@ -5,64 +5,65 @@ import { PreloadScene } from './scenes/PreloadScene';
 import { LoadScene } from './scenes/LoadScene';
 import { MenuScene } from './scenes/MenuScene';
 import { GameScene } from './scenes/GameScene';
-import { UIScene } from './scenes/UIScene';
 import { DialogueScene } from './scenes/DialogueScene';
-import { CreditsScene } from './scenes/CreditsScene';
 import { SettingsScene } from './scenes/SettingsScene';
+import { UIScene } from './scenes/UIScene';
+import { CreditsScene } from './scenes/CreditsScene';
 import { SoundManager } from './utils/SoundManager';
 
-// Note: To properly use Spine animations, we would need to set up the Spine plugin
-// For now, we're using static images instead
-// This will be added in a future update when we have proper Spine assets
+// Global type declarations
+declare global {
+  interface Window {
+    game: Phaser.Game;
+    SoundManager: any;
+  }
+}
 
-// Load required fonts
+// Load web fonts
 WebFontLoader.load({
   google: {
-    families: ['Noto Sans JP:400,700', 'Crimson Text:400,700']
+    families: ['Crimson Text:400,700', 'Noto Sans JP:400,700']
   },
-  active: () => {
-    // Initialize the game when fonts are loaded
-    startGame();
-  },
-  inactive: () => {
-    // Fallback to start the game if fonts fail to load
-    console.warn('WebFont loading failed. Starting game with fallback fonts.');
-    startGame();
-  }
+  active: startGame,
+  inactive: startGame,
+  timeout: 3000
 });
 
-function startGame(): void {
-  // Create the game instance with configuration
-  const game = new Phaser.Game({
-    ...GameConfig,
-    scene: [
-      PreloadScene,  // Start with PreloadScene for audio initialization
-      LoadScene, 
-      MenuScene, 
-      GameScene,
-      DialogueScene,
-      UIScene,
-      CreditsScene,
-      SettingsScene
-    ]
-  });
+// Create game instance once fonts are loaded
+function startGame() {
+  // Enable Phaser debugging in development mode
+  if (process.env.NODE_ENV === 'development') {
+    (window as any).Phaser = Phaser;
+  }
   
-  // Make game available globally for audio unlock
-  (window as any).game = game;
-
-  // Handle window resize
-  const resize = (): void => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    const scale = Math.min(width / 1280, height / 720);
-    
-    game.scale.resize(1280, 720);
-    game.scale.setZoom(scale);
-  };
-
-  window.addEventListener('resize', resize);
-  resize();
+  // Initialize the game
+  const game = new Phaser.Game(GameConfig);
+  
+  // Add all scenes
+  game.scene.add('PreloadScene', PreloadScene);
+  game.scene.add('LoadScene', LoadScene);
+  game.scene.add('MenuScene', MenuScene);
+  game.scene.add('GameScene', GameScene);
+  game.scene.add('DialogueScene', DialogueScene);
+  game.scene.add('SettingsScene', SettingsScene);
+  game.scene.add('UIScene', UIScene);
+  game.scene.add('CreditsScene', CreditsScene);
+  
+  // Start with the preload scene
+  game.scene.start('PreloadScene');
+  
+  // Store game instance in window for debugging
+  if (typeof window !== 'undefined') {
+    window.game = game;
+  }
   
   // Make SoundManager available globally
-  (window as any).SoundManager = SoundManager;
+  if (typeof window !== 'undefined') {
+    window.SoundManager = SoundManager;
+  }
+  
+  // Add event listener for audio unlock button
+  document.getElementById('audio-unlock-button')?.addEventListener('click', () => {
+    game.events.emit('audioUnlocked');
+  });
 }

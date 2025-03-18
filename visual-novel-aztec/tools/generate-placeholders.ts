@@ -1,4 +1,4 @@
-import { generatePlaceholders } from '../src/utils/PlaceholderGenerator.js';
+import { generatePlaceholders } from '../src/utils/PlaceholderGenerator';
 import fs from 'fs';
 import path from 'path';
 

@@ -1,452 +1,431 @@
 import Phaser from 'phaser';
 import { SoundManager } from '../utils/SoundManager';
 
+// Add proper WebKit audio context declaration
+interface AudioContextConstructor {
+  new (): AudioContext;
+}
+
+interface WebKitAudioContextConstructor {
+  new (): AudioContext;
+}
+
+// Declare WebKit prefixed AudioContext on window
+declare global {
+  interface Window {
+    webkitAudioContext?: WebKitAudioContextConstructor;
+  }
+}
+
+// Define SliderData interface
+interface SliderData {
+  track: Phaser.GameObjects.Rectangle;
+  knob: Phaser.GameObjects.Image;
+  value: number;
+  key: string;
+  label: Phaser.GameObjects.Text;
+}
+
+interface SliderConfig {
+  x: number;
+  y: number;
+  width: number;
+  height?: number;
+  key?: string;
+  initialValue: number;
+  onChange: (value: number) => void;
+  label: string;
+  labelColor?: string;
+}
+
 export class SettingsScene extends Phaser.Scene {
-  private soundManager!: SoundManager;
-  private sliders: { 
-    [key: string]: { 
-      bar: Phaser.GameObjects.Rectangle; 
-      handle: Phaser.GameObjects.Rectangle;
-      value: number;
-      valueText: Phaser.GameObjects.Text;
-    } 
-  } = {};
-  private returnScene: string = 'MenuScene';
-  
+  // Class fields properly declared with their types
+  private _returnScene: string;
+  private _sliders: Record<string, Phaser.GameObjects.Container>;
+  private _lastDragSound: number;
+  private _soundManager: SoundManager | null;
+
   constructor() {
     super({ key: 'SettingsScene' });
+    
+    // Initialize properties in constructor
+    this._returnScene = 'MenuScene';
+    this._sliders = {};
+    this._lastDragSound = 0;
+    this._soundManager = null;
   }
-  
+
   init(data: { returnScene?: string } = {}): void {
-    if (data.returnScene) {
-      this.returnScene = data.returnScene;
-    }
+    this._returnScene = data.returnScene || 'MenuScene';
   }
-  
+
   create(): void {
-    this.soundManager = SoundManager.getInstance();
+    // Initialize SoundManager
+    this._soundManager = (SoundManager as any).getInstance();
     
-    // Preload necessary UI sounds to prevent "not found in cache" errors
-    this.preloadUIAudioIfNeeded();
-    
-    // Create dark overlay
-    this.add.rectangle(
-      this.cameras.main.width / 2,
+    // Background
+    const bg = this.add.rectangle(
+      this.cameras.main.width / 2, 
       this.cameras.main.height / 2,
       this.cameras.main.width,
       this.cameras.main.height,
       0x000000,
-      0.8
+      0.85
     );
-    
-    // Create panel with increased height to fit all controls
-    const panel = this.add.rectangle(
+
+    // Title
+    const title = this.add.text(
       this.cameras.main.width / 2,
-      this.cameras.main.height / 2,
-      600,
-      550, // Increased height
-      0x333333,
-      0.95
-    ).setStrokeStyle(2, 0xffffff);
-    
-    // Create title
-    this.add.text(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2 - 220,
-      'Audio Settings',
+      50,
+      'Settings',
       {
-        fontFamily: 'Crimson Text',
+        fontFamily: 'Arial',
         fontSize: '32px',
-        color: '#ffffff',
-        align: 'center'
+        color: '#ffffff'
       }
     ).setOrigin(0.5);
     
-    // Get current volume settings
-    const volumes = this.soundManager.getVolumeSettings();
+    // Create slider controls
+    this.createSliderControls();
     
-    // Further reduced indentation for all sliders and labels
-    const leftOffset = 10; // Reduced from 30 to keep everything inside the box
-    
-    // Create volume sliders with reduced indentation
-    this.createVolumeSlider('Master Volume', volumes.master, 'master', -120, leftOffset);
-    this.createVolumeSlider('Music Volume', volumes.music, 'music', -40, leftOffset);
-    this.createVolumeSlider('Effects Volume', volumes.effects, 'effects', 40, leftOffset);
-    this.createVolumeSlider('Voice Volume', volumes.voice, 'voice', 120, leftOffset);
-    
-    // Create test sound button - positioned further down to fit in panel
-    this.createTestSoundButton();
-    
-    // Create back button - positioned further down to fit in panel
+    // Create back button
     this.createBackButton();
-  }
-  
-  // Add this helper method to ensure UI sounds are available
-  private preloadUIAudioIfNeeded(): void {
-    // Check if UI sounds exist in cache, load them if not
-    const requiredSounds = ['click', 'hover', 'success', 'fail', 'test-sound'];
     
-    requiredSounds.forEach(soundKey => {
-      if (!this.cache.audio.exists(soundKey)) {
-        console.log(`Sound "${soundKey}" not in cache, loading it now...`);
-        this.load.audio(soundKey, `assets/audio/ui/${soundKey}.mp3`);
-      }
-    });
-    
-    // Only start loading if any sounds were added to the loader
-    if (this.load.list.size > 0) {
-      this.load.once('complete', () => {
-        console.log('UI sounds loaded successfully');
-      });
-      this.load.start();
-    }
-  }
-  
-  // Add a helper method to safely play sounds
-  private playSoundSafe(key: string, volume: number = 0.5): void {
-    try {
-      // First check if the sound exists in cache
-      if (this.cache.audio.exists(key)) {
-        this.sound.play(key, { volume });
-      } else {
-        console.warn(`Sound "${key}" not available in SettingsScene`);
-      }
-    } catch (e) {
-      console.warn(`Error playing sound "${key}":`, e);
-    }
+    // Create audio test button
+    this.createAudioTestButton();
   }
 
-  private createVolumeSlider(
-    label: string,
-    initialValue: number,
-    key: string,
-    yOffset: number,
-    leftOffset: number = 200 // Default to original value if not specified
-  ): void {
-    // Create label with reduced left offset
-    this.add.text(
-      this.cameras.main.width / 2 - 230 + leftOffset, // Moved further left (-230 instead of -200)
-      this.cameras.main.height / 2 + yOffset,
+  private createButton(key: string): Phaser.GameObjects.Image {
+    const button = this.add.image(
+      this.cameras.main.width / 2,
+      this.cameras.main.height - 50,
+      'button-default'
+    )
+    .setDisplaySize(200, 60)
+    .setInteractive({ useHandCursor: true });
+    
+    return button;
+  }
+
+  private createSlider(label: string, initialValue: number, key: string, yOffset: number): Phaser.GameObjects.Container {
+    const x = this.cameras.main.width / 2;
+    const y = 150 + yOffset;
+    
+    // Create a container for all slider elements
+    const container = this.add.container(0, 0);
+    
+    // Create label
+    const labelText = this.add.text(
+      x - 200,
+      y,
       label,
       {
-        fontFamily: 'Crimson Text',
-        fontSize: '20px',
+        fontFamily: 'Arial',
+        fontSize: '24px',
         color: '#ffffff'
       }
     ).setOrigin(0, 0.5);
     
-    // Create slider bar background with adjusted width and position
-    const barWidth = 250 - leftOffset; // Reduced width to fit in panel
-    const barHeight = 10;
-    
-    const bar = this.add.rectangle(
-      this.cameras.main.width / 2 + 20, // Moved left from 50 to 20
-      this.cameras.main.height / 2 + yOffset,
-      barWidth,
-      barHeight,
+    // Create slider track
+    const track = this.add.rectangle(
+      x,
+      y,
+      300,
+      8,
       0x666666
-    ).setOrigin(0, 0.5);
+    ).setOrigin(0.5);
     
-    // Create slider handle
-    const handleWidth = 20;
-    const handleHeight = 30;
+    // Create slider knob
+    const knob = this.add.image(
+      x - 150 + (initialValue * 300),
+      y,
+      'button-default' // Use a small image for the knob
+    )
+    .setDisplaySize(20, 20)
+    .setInteractive({ useHandCursor: true });
     
-    const handle = this.add.rectangle(
-      bar.x + barWidth * initialValue,
-      bar.y,
-      handleWidth,
-      handleHeight,
-      0x4CAF50
-    ).setOrigin(0.5, 0.5)
-    .setInteractive({ draggable: true, useHandCursor: true });
+    // Make knob draggable
+    this.input.setDraggable(knob);
     
-    // Move value text closer to slider
-    const valueText = this.add.text(
-      bar.x + barWidth + 5, // Reduced offset from 10 to 5
-      bar.y,
-      `${Math.round(initialValue * 100)}%`,
+    // Add all elements to the container
+    container.add([track, knob, labelText]);
+    
+    // Store slider data in the container for later access
+    const sliderData: SliderData = {
+      track,
+      knob,
+      value: initialValue,
+      key,
+      label: labelText
+    };
+    
+    // Attach the data to the container
+    container.setData('sliderData', sliderData);
+    
+    // Store the container in the sliders dictionary
+    this._sliders[key] = container;
+    
+    return container;
+  }
+
+  private setupDragEvents(): void {
+    // Set up drag events
+    this.input.on('drag', (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Image, dragX: number) => {
+      // Find which slider this belongs to
+      for (const key in this._sliders) {
+        const container = this._sliders[key];
+        const sliderData = container.getData('sliderData') as SliderData;
+        
+        if (sliderData.knob === gameObject) {
+          // Constrain position to track
+          const minX = sliderData.track.x - (sliderData.track.width / 2);
+          const maxX = sliderData.track.x + (sliderData.track.width / 2);
+          
+          let x = Math.max(minX, Math.min(maxX, dragX));
+          
+          // Update knob position
+          sliderData.knob.x = x;
+          
+          // Calculate and store slider value (0-1)
+          sliderData.value = (x - minX) / sliderData.track.width;
+          
+          // Play drag sound occasionally for feedback but not too often
+          const now = Date.now();
+          if (now - this._lastDragSound > 100) { // Only every 100ms
+            this.sound.play('click', { volume: 0.1 });
+            this._lastDragSound = now;
+          }
+          
+          // Update value in sound manager
+          this.updateSoundManagerValue(key, sliderData.value);
+        }
+      }
+    });
+    
+    this.input.on('dragend', (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Image) => {
+      // Find which slider this belongs to
+      for (const key in this._sliders) {
+        const container = this._sliders[key];
+        const sliderData = container.getData('sliderData') as SliderData;
+        
+        if (sliderData.knob === gameObject) {
+          // Play feedback sound when setting is finalized
+          this.sound.play('click', { volume: 0.2 });
+        }
+      }
+    });
+  }
+
+  private updateSoundManagerValue(key: string, value: number): void {
+    if (!this._soundManager) {
+      // Try to get the sound manager instance
+      this._soundManager = SoundManager.getInstance();
+    }
+    
+    if (!this._soundManager) return;
+    
+    // Update the correct volume based on the slider key
+    switch(key) {
+      case 'master':
+        this._soundManager.setMasterVolume(value);
+        break;
+      case 'music':
+        this._soundManager.setMusicVolume(value);
+        break;
+      case 'effects':
+        this._soundManager.setEffectVolume(value);
+        break;
+      case 'voices':
+        this._soundManager.setVoiceVolume(value);
+        break;
+    }
+  }
+
+  private createSliderControls(): void {
+    // Create volume sliders
+    this.createSlider('Master Volume', this.getSavedVolume('master'), 'master', 0);
+    this.createSlider('Music Volume', this.getSavedVolume('music'), 'music', 60);
+    this.createSlider('Effects Volume', this.getSavedVolume('effects'), 'effects', 120);
+    this.createSlider('Voice Volume', this.getSavedVolume('voices'), 'voices', 180);
+    
+    // Set up drag events
+    this.setupDragEvents();
+    
+    // Create test sound button
+    this.createTestSoundButton();
+  }
+
+  private createBackButton(): void {
+    // Create back button
+    const backButton = this.add.image(
+      this.cameras.main.width / 2,
+      this.cameras.main.height - 80,
+      'button-default'
+    )
+    .setDisplaySize(200, 60)
+    .setInteractive({ useHandCursor: true })
+    .on('pointerdown', () => {
+      this.sound.play('click', { volume: 0.5 });
+      this.scene.start(this._returnScene);
+    });
+    
+    // Add text to the button
+    const backText = this.add.text(
+      backButton.x,
+      backButton.y,
+      'Back',
       {
-        fontFamily: 'Crimson Text',
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#ffffff'
+      }
+    ).setOrigin(0.5);
+  }
+
+  private createAudioTestButton(): void {
+    // Create test audio button
+    const testButton = this.add.image(
+      this.cameras.main.width / 2,
+      this.cameras.main.height - 160,
+      'button-default'
+    )
+    .setDisplaySize(200, 60)
+    .setInteractive({ useHandCursor: true })
+    .on('pointerdown', () => {
+      this.sound.play('click', { volume: 0.5 });
+      this.tryUnlockAudio();
+    });
+    
+    // Add text to the button
+    const testText = this.add.text(
+      testButton.x,
+      testButton.y,
+      'Test Audio',
+      {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#ffffff'
+      }
+    ).setOrigin(0.5);
+  }
+
+  private createTestSoundButton(): void {
+    // Create a button to test sound effects
+    const testSoundButton = this.add.image(
+      this.cameras.main.width - 100,
+      150,
+      'button-default'
+    )
+    .setDisplaySize(120, 40)
+    .setInteractive({ useHandCursor: true })
+    .on('pointerdown', () => {
+      // Play test sounds to verify volumes
+      // Get the slider values from the container's data
+      const masterSliderData = this._sliders['master'].getData('sliderData') as SliderData;
+      const effectsSliderData = this._sliders['effects'].getData('sliderData') as SliderData;
+      
+      this.sound.play('click', { 
+        volume: effectsSliderData.value * masterSliderData.value 
+      });
+    });
+    
+    // Add text to the button
+    const testText = this.add.text(
+      testSoundButton.x,
+      testSoundButton.y,
+      'Test',
+      {
+        fontFamily: 'Arial',
         fontSize: '18px',
         color: '#ffffff'
       }
-    ).setOrigin(0, 0.5);
+    ).setOrigin(0.5);
+  }
+
+  private tryUnlockAudio(): void {
+    try {
+      // Check if AudioContext exists in the window object
+      if (typeof window === 'undefined') {
+        console.warn('Window object not available, cannot unlock audio');
+        return;
+      }
+
+      // Simplify to avoid TypeScript errors with webkitAudioContext
+      const audioContextConstructor = 
+        (window.AudioContext || 
+         (window as any).webkitAudioContext) as typeof AudioContext | undefined;
+      
+      if (!audioContextConstructor) {
+        console.warn('AudioContext not supported in this browser');
+        return;
+      }
+      
+      try {
+        const audioContext = new audioContextConstructor();
+        // Create a short, silent buffer
+        const buffer = audioContext.createBuffer(1, 1, 22050);
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        
+        // Play the sound (this is the important part for unlocking)
+        if (source.start) {
+          source.start(0);
+        } else {
+          // Handle older browsers that may use noteOn instead of start
+          (source as any).noteOn(0);
+        }
+        
+        // Also try to play a sound from Phaser's sound manager
+        if (this.sound && this.sound.play) {
+          this.sound.play('click', { volume: 0.1 });
+        }
+        
+        console.log('Audio unlock attempted');
+      } catch (e) {
+        console.warn('Error creating audio context:', e);
+      }
+    } catch (e) {
+      console.warn('Error unlocking audio:', e);
+    }
+  }
+
+  private getSavedVolume(key: string): number {
+    // Try to get saved volume from localStorage
+    try {
+      const savedVolume = localStorage.getItem(`aztecEscape_volume_${key}`);
+      if (savedVolume !== null) {
+        return parseFloat(savedVolume);
+      }
+    } catch (e) {
+      console.warn('Error reading saved volume:', e);
+    }
     
-    // Store slider references
-    this.sliders[key] = {
-      bar,
-      handle,
-      value: initialValue,
-      valueText
+    // Default volumes if nothing is saved
+    const defaults: Record<string, number> = {
+      master: 1.0,
+      music: 0.7,
+      effects: 0.8,
+      voices: 1.0
     };
     
-    // Set up drag events
-    handle.on('drag', (pointer: Phaser.Input.Pointer) => {
-      // Calculate new position within bounds
-      let newX = Phaser.Math.Clamp(
-        pointer.x,
-        bar.x,
-        bar.x + barWidth
-      );
-      
-      // Update handle position
-      handle.x = newX;
-      
-      // Calculate value (0 to 1)
-      const value = (newX - bar.x) / barWidth;
-      this.sliders[key].value = value;
-      
-      // Update display text
-      valueText.setText(`${Math.round(value * 100)}%`);
-      
-      // Update sound manager in real-time
-      this.updateVolume(key, value);
-      
-      // Add haptic feedback with sound - use safe playback method
-      if (!this.lastDragSound || this.time.now > this.lastDragSound + 100) {
-        this.playSoundSafe('click', 0.1);
-        this.lastDragSound = this.time.now;
-      }
-    });
-    
-    // Make bar clickable too for better UX
-    bar.setInteractive({ useHandCursor: true })
-      .on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-        // Calculate value based on click position
-        const value = Phaser.Math.Clamp(
-          (pointer.x - bar.x) / barWidth,
-          0,
-          1
-        );
-        
-        // Update handle position
-        handle.x = bar.x + (barWidth * value);
-        this.sliders[key].value = value;
-        
-        // Update display text
-        valueText.setText(`${Math.round(value * 100)}%`);
-        
-        // Update sound manager
-        this.updateVolume(key, value);
-        
-        // Play click sound - use safe playback method
-        this.playSoundSafe('click', 0.2);
-      });
+    return defaults[key] || 0.5;
   }
 
-  private lastDragSound: number = 0;
-  
-  private updateVolume(key: string, value: number): void {
-    // Apply the volume change to the sound manager
-    switch (key) {
-      case 'master':
-        this.soundManager.setMasterVolume(value);
-        break;
-      case 'music':
-        this.soundManager.setMusicVolume(value);
-        break;
-      case 'effects':
-        this.soundManager.setEffectsVolume(value);
-        break;
-      case 'voice':
-        this.soundManager.setVoiceVolume(value);
-        break;
-    }
-  }
-  
-  private createTestSoundButton(): void {
-    // Create test sound button - positioned higher in the panel
-    const testButton = this.add.rectangle(
-      this.cameras.main.width / 2 - 110,
-      this.cameras.main.height / 2 + 200, // Positioned higher in the panel
-      200,
-      50,
-      0x555555
-    ).setStrokeStyle(2, 0xffffff)
-    .setInteractive({ useHandCursor: true })
-    .on('pointerover', () => {
-      testButton.fillColor = 0x777777;
-    })
-    .on('pointerout', () => {
-      testButton.fillColor = 0x555555;
-    })
-    .on('pointerdown', () => {
-      this.testAudio(); // Call the proper test audio function
-    });
-    
-    this.add.text(
-      this.cameras.main.width / 2 - 110,
-      this.cameras.main.height / 2 + 200,
-      'Test Audio',
-      {
-        fontFamily: 'Crimson Text',
-        fontSize: '20px',
-        color: '#ffffff'
-      }
-    ).setOrigin(0.5);
-  }
-  
-  // Fix audio testing functionality - avoid using Phaser's sound system entirely
-  private testAudio(): void {
+  private saveVolume(volume: number, key: string): void {
     try {
-      console.log("Test audio button clicked");
-      // Get master volume
-      const masterVolume = this.sliders['master'] ? this.sliders['master'].value : 0.5;
-      
-      // Only use the Web Audio API approach which is more reliable
-      this.createSimpleTestTone(masterVolume);
-      
-      // Create a visual feedback that audio is playing
-      const feedbackText = this.add.text(
-        this.cameras.main.width / 2,
-        this.cameras.main.height / 2 - 50,
-        "Playing test tone...",
-        { 
-          fontFamily: 'Crimson Text', 
-          fontSize: '20px', 
-          color: '#ffffff',
-          backgroundColor: '#333333'
-        }
-      ).setPadding(10, 5, 10, 5).setOrigin(0.5);
-      
-      // Remove the feedback after the tone finishes
-      this.time.delayedCall(1000, () => {
-        feedbackText.destroy();
-      });
-    } catch (error) {
-      console.error('Error in testAudio:', error);
-    }
-  }
-
-  // Improved test tone with multiple frequencies and better error handling
-  private createSimpleTestTone(volume: number = 0.5): void {
-    try {
-      console.log("Creating test tone with volume:", volume);
-      
-      // Only attempt this in browsers that support the Web Audio API
-      if (window.AudioContext || (window as any).webkitAudioContext) {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        const audioContext = new AudioContext();
-        
-        // Create multiple oscillators for a richer sound
-        const frequencies = [440, 554, 659]; // A4, C#5, E5 (A major chord)
-        
-        frequencies.forEach((frequency, index) => {
-          // Create oscillator (tone generator)
-          const oscillator = audioContext.createOscillator();
-          oscillator.type = index === 0 ? 'sine' : 'triangle';
-          oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-          
-          // Create gain node (volume control)
-          const gainNode = audioContext.createGain();
-          const adjustedVolume = volume * (index === 0 ? 0.2 : 0.1); // Main tone louder
-          
-          // Add fade-in and fade-out
-          gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-          gainNode.gain.linearRampToValueAtTime(adjustedVolume, audioContext.currentTime + 0.1);
-          gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.8);
-          
-          // Connect and play
-          oscillator.connect(gainNode);
-          gainNode.connect(audioContext.destination);
-          
-          oscillator.start();
-          console.log(`Test tone ${index+1} started`);
-          
-          // Stop after playing
-          setTimeout(() => {
-            try {
-              oscillator.stop();
-              console.log(`Test tone ${index+1} stopped`);
-            } catch (stopError) {
-              // Ignore errors on stop
-            }
-          }, 800); // 800ms tone
-        });
-        
-        return; // Successfully created Web Audio API tones
-      }
-      
-      // Fallback for browsers without Web Audio API support
-      this.playFallbackTone(volume);
-      
+      localStorage.setItem(`aztecEscape_volume_${key}`, volume.toString());
     } catch (e) {
-      console.error('Failed to create test tone:', e);
-      this.playFallbackTone(volume);
-    }
-  }
-
-  // Last resort fallback using the HTML5 Audio API
-  private playFallbackTone(volume: number): void {
-    try {
-      console.log("Attempting to play fallback tone");
-      // Use a data URI with a very short audio sample
-      const audio = new Audio();
-      // This is a base64 encoded short beep sound
-      audio.src = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tUwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAGAAADAABgYGBgYGBgYGBgYGBgYGCMjIyMjIyMjIyMjIyMjIy0tLS0tLS0tLS0tLS0tLTd3d3d3d3d3d3d3d3d3d3///////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAYAAAAAAAAAAwDVxttG//sUZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQ==";
-      audio.volume = volume;
-      
-      // Create a promise to handle both success and error
-      const playPromise = audio.play();
-      
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => console.log("Fallback tone played successfully"))
-          .catch(err => {
-            console.error("Fallback audio failed to play:", err);
-            // If even this fails, just show a message
-            this.add.text(
-              this.cameras.main.width / 2,
-              this.cameras.main.height / 2 - 20,
-              "Your browser blocked audio.\nPlease check your settings.",
-              { 
-                fontFamily: 'Arial', 
-                fontSize: '16px', 
-                color: '#ffffff',
-                align: 'center'
-              }
-            ).setOrigin(0.5).setAlpha(0.9);
-          });
-      }
-    } catch (audioError) {
-      console.error("All audio approaches failed:", audioError);
+      console.warn('Error saving volume:', e);
     }
   }
   
-  private createBackButton(): void {
-    // Create back button - positioned higher in the panel
-    const backButton = this.add.rectangle(
-      this.cameras.main.width / 2 + 110,
-      this.cameras.main.height / 2 + 200, // Positioned higher in the panel
-      200,
-      50,
-      0x993333
-    ).setStrokeStyle(2, 0xffffff)
-    .setInteractive({ useHandCursor: true })
-    .on('pointerover', () => {
-      backButton.fillColor = 0xbb3333;
-    })
-    .on('pointerout', () => {
-      backButton.fillColor = 0x993333;
-    })
-    .on('pointerdown', () => {
-      this.playSoundSafe('click', 0.5);
-      this.returnToMenu();
-    });
-    
-    this.add.text(
-      this.cameras.main.width / 2 + 110,
-      this.cameras.main.height / 2 + 200,
-      'Back',
-      {
-        fontFamily: 'Crimson Text',
-        fontSize: '20px',
-        color: '#ffffff'
-      }
-    ).setOrigin(0.5);
-  }
-  
-  private returnToMenu(): void {
-    this.scene.start(this.returnScene);
+  update(): void {
+    // Update the volume display if needed
+    // Save volumes to localStorage
+    for (const key in this._sliders) {
+      const sliderData = this._sliders[key].getData('sliderData') as SliderData;
+      this.saveVolume(sliderData.value, key);
+    }
   }
 }

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { DialogEntry } from '../types/StoryTypes.js';
+import { DialogEntry } from '../types/StoryTypes';
 
 interface OllamaResponse {
   response: string;
@@ -8,8 +8,8 @@ interface OllamaResponse {
 }
 
 export class DialogueGenerator {
-  private static readonly API_URL = process.env.OLLAMA_API_URL || 'http://localhost:11434/api';
-  private static readonly MODEL = process.env.OLLAMA_MODEL || 'llama3:8b';
+  static API_URL: string = process.env.OLLAMA_API_URL || 'http://localhost:11434/api';
+  static MODEL: string = process.env.OLLAMA_MODEL || 'llama3:8b';
   
   /**
    * Generate dialogue entries for a character

@@ -1,31 +1,20 @@
-export interface GameProgress {
-  // General progress
+interface Progress {
   scenesCompleted: string[];
   puzzlesSolved: string[];
-  
-  // Language learning stats
   vocabularyLearned: string[];
-  grammarPointsSeen: string[];
-  
-  // Game stats
   timeRemaining: number;
   hintsUsed: number;
   wrongAnswers: number;
-  
-  // Trophies/achievements
-  achievements: string[];
 }
 
 export class ProgressTracker {
-  private static progress: GameProgress = {
+  private static progress: Progress = {
     scenesCompleted: [],
     puzzlesSolved: [],
     vocabularyLearned: [],
-    grammarPointsSeen: [],
     timeRemaining: 0,
     hintsUsed: 0,
-    wrongAnswers: 0,
-    achievements: []
+    wrongAnswers: 0
   };
   
   static initialize(): void {
@@ -83,20 +72,11 @@ export class ProgressTracker {
     this.save();
   }
   
-  private static checkAchievements(): void {
-    // Check for various milestones and add achievements
-    if (this.progress.puzzlesSolved.length >= 3 && 
-        !this.progress.achievements.includes('puzzle_master')) {
-      this.progress.achievements.push('puzzle_master');
-    }
-    
-    if (this.progress.vocabularyLearned.length >= 10 &&
-        !this.progress.achievements.includes('language_learner')) {
-      this.progress.achievements.push('language_learner');  
-    }
+  static checkAchievements(): void {
+    // Implementation
   }
   
-  static getProgress(): GameProgress {
+  static getProgress(): Progress {
     return this.progress;
   }
 }

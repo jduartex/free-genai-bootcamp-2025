@@ -149,14 +149,11 @@ export class InteractiveObject {
   // Add a helper method to safely play sounds
   private playSoundSafe(key: string, volume: number = 0.5): void {
     try {
-      if (this.scene.cache.audio.exists(key)) {
+      if (this.scene.sound && !this.scene.sound.locked && this.scene.cache.audio.exists(key)) {
         this.scene.sound.play(key, { volume });
-      } else {
-        // Sound doesn't exist, just skip playing it
-        console.warn(`Sound "${key}" not available for interactive object`);
       }
     } catch (e) {
-      console.warn(`Error playing sound "${key}":`, e);
+      // Just silently catch the error, don't warn as it might spam the console
     }
   }
 
@@ -171,14 +168,26 @@ export class InteractiveObject {
   }
 
   destroy(): void {
-    // Clean up all created objects
-    this.sprite.destroy();
-    this.label.destroy();
-    this.labelBg.destroy();
-    
+    // Clean up tweens
     if (this.hoverTween) {
-      this.hoverTween.stop();
+      this.hoverTween.remove();
       this.hoverTween = null;
+    }
+    
+    // Remove interactivity
+    if (this.sprite) {
+      this.sprite.removeInteractive();
+      this.sprite.destroy();
+    }
+    
+    // Clean up text
+    if (this.label) {
+      this.label.destroy();
+    }
+    
+    // Clean up background
+    if (this.labelBg) {
+      this.labelBg.destroy();
     }
   }
 

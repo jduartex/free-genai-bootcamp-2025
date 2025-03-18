@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  },
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist",
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["tools/**/*"]
+}

@@ -1,230 +1,270 @@
 import Phaser from 'phaser';
-import { TimerConfig } from '../types/StoryTypes';
 
-// ...existing code...
+interface TimerConfig {
+  initial: number;
+  warning: number;
+  penalty: number;
+}
+
+interface InventoryItem {
+  id: string;
+  name: string;
+  description: string;
+  image: Phaser.GameObjects.Image | null;
+  icon: Phaser.GameObjects.Image | null;
+}
 
 export class UIScene extends Phaser.Scene {
-  private timerText!: Phaser.GameObjects.Text;
-  private timerImage!: Phaser.GameObjects.Image;
-  private timerConfig!: TimerConfig;
-  private remainingTime: number = 0;
-  private timerInterval!: Phaser.Time.TimerEvent;
-  private helpButton!: Phaser.GameObjects.Image;
-  private inventoryButton!: Phaser.GameObjects.Image;
-  private inventoryItems: string[] = [];
-  private isTimerPaused: boolean = false;
-  
+  // Make sure timerInterval is correctly declared with a type that matches how it's used
+  public inventoryItems: InventoryItem[] = [];
+  public remainingTime: number = 3600;
+  public isTimerPaused: boolean = false;
+  public timerImage!: Phaser.GameObjects.Image;
+  public timerText!: Phaser.GameObjects.Text;
+  public timerConfig!: TimerConfig;
+  // Fix the type declaration for timerInterval to ensure compatibility with setInterval
+  public timerInterval: NodeJS.Timeout | null = null;
+  public helpButton!: Phaser.GameObjects.Image;
+  public inventoryButton!: Phaser.GameObjects.Image;
+
   constructor() {
     super({ key: 'UIScene' });
   }
 
-  init(data: { remainingTime: number; timerConfig: TimerConfig }): void {
-    this.remainingTime = data.remainingTime;
-    this.timerConfig = data.timerConfig;
+  // Add proper return type to methods
+  init(data: { remainingTime?: number; timerConfig?: TimerConfig } = {}): void {
+    this.remainingTime = data.remainingTime || 3600;
+    this.timerConfig = data.timerConfig || {
+      initial: 3600,
+      warning: 300,
+      penalty: 60
+    };
   }
 
   create(): void {
-    // Create timer background
+    // Create timer display
     this.timerImage = this.add.image(
-      100, 
-      50, 
+      this.cameras.main.width - 100,
+      60,
       'timer'
-    ).setOrigin(0.5, 0.5)
-    .setDisplaySize(160, 60);
-    
-    // Create timer text
+    ).setDisplaySize(180, 80);
+
     this.timerText = this.add.text(
-      100, 
-      50, 
-      this.formatTime(this.remainingTime), 
-      { 
-        fontFamily: 'Crimson Text',
-        fontSize: '24px',
-        color: this.remainingTime > 300 ? '#ffffff' : '#ff0000',
+      this.cameras.main.width - 100,
+      60,
+      this.formatTime(this.remainingTime),
+      {
+        fontFamily: 'Arial',
+        fontSize: '28px',
+        color: '#ffffff',
         align: 'center'
       }
-    ).setOrigin(0.5, 0.5);
-    
-    // Start the timer
-    this.startTimer();
-    
+    ).setOrigin(0.5);
+
     // Create help button
     this.helpButton = this.add.image(
-      this.cameras.main.width - 50, 
-      50, 
-      'button'
-    ).setDisplaySize(80, 80)
+      this.cameras.main.width - 50,
+      this.cameras.main.height - 50,
+      'help-icon'
+    ).setDisplaySize(60, 60)
     .setInteractive({ useHandCursor: true })
-    .on('pointerdown', this.showHelpMenu, this);
-    
-    // Add help icon/text
-    this.add.text(
-      this.cameras.main.width - 50, 
-      50, 
-      '?', 
-      { 
-        fontFamily: 'Crimson Text',
-        fontSize: '40px',
-        color: '#ffffff',
-        align: 'center'
-      }
-    ).setOrigin(0.5, 0.5);
-    
+    .on('pointerdown', () => {
+      this.showHelpMenu();
+    });
+
     // Create inventory button
     this.inventoryButton = this.add.image(
-      this.cameras.main.width - 150, 
-      50, 
-      'button'
-    ).setDisplaySize(80, 80)
+      50,
+      this.cameras.main.height - 50,
+      'inventory-icon'
+    ).setDisplaySize(60, 60)
     .setInteractive({ useHandCursor: true })
-    .on('pointerdown', this.toggleInventory, this);
+    .on('pointerdown', () => {
+      this.showInventory();
+    });
+
+    // Start timer
+    this.startTimer();
     
-    // Add inventory icon/text
-    this.add.text(
-      this.cameras.main.width - 150, 
-      50, 
-      '🎒', 
-      { 
-        fontFamily: 'Crimson Text',
-        fontSize: '30px',
-        color: '#ffffff',
-        align: 'center'
-      }
-    ).setOrigin(0.5, 0.5);
+    // Set up event listeners
+    this.setupEvents();
     
-    // Setup event listeners
-    this.events.on('shutdown', this.stopTimer, this);
-    this.events.on('destroy', this.stopTimer, this);
-    
-    // Listen for timer update events from GameScene
-    this.scene.get('GameScene').events.on('updateTimer', (time: number) => {
-      this.remainingTime = time;
+    // Setup timer with proper typing
+    this.setupTimerInterval();
+  }
+
+  update(time: number, delta: number): void {
+    // In case we need any dynamic updates beyond the timer
+  }
+
+  // Fix event handler type in setupEvents
+  private setupEvents(): void {
+    // Use proper event parameter types
+    this.scene.get('GameScene').events.on('updateTimer', (remainingTime: number) => {
+      this.remainingTime = remainingTime;
       this.updateTimerDisplay();
     });
     
-    // Listen for pause/resume
-    this.scene.get('GameScene').events.on('pauseTimer', () => {
-      this.pauseTimer();
-    });
-    
-    this.scene.get('GameScene').events.on('resumeTimer', () => {
-      this.resumeTimer();
-    });
-    
-    // Listen for inventory updates
     this.scene.get('GameScene').events.on('addInventoryItem', (itemId: string) => {
       this.addInventoryItem(itemId);
     });
   }
 
   private startTimer(): void {
-    this.timerInterval = this.time.addEvent({
-      delay: 1000,
-      callback: this.updateTimer,
-      callbackScope: this,
-      loop: true
-    });
-  }
-
-  private stopTimer(): void {
-    if (this.timerInterval) {
-      this.timerInterval.destroy();
+    // Clear any existing timer to prevent duplicates
+    if (this.timerInterval !== null) {
+      clearInterval(this.timerInterval);
     }
+    
+    // Store result of setInterval with the correct type
+    this.timerInterval = setInterval(() => {
+      if (!this.isTimerPaused) {
+        this.remainingTime -= 1;
+        this.updateTimerDisplay();
+        this.events.emit('timerTick', this.remainingTime);
+        
+        // Check for warning threshold
+        if (this.timerConfig && 
+            this.remainingTime === this.timerConfig.warning) {
+          this.displayTimeWarning();
+        }
+      }
+    }, 1000);
   }
 
   private pauseTimer(): void {
     this.isTimerPaused = true;
-    if (this.timerInterval) {
-      this.timerInterval.paused = true;
+    
+    // Clear the interval to prevent memory leak
+    if (this.timerInterval !== null) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
     }
   }
 
   private resumeTimer(): void {
+    // Only resume if it was previously paused
+    if (!this.isTimerPaused) return;
+    
     this.isTimerPaused = false;
-    if (this.timerInterval) {
-      this.timerInterval.paused = false;
-    }
+    this.startTimer();
   }
 
-  private updateTimer(): void {
-    if (this.isTimerPaused) return;
-    
-    this.remainingTime--;
-    this.updateTimerDisplay();
-    
-    // Emit event to inform GameScene of the new time
-    this.scene.get('GameScene').events.emit('timerTick', this.remainingTime);
-    
-    // Check for time warning conditions
-    if (this.remainingTime === 300) { // 5 minutes left
-      this.showTimeWarning(5);
-    } else if (this.remainingTime === 60) { // 1 minute left
-      this.showTimeWarning(1);
-    } else if (this.remainingTime === 0) {
-      // Time's up!
-      this.scene.get('GameScene').events.emit('timeUp');
-      
-      // Timer continues into negative to show how over time they are
-      this.timerText.setColor('#ff0000');
+  private toggleTimer(): void {
+    if (this.isTimerPaused) {
+      this.resumeTimer();
+    } else {
+      this.pauseTimer();
     }
   }
 
   private updateTimerDisplay(): void {
+    if (!this.timerText) return;
+    
+    // Update timer text
     this.timerText.setText(this.formatTime(this.remainingTime));
     
-    // Change color if time is low
-    if (this.remainingTime <= 300 && this.remainingTime > 0) { // 5 minutes or less
-      this.timerText.setColor('#ff9900');
-      
-      // Add pulsing effect for low time
-      if (!this.tweens.isTweening(this.timerText)) {
+    // Change color based on remaining time
+    if (this.timerConfig && this.remainingTime <= this.timerConfig.warning) {
+      this.timerText.setColor('#ff0000'); // Red for warning
+    } else if (this.remainingTime < 0) {
+      this.timerText.setColor('#ff00ff'); // Purple for overtime
+    } else {
+      this.timerText.setColor('#ffffff'); // White for normal
+    }
+    
+    // Add visual feedback when time is getting low
+    if (this.timerConfig && this.remainingTime <= this.timerConfig.warning) {
+      if (!this.timerText.getData('warning-pulse')) {
+        this.timerText.setData('warning-pulse', true);
+        
         this.tweens.add({
           targets: this.timerText,
-          scale: { from: 1, to: 1.2 },
+          scale: { from: 1.0, to: 1.2 },
           duration: 500,
           yoyo: true,
-          repeat: -1
+          repeat: -1,
+          ease: 'Sine.easeInOut'
         });
       }
-    } else if (this.remainingTime <= 0) {
-      this.timerText.setColor('#ff0000');
+    } else if (this.timerText.getData('warning-pulse')) {
+      this.timerText.setData('warning-pulse', false);
+      this.tweens.killTweensOf(this.timerText);
+      this.timerText.setScale(1.0);
     }
   }
 
   private formatTime(seconds: number): string {
+    // Convert remaining seconds to mm:ss format
     const absSeconds = Math.abs(seconds);
     const minutes = Math.floor(absSeconds / 60);
-    const remainingSeconds = absSeconds % 60;
+    const secs = absSeconds % 60;
     
-    // Add negative sign if time is below zero
+    // Add negative sign if time is negative
     const sign = seconds < 0 ? '-' : '';
     
-    return `${sign}${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    return `${sign}${this.padNumber(minutes)}:${this.padNumber(secs)}`;
   }
 
-  private showTimeWarning(minutes: number): void {
-    // Show a warning that time is running low
-    this.scene.get('GameScene').events.emit('timeWarning', minutes);
+  private padNumber(minutes: number): string {
+    return minutes < 10 ? '0' + minutes : minutes.toString();
+  }
+
+  private hideUIElements(): void {
+    if (this.timerImage) this.timerImage.setVisible(false);
+    if (this.timerText) this.timerText.setVisible(false);
+  }
+
+  private showUIElements(): void {
+    if (this.timerImage) this.timerImage.setVisible(true);
+    if (this.timerText) this.timerText.setVisible(true);
+  }
+
+  private displayTimeWarning(): void {
+    // Flash the timer to indicate warning
+    if (!this.timerText) return;
     
-    // Flash the timer
     this.tweens.add({
-      targets: [this.timerImage, this.timerText],
-      alpha: { from: 1, to: 0.2 },
+      targets: this.timerText,
+      alpha: { from: 1, to: 0.3 },
       duration: 300,
       yoyo: true,
-      repeat: 5
+      repeat: 5,
+      ease: 'Sine.easeInOut'
     });
     
-    // Play warning sound
-    this.sound.play('warning', { volume: 0.7 });
+    // Also show a warning message
+    const warningText = this.add.text(
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 3,
+      'Warning: Time is running out!',
+      {
+        fontFamily: 'Arial',
+        fontSize: '32px',
+        color: '#ff0000',
+        stroke: '#000000',
+        strokeThickness: 4
+      }
+    ).setOrigin(0.5);
+    
+    // Fade out the warning
+    this.tweens.add({
+      targets: warningText,
+      alpha: { from: 1, to: 0 },
+      duration: 2000,
+      delay: 2000,
+      onComplete: () => {
+        warningText.destroy();
+      }
+    });
   }
 
   private showHelpMenu(): void {
-    // Pause the timer while help menu is open
+    // Pause timer while help is shown
     this.pauseTimer();
     
-    // Create a semi-transparent overlay
-    const overlay = this.add.rectangle(
+    // Create semi-transparent background
+    const bg = this.add.rectangle(
       this.cameras.main.width / 2,
       this.cameras.main.height / 2,
       this.cameras.main.width,
@@ -233,174 +273,142 @@ export class UIScene extends Phaser.Scene {
       0.8
     ).setInteractive();
     
-    // Create help panel
-    const panelWidth = this.cameras.main.width - 200;
-    const panelHeight = this.cameras.main.height - 200;
-    const panel = this.add.rectangle(
+    // Create help window
+    const helpWindow = this.add.rectangle(
       this.cameras.main.width / 2,
       this.cameras.main.height / 2,
-      panelWidth,
-      panelHeight,
+      this.cameras.main.width - 200,
+      this.cameras.main.height - 200,
       0x333333,
-      0.9
+      1
     ).setStrokeStyle(2, 0xffffff);
     
-    // Create title text
+    // Create title
     const title = this.add.text(
       this.cameras.main.width / 2,
-      this.cameras.main.height / 2 - panelHeight / 2 + 40,
-      'Help Menu',
+      100,
+      'Help',
       {
-        fontFamily: 'Crimson Text',
+        fontFamily: 'Arial',
         fontSize: '32px',
-        color: '#ffffff',
-        align: 'center'
+        color: '#ffffff'
       }
     ).setOrigin(0.5);
     
-    // Create help text sections
-    const helpText = this.add.text(
-      this.cameras.main.width / 2 - panelWidth / 2 + 40,
-      this.cameras.main.height / 2 - panelHeight / 2 + 100,
-      [
-        'Game Controls:',
-        '- Click on objects to interact with them',
-        '- Click on dialogue to advance or skip',
-        '- Click on choices to make a selection',
-        '- Click the inventory button to view collected items',
-        '',
-        'Language Help:',
-        '- Toggle English subtitles in the bottom right of dialogue',
-        '- Request hints by clicking below (costs time)',
-        '',
-        'Current Puzzle:',
-        '- Solve puzzles by selecting the correct Japanese answer',
-        '- Wrong answers will cost 5 minutes of time',
-        '- The timer continues even if it goes negative'
-      ].join('\n'),
-      {
-        fontFamily: 'Noto Sans JP',
-        fontSize: '20px',
-        color: '#ffffff',
-        lineSpacing: 10
-      }
-    );
-    
-    // Create hint buttons
-    const hintButtonY = this.cameras.main.height / 2 + 80;
-    const buttonSpacing = 60;
-    
-    const createHintButton = (
-      x: number, 
-      y: number, 
-      label: string, 
-      cost: number, 
-      hintLevel: number
-    ): void => {
-      const hintButton = this.add.rectangle(
-        x, y, 200, 50, 0x555555
-      ).setStrokeStyle(2, 0xffffff)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerover', () => {
-        hintButton.fillColor = 0x777777;
-      })
-      .on('pointerout', () => {
-        hintButton.fillColor = 0x555555;
-      })
-      .on('pointerdown', () => {
-        // Close help menu
-        closeHelpMenu();
-        
-        // Request hint from GameScene
-        this.scene.get('GameScene').events.emit('requestHint', hintLevel);
-      });
-      
-      this.add.text(
-        x, y, `${label}\n(Cost: ${cost} min)`,
-        {
-          fontFamily: 'Noto Sans JP',
-          fontSize: '16px',
-          color: '#ffffff',
-          align: 'center'
-        }
-      ).setOrigin(0.5);
-    };
-    
-    // Create the three levels of hints
-    createHintButton(
-      this.cameras.main.width / 2 - 220,
-      hintButtonY,
-      'Vocabulary Hint',
-      1,
+    // Create hint options
+    this.createHintButton(
+      this.cameras.main.width / 2,
+      200,
+      'Small Hint (-1 min)',
+      60,
       1
     );
     
-    createHintButton(
+    this.createHintButton(
       this.cameras.main.width / 2,
-      hintButtonY,
-      'Grammar Hint',
-      3,
+      280,
+      'Medium Hint (-2 min)',
+      120,
       2
     );
     
-    createHintButton(
-      this.cameras.main.width / 2 + 220,
-      hintButtonY,
-      'Solution Hint',
-      5,
+    this.createHintButton(
+      this.cameras.main.width / 2,
+      360,
+      'Big Hint (-3 min)',
+      180,
       3
     );
     
     // Create close button
     const closeButton = this.add.rectangle(
       this.cameras.main.width / 2,
-      this.cameras.main.height / 2 + panelHeight / 2 - 40,
+      500,
       200,
-      50,
-      0x770000
+      60,
+      0x555555,
+      1
+    ).setStrokeStyle(2, 0xffffff)
+    .setInteractive({ useHandCursor: true })
+    .on('pointerdown', () => {
+      // Clean up help menu
+      bg.destroy();
+      helpWindow.destroy();
+      title.destroy();
+      closeButton.destroy();
+      closeText.destroy();
+      
+      // Resume timer
+      this.resumeTimer();
+    });
+    
+    const closeText = this.add.text(
+      this.cameras.main.width / 2,
+      500,
+      'Close',
+      {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#ffffff'
+      }
+    ).setOrigin(0.5);
+  }
+  
+  private createHintButton(x: number, y: number, label: string, cost: number, hintLevel: number): void {
+    const button = this.add.rectangle(
+      x,
+      y,
+      400,
+      60,
+      0x555555,
+      1
     ).setStrokeStyle(2, 0xffffff)
     .setInteractive({ useHandCursor: true })
     .on('pointerover', () => {
-      closeButton.fillColor = 0x990000;
+      button.setFillStyle(0x777777);
     })
     .on('pointerout', () => {
-      closeButton.fillColor = 0x770000;
+      button.setFillStyle(0x555555);
     })
     .on('pointerdown', () => {
-      closeHelpMenu();
-    });
-    
-    this.add.text(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2 + panelHeight / 2 - 40,
-      'Close',
-      {
-        fontFamily: 'Crimson Text',
-        fontSize: '24px',
-        color: '#ffffff',
-        align: 'center'
-      }
-    ).setOrigin(0.5);
-    
-    // Group all elements
-    const helpElements = [overlay, panel, title, helpText, closeButton];
-    
-    // Function to close help menu
-    const closeHelpMenu = (): void => {
-      // Destroy all elements
+      // Request hint from GameScene
+      this.scene.get('GameScene').events.emit('requestHint', hintLevel);
+      
+      // Play feedback sound
+      this.sound.play('click', { volume: 0.5 });
+      
+      // Close the help menu after selecting a hint
+      const helpElements = this.children.getAll().filter(obj => 
+        obj !== this.timerImage && 
+        obj !== this.timerText && 
+        obj !== this.helpButton && 
+        obj !== this.inventoryButton
+      );
+      
       helpElements.forEach(element => element.destroy());
       
       // Resume timer
       this.resumeTimer();
-    };
+    });
+    
+    const text = this.add.text(
+      x,
+      y,
+      label,
+      {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#ffffff'
+      }
+    ).setOrigin(0.5);
   }
 
-  private toggleInventory(): void {
-    // Pause the timer while inventory is open
+  private showInventory(): void {
+    // Pause timer while inventory is shown
     this.pauseTimer();
     
-    // Create a semi-transparent overlay
-    const overlay = this.add.rectangle(
+    // Create semi-transparent background
+    const bg = this.add.rectangle(
       this.cameras.main.width / 2,
       this.cameras.main.height / 2,
       this.cameras.main.width,
@@ -409,200 +417,386 @@ export class UIScene extends Phaser.Scene {
       0.8
     ).setInteractive();
     
-    // Create inventory panel
-    const panelWidth = this.cameras.main.width - 200;
-    const panelHeight = this.cameras.main.height - 200;
-    const panel = this.add.rectangle(
+    // Create inventory window
+    const inventoryWindow = this.add.rectangle(
       this.cameras.main.width / 2,
       this.cameras.main.height / 2,
-      panelWidth,
-      panelHeight,
+      this.cameras.main.width - 200,
+      this.cameras.main.height - 200,
       0x333333,
-      0.9
+      1
     ).setStrokeStyle(2, 0xffffff);
     
-    // Create title text
+    // Create title
     const title = this.add.text(
       this.cameras.main.width / 2,
-      this.cameras.main.height / 2 - panelHeight / 2 + 40,
+      100,
       'Inventory',
       {
-        fontFamily: 'Crimson Text',
+        fontFamily: 'Arial',
         fontSize: '32px',
-        color: '#ffffff',
-        align: 'center'
+        color: '#ffffff'
       }
     ).setOrigin(0.5);
     
-    // Display inventory items or empty message
-    let inventoryContent: Phaser.GameObjects.Text | Phaser.GameObjects.Group;
-    
+    // Display inventory items
     if (this.inventoryItems.length === 0) {
-      inventoryContent = this.add.text(
+      this.add.text(
         this.cameras.main.width / 2,
         this.cameras.main.height / 2,
-        'No items collected yet.',
+        'No items yet',
         {
-          fontFamily: 'Noto Sans JP',
-          fontSize: '20px',
-          color: '#cccccc',
-          align: 'center'
+          fontFamily: 'Arial',
+          fontSize: '24px',
+          color: '#aaaaaa',
+          fontStyle: 'italic'
         }
       ).setOrigin(0.5);
     } else {
-      // Create grid of inventory items
-      const itemsPerRow = 4;
-      const itemSize = 100;
-      const itemSpacing = 20;
-      const startX = this.cameras.main.width / 2 - ((itemSize + itemSpacing) * Math.min(itemsPerRow, this.inventoryItems.length) / 2) + (itemSize / 2);
-      const startY = this.cameras.main.height / 2 - 50;
-      
-      // Create a group for inventory items
-      inventoryContent = this.add.group();
-      const group = inventoryContent as Phaser.GameObjects.Group;
-      
-      this.inventoryItems.forEach((item, index) => {
-        const row = Math.floor(index / itemsPerRow);
-        const col = index % itemsPerRow;
-        const x = startX + col * (itemSize + itemSpacing);
-        const y = startY + row * (itemSize + itemSpacing);
+      this.inventoryItems.forEach((item: InventoryItem, index: number) => {
+        const row = Math.floor(index / 3);
+        const col = index % 3;
         
-        // Item background
-        const itemBg = this.add.rectangle(
-          x, y, itemSize, itemSize, 0x555555
-        ).setStrokeStyle(2, 0xffffff)
+        const x = (this.cameras.main.width / 4) + col * (this.cameras.main.width / 4);
+        const y = 200 + row * 150;
+        
+        // Create item slot
+        const slot = this.add.rectangle(
+          x,
+          y,
+          100,
+          100,
+          0x555555,
+          1
+        ).setStrokeStyle(1, 0xffffff)
         .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => {
+          slot.setStrokeStyle(2, 0xffff00);
+        })
+        .on('pointerout', () => {
+          slot.setStrokeStyle(1, 0xffffff);
+        })
         .on('pointerdown', () => {
-          this.showItemDetails(item);
+          this.sound.play('click', { volume: 0.5 });
+          this.showItemDetail(item.id);
         });
         
-        // Item image or placeholder
-        const itemImage = this.add.sprite(x, y - 15, item)
-          .setDisplaySize(itemSize - 20, itemSize - 40);
+        // Add item image
+        const itemImg = this.add.sprite(
+          x,
+          y,
+          item.id
+        ).setDisplaySize(90, 90);
         
-        // Item name
-        const itemName = this.add.text(
-          x, y + 30, item,
+        // Add item name below
+        this.add.text(
+          x,
+          y + 70,
+          item.name,
           {
-            fontFamily: 'Noto Sans JP',
-            fontSize: '14px',
-            color: '#ffffff',
-            align: 'center'
+            fontFamily: 'Arial',
+            fontSize: '16px',
+            color: '#ffffff'
           }
         ).setOrigin(0.5);
-        
-        // Add each element to the group
-        group.add(itemBg);
-        group.add(itemImage);
-        group.add(itemName);
       });
     }
     
     // Create close button
     const closeButton = this.add.rectangle(
       this.cameras.main.width / 2,
-      this.cameras.main.height / 2 + panelHeight / 2 - 40,
+      500,
       200,
-      50,
-      0x770000
+      60,
+      0x555555,
+      1
     ).setStrokeStyle(2, 0xffffff)
     .setInteractive({ useHandCursor: true })
-    .on('pointerover', () => {
-      closeButton.fillColor = 0x990000;
-    })
-    .on('pointerout', () => {
-      closeButton.fillColor = 0x770000;
-    })
     .on('pointerdown', () => {
-      closeInventory();
+      // Clean up inventory menu
+      bg.destroy();
+      inventoryWindow.destroy();
+      title.destroy();
+      closeButton.destroy();
+      closeText.destroy();
+      
+      // Destroy all other inventory-related elements
+      const inventoryElements = this.children.getAll().filter(obj => 
+        obj !== this.timerImage && 
+        obj !== this.timerText && 
+        obj !== this.helpButton && 
+        obj !== this.inventoryButton
+      );
+      
+      inventoryElements.forEach(element => element.destroy());
+      
+      // Resume timer
+      this.resumeTimer();
     });
     
-    this.add.text(
+    const closeText = this.add.text(
       this.cameras.main.width / 2,
-      this.cameras.main.height / 2 + panelHeight / 2 - 40,
+      500,
       'Close',
       {
-        fontFamily: 'Crimson Text',
+        fontFamily: 'Arial',
         fontSize: '24px',
+        color: '#ffffff'
+      }
+    ).setOrigin(0.5);
+  }
+
+  private showItemDetail(itemId: string): void {
+    // Find the item
+    const item = this.inventoryItems.find((i: InventoryItem) => i.id === itemId);
+    if (!item) return;
+    
+    // Show item detail popup
+    const detailBg = this.add.rectangle(
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2,
+      400,
+      300,
+      0x222222,
+      0.9
+    ).setStrokeStyle(2, 0xffffff);
+    
+    // Item name
+    const nameText = this.add.text(
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2 - 100,
+      item.name,
+      {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#ffffff'
+      }
+    ).setOrigin(0.5);
+    
+    // Item image
+    const itemImg = this.add.sprite(
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2,
+      item.id
+    ).setDisplaySize(150, 150);
+    
+    // Item description
+    const descText = this.add.text(
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2 + 100,
+      item.description,
+      {
+        fontFamily: 'Arial',
+        fontSize: '18px',
+        color: '#cccccc',
+        align: 'center',
+        wordWrap: { width: 350 }
+      }
+    ).setOrigin(0.5);
+    
+    // Close button for detail view
+    const closeDetailButton = this.add.text(
+      this.cameras.main.width / 2 + 170,
+      this.cameras.main.height / 2 - 130,
+      'X',
+      {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#ffffff',
+        backgroundColor: '#444444',
+      }
+    ).setPadding(10, 5, 10, 5)
+    .setInteractive({ useHandCursor: true })
+    .on('pointerdown', () => {
+      // Clean up detail view elements
+      detailBg.destroy();
+      nameText.destroy();
+      itemImg.destroy();
+      descText.destroy();
+      closeDetailButton.destroy();
+    });
+  }
+
+  // Fix return type for public methods
+  public addInventoryItem(itemId: string): void {
+    // Check if item already exists in inventory
+    const existingItem = this.inventoryItems.find((item: InventoryItem) => item.id === itemId);
+    if (existingItem) {
+      console.log(`Item ${itemId} already in inventory`);
+      return;
+    }
+    
+    // Create a new inventory item
+    const newItem: InventoryItem = {
+      id: itemId,
+      name: this.getItemName(itemId),
+      description: this.getItemDescription(itemId),
+      image: null,
+      icon: null
+    };
+    
+    // Add to inventory
+    this.inventoryItems.push(newItem);
+    
+    // Play pickup sound
+    this.sound.play('pickup', { volume: 0.5 });
+    
+    // Show notification
+    this.showNotification(`Added ${newItem.name} to inventory!`);
+  }
+
+  /**
+   * Remove an item from the inventory
+   * @param itemId - The ID of the item to remove
+   */
+  public removeItem(itemId: string): void {
+    const index = this.inventoryItems.findIndex((item: InventoryItem) => item.id === itemId);
+    if (index >= 0) {
+      this.inventoryItems.splice(index, 1);
+    }
+  }
+  
+  /**
+   * Check if an item is in the inventory
+   * @param itemId - The ID of the item to check
+   * @returns True if the item is in the inventory
+   */
+  public hasItem(itemId: string): boolean {
+    return this.inventoryItems.some((item: InventoryItem) => item.id === itemId);
+  }
+
+  /**
+   * Display a notification message temporarily
+   * @param message - The message to display
+   */
+  private showNotification(message: string): void {
+    // Create notification background
+    const notificationBg = this.add.rectangle(
+      this.cameras.main.width / 2,
+      100,
+      400,
+      60,
+      0x333333,
+      0.8
+    ).setStrokeStyle(1, 0xffffff);
+    
+    // Create notification text
+    const notificationText = this.add.text(
+      this.cameras.main.width / 2,
+      100,
+      message,
+      {
+        fontFamily: 'Arial',
+        fontSize: '18px',
         color: '#ffffff',
         align: 'center'
       }
     ).setOrigin(0.5);
     
-    // Group all elements
-    const inventoryElements = [overlay, panel, title, closeButton];
-    
-    // Function to close inventory
-    const closeInventory = (): void => {
-      // Destroy all elements
-      inventoryElements.forEach(element => element.destroy());
-      if (inventoryContent instanceof Phaser.GameObjects.Group) {
-        inventoryContent.clear(true, true);
-      } else if (inventoryContent) {
-        inventoryContent.destroy();
-      }
-      
-      // Resume timer
-      this.resumeTimer();
-    };
-  }
-
-  private showItemDetails(itemId: string): void {
-    // This would show a detailed view of the selected inventory item
-    // For now, we'll just log to console
-    console.log(`Showing details for item: ${itemId}`);
-  }
-
-  private addInventoryItem(itemId: string): void {
-    // Check if item already exists in inventory
-    if (!this.inventoryItems.includes(itemId)) {
-      this.inventoryItems.push(itemId);
-      
-      // Play item pickup sound
-      this.sound.play('pickup', { volume: 0.5 });
-      
-      // Show notification
-      this.showNotification(`Added to inventory: ${itemId}`);
-    }
-  }
-
-  private showNotification(message: string): void {
-    // Create notification text
-    const notification = this.add.text(
-      this.cameras.main.width / 2,
-      this.cameras.main.height - 100,
-      message,
-      {
-        fontFamily: 'Noto Sans JP',
-        fontSize: '18px',
-        color: '#ffffff',
-        backgroundColor: '#000000',
-        padding: { x: 15, y: 10 }
-      }
-    ).setOrigin(0.5)
-    .setAlpha(0);
-    
-    // Animation sequence
+    // Fade out and destroy after delay
     this.tweens.add({
-      targets: notification,
-      alpha: 1,
-      y: this.cameras.main.height - 120,
-      duration: 500,
-      ease: 'Sine.easeOut',
+      targets: [notificationBg, notificationText],
+      alpha: { from: 1, to: 0 },
+      duration: 2000,
+      delay: 1500,
       onComplete: () => {
-        this.time.delayedCall(2000, () => {
-          this.tweens.add({
-            targets: notification,
-            alpha: 0,
-            y: this.cameras.main.height - 100,
-            duration: 500,
-            ease: 'Sine.easeIn',
-            onComplete: () => {
-              notification.destroy();
-            }
-          });
-        });
+        notificationBg.destroy();
+        notificationText.destroy();
       }
     });
+  }
+  
+  /**
+   * Get display name for an item
+   * @param itemId - The item ID
+   * @returns The display name for the item
+   */
+  private getItemName(itemId: string): string {
+    // In a production game, this would come from a data source
+    const itemNames: Record<string, string> = {
+      'key': 'Prison Key',
+      'map': 'Treasure Map',
+      'codex': 'Aztec Codex',
+      'pendant': 'Jade Pendant',
+      'tool': 'Stone Tool'
+    };
+    
+    return itemNames[itemId as keyof typeof itemNames] || `Item ${itemId}`;
+  }
+  
+  /**
+   * Get description for an item
+   * @param itemId - The item ID
+   * @returns The description for the item
+   */
+  private getItemDescription(itemId: string): string {
+    // In a production game, this would come from a data source
+    const itemDescriptions: Record<string, string> = {
+      'key': 'A rusty key that might open a prison cell.',
+      'map': 'A map showing what appears to be hidden tunnels.',
+      'codex': 'An ancient Aztec manuscript with important symbols.',
+      'pendant': 'A beautiful jade pendant with mystical properties.',
+      'tool': 'A stone tool that can help remove obstacles.'
+    };
+    
+    return itemDescriptions[itemId as keyof typeof itemDescriptions] || `No description available for ${itemId}.`;
+  }
+
+  /**
+   * Clean up resources before scene is removed
+   * This is the correct Phaser lifecycle hook
+   */
+  public destroy(): void {
+    this.cleanupResources();
+  }
+  
+  /**
+   * Clean up resources when scene sleeps or is stopped
+   * This is the correct Phaser lifecycle hook
+   */
+  public sleep(): void {
+    this.cleanupResources();
+  }
+  
+  /**
+   * Clean up resources shared between lifecycle methods
+   */
+  private cleanupResources(): void {
+    // Clear timer
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+    
+    // Kill all tweens
+    this.tweens.killAll();
+    
+    // Remove all listeners
+    this.events.removeAllListeners();
+  }
+  
+  private setupTimerInterval(): void {
+    // Clear any existing timer first
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+    
+    // Set up a new timer
+    this.timerInterval = setInterval(() => {
+      if (!this.isTimerPaused) {
+        this.remainingTime--;
+        this.updateTimerDisplay();
+        
+        // Check for warning threshold
+        if (this.timerConfig?.warning && 
+            this.remainingTime <= this.timerConfig.warning &&
+            this.remainingTime % 60 === 0) {
+          this.displayTimeWarning();
+        }
+        
+        // Emit timer tick event
+        this.scene.get('GameScene').events.emit('timerTick', this.remainingTime);
+      }
+    }, 1000) as unknown as NodeJS.Timeout;
   }
 }

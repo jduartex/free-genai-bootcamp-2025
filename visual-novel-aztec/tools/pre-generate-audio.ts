@@ -1,74 +1,79 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { NodeVoiceGenerator } from './node-voice-generator.js';
-import { StoryData, DialogEntry } from '../src/types/StoryTypes';
+import * as dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import fs from 'fs';
+import { VoiceId } from '@aws-sdk/client-polly';
 
-// Get the directory name properly in ESM
+// Load environment variables from .env file
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const envPath = path.resolve(__dirname, '../.env');
 
-// Initialize the NodeVoiceGenerator
-NodeVoiceGenerator.initialize();
-
-async function generateAllDialogueAudio() {
-  console.log('Starting dialogue audio generation...');
-  
-  // Create audio directories if needed
-  const audioDir = path.resolve(__dirname, '../public/assets/audio/dialogue');
-  fs.mkdirSync(audioDir, { recursive: true });
-  
-  // Load all story data
-  const storyDir = path.resolve(__dirname, '../public/story');
-  const storyFiles = fs.readdirSync(storyDir)
-    .filter(file => file.match(/^scene\d+\.json$/));
-  
-  console.log(`Found ${storyFiles.length} story files`);
-  
-  for (const storyFile of storyFiles) {
-    console.log(`Processing ${storyFile}...`);
-    
-    // Load story data
-    const storyPath = path.join(storyDir, storyFile);
-    const storyData = JSON.parse(fs.readFileSync(storyPath, 'utf8')) as StoryData;
-    const sceneId = storyData.id;
-    
-    // Process all dialogues
-    const dialogues = Object.entries(storyData.dialog);
-    console.log(`Found ${dialogues.length} dialogues in scene ${sceneId}`);
-    
-    for (const [dialogId, dialogEntry] of dialogues) {
-      // Construct the audio key and output path
-      const audioKey = `${sceneId}_${dialogId}_ja`;
-      const outputPath = path.join(audioDir, `${audioKey}.mp3`);
-      
-      // Skip if already exists
-      if (fs.existsSync(outputPath)) {
-        console.log(`Audio file already exists: ${audioKey}.mp3`);
-        continue;
-      }
-      
-      // Generate the audio
-      console.log(`Generating audio for: ${audioKey}`);
-      try {
-        const characterVoice = NodeVoiceGenerator.getVoiceForCharacter(dialogEntry.speakerId);
-        
-        await NodeVoiceGenerator.generateVoiceForDialogue(
-          audioKey,
-          dialogEntry.japanese,
-          'ja-JP',
-          characterVoice
-        );
-        
-        console.log(`✅ Generated audio for ${audioKey}`);
-      } catch (error) {
-        console.error(`❌ Failed to generate audio for ${audioKey}:`, error);
-      }
-    }
-  }
-  
-  console.log('Audio generation completed!');
+if (fs.existsSync(envPath)) {
+  console.log(`Loading environment from: ${envPath}`);
+  dotenv.config({ path: envPath });
+} else {
+  console.warn('No .env file found. Make sure AWS credentials are set in environment variables.');
+  dotenv.config();
 }
 
-// Run the generator
-generateAllDialogueAudio();
+// Define dialogue entries that need audio generation
+const dialogues = [
+  {
+    id: 'intro_tlaloc_001',
+    text: 'この牢屋から出なければなりません。早く！',
+    character: 'tlaloc',
+    language: 'ja-JP'
+  },
+  {
+    id: 'intro_citlali_001',
+    text: '窓の近くを調べましょう。何かヒントがあるかもしれません。',
+    character: 'citlali',
+    language: 'ja-JP'
+  },
+  {
+    id: 'intro_diego_001',
+    text: '囚人たち、静かにしろ！',
+    character: 'diego',
+    language: 'ja-JP'
+  }
+  // Add more dialogue entries as needed
+];
+
+async function generateAllVoices() {
+  try {
+    console.log('Initializing AWS Polly...');
+    NodeVoiceGenerator.initialize();
+    
+    console.log('Starting voice generation for all dialogues...');
+    
+    for (const dialogue of dialogues) {
+      console.log(`Processing: ${dialogue.id} for character ${dialogue.character}`);
+      
+      const voice = NodeVoiceGenerator.getVoiceForCharacter(dialogue.character);
+      
+      try {
+        const outputPath = await NodeVoiceGenerator.generateVoiceForDialogue(
+          dialogue.id,
+          dialogue.text,
+          dialogue.language as 'ja-JP' | 'en-US' | 'es-ES',
+          voice
+        );
+        
+        console.log(`✅ Generated audio: ${outputPath}`);
+      } catch (error) {
+        console.error(`❌ Failed to generate audio for ${dialogue.id}:`, error);
+      }
+    }
+    
+    console.log('Voice generation complete!');
+    
+  } catch (error) {
+    console.error('Voice generation process failed:', error);
+    process.exit(1);
+  }
+}
+
+// Run the generation process
+generateAllVoices();

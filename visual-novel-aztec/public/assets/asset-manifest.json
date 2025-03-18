@@ -1,0 +1,87 @@
+{
+  "backgrounds": [
+    {
+      "sceneName": "aztec-village",
+      "imagePath": "assets/scenes/aztec-village.html"
+    },
+    {
+      "sceneName": "hidden-tunnel",
+      "imagePath": "assets/scenes/hidden-tunnel.html"
+    },
+    {
+      "sceneName": "prison-cell",
+      "imagePath": "assets/scenes/prison-cell.html"
+    },
+    {
+      "sceneName": "spanish-invasion",
+      "imagePath": "assets/scenes/spanish-invasion.html"
+    }
+  ],
+  "characters": [],
+  "ui": [
+    {
+      "elementName": "button-default",
+      "imagePath": "assets/ui/button-default.png"
+    },
+    {
+      "elementName": "dialog-box",
+      "imagePath": "assets/ui/dialog-box.png"
+    },
+    {
+      "elementName": "menu-background",
+      "imagePath": "assets/ui/menu-background.png"
+    }
+  ],
+  "objects": [],
+  "audio": [
+    {
+      "soundName": "battle-ambience",
+      "soundPath": "assets/audio/battle-ambience.mp3"
+    },
+    {
+      "soundName": "click",
+      "soundPath": "assets/audio/click.mp3"
+    },
+    {
+      "soundName": "fail",
+      "soundPath": "assets/audio/fail.mp3"
+    },
+    {
+      "soundName": "hover",
+      "soundPath": "assets/audio/hover.mp3"
+    },
+    {
+      "soundName": "pickup",
+      "soundPath": "assets/audio/pickup.mp3"
+    },
+    {
+      "soundName": "prison-ambience",
+      "soundPath": "assets/audio/prison-ambience.mp3"
+    },
+    {
+      "soundName": "success",
+      "soundPath": "assets/audio/success.mp3"
+    },
+    {
+      "soundName": "theme",
+      "soundPath": "assets/audio/theme.mp3"
+    },
+    {
+      "soundName": "tunnel-ambience",
+      "soundPath": "assets/audio/tunnel-ambience.mp3"
+    },
+    {
+      "soundName": "unlock",
+      "soundPath": "assets/audio/unlock.mp3"
+    },
+    {
+      "soundName": "village-ambience",
+      "soundPath": "assets/audio/village-ambience.mp3"
+    },
+    {
+      "soundName": "warning",
+      "soundPath": "assets/audio/warning.mp3"
+    }
+  ],
+  "generatedAt": "2025-03-18T19:11:32.566Z"
+}

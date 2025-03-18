@@ -63,7 +63,7 @@ export default {
     new CopyWebpackPlugin({
       patterns: [
         { from: 'src/assets', to: 'assets', noErrorOnMissing: true },
-        { from: 'public', to: '.', noErrorOnMissing: true }
+        { from: 'public', to: '.', noErrorOnMissing: true } // Ensure public folder is copied
       ]
     }),
     new webpack.ProvidePlugin({

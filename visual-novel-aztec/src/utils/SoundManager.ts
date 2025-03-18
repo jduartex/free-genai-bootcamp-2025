@@ -1,350 +1,509 @@
 import Phaser from 'phaser';
 
-interface VolumeSettings {
-  master: number;
-  music: number;
-  effects: number;
-  voice: number;
+// Define interfaces for sound categories and options
+interface SoundOptions {
+    volume?: number;
+    loop?: boolean;
+    rate?: number;
+    detune?: number;
 }
 
+interface SoundVolumes {
+    master: number;
+    music: number;
+    effect: number;
+    voice: number;
+}
+
+/**
+ * Singleton class for managing audio across the game
+ */
 export class SoundManager {
-  private static instance: SoundManager;
-  private scene: Phaser.Scene;
-  private sounds: Map<string, Phaser.Sound.BaseSound> = new Map();
-  private enabled: boolean = true;
-  private audioUnlocked: boolean = false;
-  
-  // Volume settings with default values
-  private volumes: VolumeSettings = {
-    master: 0.8,
-    music: 0.7,
-    effects: 0.8,
-    voice: 1.0
-  };
-  
-  // Track sound categories
-  private musicSounds: Set<string> = new Set();
-  private effectSounds: Set<string> = new Set();
-  private voiceSounds: Set<string> = new Set();
+    // Static instance for singleton pattern
+    private static instance: SoundManager | null = null;
+    
+    // Instance properties
+    private scene: Phaser.Scene | null;
+    private sounds: Map<string, Phaser.Sound.BaseSound>;
+    private enabled: boolean;
+    private audioUnlocked: boolean;
+    private volumes: SoundVolumes;
+    
+    // Track sounds by category for volume control
+    private musicSounds: Set<string>;
+    private effectSounds: Set<string>;
+    private voiceSounds: Set<string>;
 
-  private constructor(scene: Phaser.Scene) {
-    this.scene = scene;
-    
-    // Load volume settings from localStorage if available
-    this.loadVolumeSettings();
-    
-    // Check if audio context is already unlocked - with proper type checking
-    this.audioUnlocked = this.isAudioContextRunning();
-    
-    // Handle scene events
-    this.scene.events.on('shutdown', this.shutdown, this);
-    
-    // Listen for audio unlock events
-    this.scene.sound.once('unlocked', () => {
-      console.log('Audio unlocked!');
-      this.audioUnlocked = true;
-      
-      // Replay any sounds that were attempted before unlocking
-      this.sounds.forEach((sound, key) => {
-        if (!sound.isPlaying && sound.markers && sound.markers.pending) {
-          console.log(`Replaying sound that was pending unlock: ${key}`);
-          sound.play('pending');
-          delete sound.markers.pending;
-        }
-      });
-    });
-  }
-
-  // Helper method to safely check audio context state
-  private isAudioContextRunning(): boolean {
-    const soundManager = this.scene.sound;
-    
-    // Check if using WebAudio (the only one with a context)
-    if ('context' in soundManager) {
-      const webAudioManager = soundManager as Phaser.Sound.WebAudioSoundManager;
-      return webAudioManager.context.state === 'running';
-    }
-    
-    // For other sound managers, assume unlocked
-    return true;
-  }
-
-  static init(scene: Phaser.Scene): void {
-    if (!SoundManager.instance) {
-      SoundManager.instance = new SoundManager(scene);
-    }
-  }
-
-  static getInstance(): SoundManager {
-    if (!SoundManager.instance) {
-      throw new Error('SoundManager not initialized. Call init() first.');
-    }
-    return SoundManager.instance;
-  }
-
-  loadAudio(key: string, path: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (this.scene.cache.audio.exists(key)) {
-        console.log(`Audio ${key} already loaded`);
-        resolve();
-        return;
-      }
-      
-      console.log(`Loading audio: ${key} from ${path}`);
-      
-      this.scene.load.audio(key, path);
-      this.scene.load.once(`filecomplete-audio-${key}`, () => {
-        console.log(`Audio loaded successfully: ${key}`);
-        resolve();
-      });
-      this.scene.load.once('loaderror', (fileObj: any) => {
-        if (fileObj.key === key) {
-          console.error(`Failed to load audio: ${key}`);
-          reject(new Error(`Failed to load audio: ${key}`));
-        }
-      });
-      this.scene.load.start();
-    });
-  }
-
-  playSound(key: string, options: Phaser.Types.Sound.SoundConfig = {}): void {
-    if (!this.enabled) return;
-    
-    try {
-      if (!this.scene.cache.audio.exists(key)) {
-        console.warn(`Sound "${key}" not found in cache, using fallback`);
-        // Use a known good sound as fallback
-        key = 'click';
-        if (!this.scene.cache.audio.exists(key)) {
-          return; // If even the fallback doesn't exist, give up
-        }
-      }
-      
-      // Get or create the sound
-      let sound = this.sounds.get(key);
-      if (!sound) {
-        try {
-          // Apply proper category volume
-          let categoryVolume = this.volumes.effects; // default category
-          
-          if (this.musicSounds.has(key)) {
-            categoryVolume = this.volumes.music;
-          } else if (this.voiceSounds.has(key)) {
-            categoryVolume = this.volumes.voice;
-          } else if (this.effectSounds.has(key)) {
-            categoryVolume = this.volumes.effects;
-          }
-          
-          // Apply master volume multiplier
-          const finalVolume = Math.min(1, Math.max(0, categoryVolume * this.volumes.master));
-          
-          // Create sound with proper volume
-          sound = this.scene.sound.add(key, { 
-            volume: finalVolume,
-            ...options 
-          });
-          
-          this.sounds.set(key, sound);
-        } catch (error) {
-          console.error(`Error creating sound "${key}":`, error);
-          return;
-        }
-      }
-      
-      try {
-        if (!this.audioUnlocked) {
-          console.log(`Audio not unlocked, adding pending marker for ${key}`);
-          // Add a marker so we can replay this sound once audio is unlocked
-          sound.addMarker({
-            name: 'pending',
-            start: 0,
-            duration: sound.totalDuration || 0.5
-          });
-        }
-        
-        // Play the sound
-        if (this.audioUnlocked) {
-          console.log(`Playing sound: ${key}`);
-          sound.play(options);
-        } else {
-          console.log(`Attempting to unlock audio with sound: ${key}`);
-          // This play attempt might unlock the audio
-          sound.play(options);
-        }
-      } catch (playError) {
-        console.error(`Error playing sound "${key}":`, playError);
-      }
-    } catch (error) {
-      console.error(`Error in playSound for "${key}":`, error);
-    }
-  }
-
-  stopSound(key: string): void {
-    const sound = this.sounds.get(key);
-    if (sound && sound.isPlaying) {
-      sound.stop();
-    }
-  }
-
-  setEnabled(enabled: boolean): void {
-    this.enabled = enabled;
-    // Use type assertion to access volume property
-    this.sounds.forEach(sound => {
-      (sound as any).volume = enabled ? this.getVolumeForSound(sound.key) : 0;
-    });
-  }
-  
-  // Register a sound to a category for volume management
-  registerSound(key: string, category: 'music' | 'effects' | 'voice'): void {
-    if (category === 'music') {
-      this.musicSounds.add(key);
-    } else if (category === 'effects') {
-      this.effectSounds.add(key);
-    } else if (category === 'voice') {
-      this.voiceSounds.add(key);
-    }
-    
-    // Update volume for existing sound with type assertion
-    const sound = this.sounds.get(key);
-    if (sound) {
-      (sound as any).volume = this.getVolumeForSound(key);
-    }
-  }
-  
-  // Get the appropriate volume for a sound based on its category
-  private getVolumeForSound(key: string): number {
-    let categoryVolume = this.volumes.effects; // default
-    
-    if (this.musicSounds.has(key)) {
-      categoryVolume = this.volumes.music;
-    } else if (this.voiceSounds.has(key)) {
-      categoryVolume = this.volumes.voice;
-    }
-    
-    // Apply master volume
-    return Math.min(1, Math.max(0, categoryVolume * this.volumes.master));
-  }
-  
-  // Volume control methods
-  setMasterVolume(volume: number): void {
-    volume = Math.min(1, Math.max(0, volume));
-    this.volumes.master = volume;
-    
-    // Update all sound volumes
-    this.applyVolumeSettings();
-    
-    // Save to localStorage
-    this.saveVolumeSettings();
-  }
-  
-  setMusicVolume(volume: number): void {
-    volume = Math.min(1, Math.max(0, volume));
-    this.volumes.music = volume;
-    
-    // Update music sound volumes
-    this.applyVolumeToCategory('music');
-    
-    // Save to localStorage
-    this.saveVolumeSettings();
-  }
-  
-  setEffectsVolume(volume: number): void {
-    volume = Math.min(1, Math.max(0, volume));
-    this.volumes.effects = volume;
-    
-    // Update effects sound volumes
-    this.applyVolumeToCategory('effects');
-    
-    // Save to localStorage
-    this.saveVolumeSettings();
-  }
-  
-  setVoiceVolume(volume: number): void {
-    volume = Math.min(1, Math.max(0, volume));
-    this.volumes.voice = volume;
-    
-    // Update voice sound volumes
-    this.applyVolumeToCategory('voice');
-    
-    // Save to localStorage
-    this.saveVolumeSettings();
-  }
-  
-  // Apply volume settings to all sounds
-  private applyVolumeSettings(): void {
-    this.applyVolumeToCategory('music');
-    this.applyVolumeToCategory('effects');
-    this.applyVolumeToCategory('voice');
-  }
-  
-  // Apply volume to a specific category of sounds
-  private applyVolumeToCategory(category: 'music' | 'effects' | 'voice'): void {
-    const soundKeys = category === 'music' ? this.musicSounds : 
-                     category === 'effects' ? this.effectSounds :
-                     this.voiceSounds;
-                     
-    const categoryVolume = category === 'music' ? this.volumes.music : 
-                          category === 'effects' ? this.volumes.effects :
-                          this.volumes.voice;
-                          
-    // Calculate final volume with master volume
-    const finalVolume = categoryVolume * this.volumes.master;
-    
-    // Apply to all sounds in this category with type assertion
-    soundKeys.forEach(key => {
-      const sound = this.sounds.get(key);
-      if (sound) {
-        try {
-          (sound as any).volume = finalVolume;
-        } catch (error) {
-          console.error(`Error setting volume for "${key}":`, error);
-        }
-      }
-    });
-  }
-  
-  // Save volume settings to localStorage
-  private saveVolumeSettings(): void {
-    try {
-      localStorage.setItem('aztecEscape_volumeSettings', JSON.stringify(this.volumes));
-    } catch (e) {
-      console.warn('Could not save volume settings:', e);
-    }
-  }
-  
-  // Load volume settings from localStorage
-  private loadVolumeSettings(): void {
-    try {
-      const savedSettings = localStorage.getItem('aztecEscape_volumeSettings');
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings) as Partial<VolumeSettings>;
-        
-        // Apply saved values, keeping defaults for any missing properties
+    // Ensure all properties are declared and initialized
+    constructor() {
+        this.scene = null;
+        this.sounds = new Map();
+        this.enabled = true;
+        this.audioUnlocked = false;
         this.volumes = {
-          master: parsed.master ?? this.volumes.master,
-          music: parsed.music ?? this.volumes.music,
-          effects: parsed.effects ?? this.volumes.effects,
-          voice: parsed.voice ?? this.volumes.voice
+            master: 1.0,
+            music: 0.7,
+            effect: 0.8,
+            voice: 1.0
+        };
+        this.musicSounds = new Set();
+        this.effectSounds = new Set();
+        this.voiceSounds = new Set();
+        this.loadSavedVolumes();
+    }
+
+    /**
+     * Get the singleton instance
+     */
+    public static getInstance(): SoundManager {
+        if (!SoundManager.instance) {
+            SoundManager.instance = new SoundManager();
+        }
+        return SoundManager.instance;
+    }
+
+    /**
+     * Initialize with a Phaser scene
+     * @param scene The Phaser scene to use for audio
+     */
+    public init(scene: Phaser.Scene): void {
+        if (this.scene !== scene) {
+            this.scene = scene;
+            
+            // Set up audio unlock listeners if needed
+            if (!this.audioUnlocked) {
+                this.setupUnlockListeners();
+            }
+        }
+    }
+
+    /**
+     * Load audio file
+     * @param key The key to reference the audio
+     * @param url The URL or path to the audio file
+     * @returns Promise that resolves when the audio is loaded
+     */
+    public loadAudio(key: string, url: string): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            if (!this.scene) {
+                reject(new Error('Scene not initialized'));
+                return;
+            }
+            
+            if (this.scene.cache.audio.exists(key)) {
+                resolve();
+                return;
+            }
+            
+            this.scene.load.audio(key, url);
+            this.scene.load.once('complete', () => {
+                resolve();
+            });
+            this.scene.load.once('loaderror', () => {
+                reject(new Error(`Failed to load audio: ${key} from ${url}`));
+            });
+            this.scene.load.start();
+        });
+    }
+
+    /**
+     * Load multiple audio files
+     * @param files Map of audio keys to paths
+     * @returns Promise that resolves when all files are loaded
+     */
+    public loadAudioFiles(files: Record<string, string>): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            if (!this.scene) {
+                reject(new Error('Scene not initialized'));
+                return;
+            }
+            
+            // Add all files to the loader
+            Object.entries(files).forEach(([key, url]) => {
+                this.scene!.load.audio(key, url);
+            });
+            
+            this.scene.load.once('complete', () => {
+                resolve();
+            });
+            
+            this.scene.load.once('loaderror', (fileObj: { key: string }) => {
+                reject(new Error(`Failed to load audio: ${fileObj.key}`));
+            });
+            
+            this.scene.load.start();
+        });
+    }
+
+    /**
+     * Check if audio is available
+     */
+    public isAudioAvailable(): boolean {
+        return !!this.scene && !this.scene.sound.locked && this.enabled;
+    }
+
+    /**
+     * Play a sound with volume scaling and automatic category handling
+     * @param key The key of the sound to play
+     * @param options Sound options
+     * @returns The played sound or undefined if failed
+     */
+    public playSound(key: string, options: SoundOptions = {}): Phaser.Sound.BaseSound | undefined {
+        try {
+            if (!this.enabled || !this.scene?.sound || !this.scene?.cache?.audio?.exists(key)) {
+                return undefined;
+            }
+            
+            // Create or get the sound
+            let sound = this.sounds.get(key);
+            if (!sound) {
+                sound = this.scene.sound.add(key);
+                this.sounds.set(key, sound);
+            }
+            
+            // Apply appropriate volume
+            let scaledVolume = options.volume || 1.0;
+            
+            // Apply category-specific volume scaling
+            if (this.musicSounds.has(key)) {
+                scaledVolume *= this.volumes.music;
+            } else if (this.voiceSounds.has(key)) {
+                scaledVolume *= this.volumes.voice;
+            } else if (this.effectSounds.has(key)) {
+                scaledVolume *= this.volumes.effect;
+            }
+            
+            // Apply master volume
+            scaledVolume *= this.volumes.master;
+            
+            // Default values
+            const playOptions = {
+                ...options,
+                volume: scaledVolume,
+                loop: options.loop || false,
+            };
+            
+            // Play the sound
+            if (this.scene.sound.locked) {
+                this.scene.sound.once('unlocked', () => {
+                    sound!.play(playOptions);
+                });
+            } else {
+                sound.play(playOptions);
+            }
+            
+            return sound;
+        } catch (error) {
+            console.error(`Error in playSound for "${key}":`, error);
+            return undefined;
+        }
+    }
+
+    /**
+     * Play music with automatic categorization
+     * @param key The key of the music to play
+     * @param options Sound options
+     */
+    public playMusic(key: string, options: SoundOptions = {}): Phaser.Sound.BaseSound | undefined {
+        // Add to music category
+        this.musicSounds.add(key);
+        
+        // Default to looping for music
+        return this.playSound(key, {
+            loop: true,
+            ...options,
+            volume: options.volume !== undefined ? options.volume : 1.0
+        });
+    }
+
+    /**
+     * Stop all sounds
+     */
+    public stopAll(): void {
+        this.enabled = false;
+        this.sounds.forEach(sound => {
+            if (sound.isPlaying) {
+                sound.stop();
+            }
+        });
+    }
+
+    /**
+     * Stop music
+     */
+    public stopMusic(): void {
+        this.musicSounds.forEach(key => {
+            const sound = this.sounds.get(key);
+            if (sound && sound.isPlaying) {
+                sound.stop();
+            }
+        });
+    }
+    
+    /**
+     * Stop effects
+     */
+    public stopEffects(): void {
+        this.effectSounds.forEach(key => {
+            const sound = this.sounds.get(key);
+            if (sound && sound.isPlaying) {
+                sound.stop();
+            }
+        });
+    }
+    
+    /**
+     * Stop voice
+     */
+    public stopVoice(): void {
+        this.voiceSounds.forEach(key => {
+            const sound = this.sounds.get(key);
+            if (sound && sound.isPlaying) {
+                sound.stop();
+            }
+        });
+    }
+
+    /**
+     * Set master volume
+     * @param volume Volume from 0 to 1
+     */
+    public setMasterVolume(volume: number): void {
+        this.volumes.master = Math.max(0, Math.min(1, volume));
+        
+        // Update all currently playing sounds
+        this.updateAllSoundVolumes();
+        
+        // Save to localStorage
+        this.saveVolumes();
+    }
+    
+    /**
+     * Set music volume
+     * @param volume Volume from 0 to 1
+     */
+    public setMusicVolume(volume: number): void {
+        this.volumes.music = Math.max(0, Math.min(1, volume));
+        
+        // Update music sounds
+        this.updateSoundCategoryVolumes('music');
+        
+        // Save to localStorage
+        this.saveVolumes();
+    }
+    
+    /**
+     * Set effect volume
+     * @param volume Volume from 0 to 1
+     */
+    public setEffectVolume(volume: number): void {
+        this.volumes.effect = Math.max(0, Math.min(1, volume));
+        
+        // Update effect sounds
+        this.updateSoundCategoryVolumes('effect');
+        
+        // Save to localStorage
+        this.saveVolumes();
+    }
+    
+    /**
+     * Set voice volume
+     * @param volume Volume from 0 to 1
+     */
+    public setVoiceVolume(volume: number): void {
+        this.volumes.voice = Math.max(0, Math.min(1, volume));
+        
+        // Update voice sounds
+        this.updateSoundCategoryVolumes('voice');
+        
+        // Save to localStorage
+        this.saveVolumes();
+    }
+
+    /**
+     * Update volumes for a specific sound category
+     * @param category The sound category to update
+     */
+    private updateSoundCategoryVolumes(category: keyof SoundVolumes): void {
+        // Get the relevant sound set
+        let soundSet: Set<string>;
+        
+        if (category === 'music') {
+            soundSet = this.musicSounds;
+        } else if (category === 'effect') {
+            soundSet = this.effectSounds;
+        } else if (category === 'voice') {
+            soundSet = this.voiceSounds;
+        } else {
+            return; // Unknown category
+        }
+        
+        // For currently playing sounds, we need to stop and replay with new volume
+        soundSet.forEach(key => {
+            const sound = this.sounds.get(key);
+            if (sound && sound.isPlaying) {
+                // Cast to WebAudioSound or HTML5AudioSound
+                const webAudioSound = sound as Phaser.Sound.WebAudioSound;
+                const html5AudioSound = sound as Phaser.Sound.HTML5AudioSound;
+
+                // Store current position and playing state
+                const currentSeek = webAudioSound.seek || html5AudioSound.seek || 0;
+                const wasLooping = webAudioSound.loop || html5AudioSound.loop || false;
+
+                // Stop the sound
+                sound.stop();
+
+                // Replay with new volume
+                sound.play({
+                    volume: this.volumes[category] * this.volumes.master,
+                    loop: wasLooping
+                });
+
+                // Restore position if needed
+                if (currentSeek > 0) {
+                    if (webAudioSound.setSeek) {
+                        webAudioSound.setSeek(currentSeek);
+                    } else if (html5AudioSound.setSeek) {
+                        html5AudioSound.setSeek(currentSeek);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Update all sound volumes based on current volume settings
+     */
+    private updateAllSoundVolumes(): void {
+        // Update each category
+        this.updateSoundCategoryVolumes('music');
+        this.updateSoundCategoryVolumes('effect');
+        this.updateSoundCategoryVolumes('voice');
+        
+        // Update any uncategorized sounds with master volume only
+        this.sounds.forEach((sound, key) => {
+            if (!this.musicSounds.has(key) && 
+                !this.effectSounds.has(key) && 
+                !this.voiceSounds.has(key) &&
+                sound.isPlaying) {
+
+                // Cast to WebAudioSound or HTML5AudioSound
+                const webAudioSound = sound as Phaser.Sound.WebAudioSound;
+                const html5AudioSound = sound as Phaser.Sound.HTML5AudioSound;
+
+                // Store current position and playing state
+                const currentSeek = webAudioSound.seek || html5AudioSound.seek || 0;
+                const wasLooping = webAudioSound.loop || html5AudioSound.loop || false;
+
+                // Stop the sound
+                sound.stop();
+
+                // Replay with new volume
+                sound.play({
+                    volume: this.volumes.master,
+                    loop: wasLooping
+                });
+
+                // Restore position if needed
+                if (currentSeek > 0) {
+                    if (webAudioSound.setSeek) {
+                        webAudioSound.setSeek(currentSeek);
+                    } else if (html5AudioSound.setSeek) {
+                        html5AudioSound.setSeek(currentSeek);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Save volume settings to localStorage
+     */
+    private saveVolumes(): void {
+        try {
+            localStorage.setItem('aztecEscape_volume_master', this.volumes.master.toString());
+            localStorage.setItem('aztecEscape_volume_music', this.volumes.music.toString());
+            localStorage.setItem('aztecEscape_volume_effect', this.volumes.effect.toString());
+            localStorage.setItem('aztecEscape_volume_voice', this.volumes.voice.toString());
+        } catch (error) {
+            console.warn('Error saving volumes to localStorage:', error);
+        }
+    }
+    
+    /**
+     * Load volume settings from localStorage
+     */
+    private loadSavedVolumes(): void {
+        try {
+            const master = localStorage.getItem('aztecEscape_volume_master');
+            const music = localStorage.getItem('aztecEscape_volume_music');
+            const effect = localStorage.getItem('aztecEscape_volume_effect');
+            const voice = localStorage.getItem('aztecEscape_volume_voice');
+            
+            if (master) this.volumes.master = parseFloat(master);
+            if (music) this.volumes.music = parseFloat(music);
+            if (effect) this.volumes.effect = parseFloat(effect);
+            if (voice) this.volumes.voice = parseFloat(voice);
+            
+            // Ensure all volumes are within valid range
+            this.volumes.master = Math.max(0, Math.min(1, this.volumes.master));
+            this.volumes.music = Math.max(0, Math.min(1, this.volumes.music));
+            this.volumes.effect = Math.max(0, Math.min(1, this.volumes.effect));
+            this.volumes.voice = Math.max(0, Math.min(1, this.volumes.voice));
+        } catch (error) {
+            console.warn('Error loading volumes from localStorage:', error);
+        }
+    }
+
+    /**
+     * Set up audio unlock listeners
+     */
+    private setupUnlockListeners(): void {
+        if (typeof window === 'undefined') return;
+        
+        // Define unlock function
+        const unlockAudio = () => {
+            if (this.audioUnlocked) return;
+            
+            this.audioUnlocked = true;
+            
+            // Remove listeners once unlocked
+            ['touchstart', 'touchend', 'mousedown', 'keydown'].forEach(event => {
+                window.removeEventListener(event, unlockAudio);
+            });
+            
+            console.log('Audio unlocked by user interaction');
         };
         
-        console.log('Loaded volume settings:', this.volumes);
-      }
-    } catch (e) {
-      console.warn('Could not load volume settings:', e);
+        // Add unlock listeners
+        ['touchstart', 'touchend', 'mousedown', 'keydown'].forEach(event => {
+            window.addEventListener(event, unlockAudio, false);
+        });
     }
-  }
-  
-  // Get current volume settings
-  getVolumeSettings(): VolumeSettings {
-    return { ...this.volumes };
-  }
+    
+    /**
+     * Clean up resources
+     */
+    public destroy(): void {
+        // Stop all sounds
+        this.sounds.forEach(sound => {
+            if (sound.isPlaying) {
+                sound.stop();
+            }
+        });
+        
+        // Clear collections
+        this.sounds.clear();
+        this.musicSounds.clear();
+        this.effectSounds.clear();
+        this.voiceSounds.clear();
+        
+        // Reset instance for garbage collection
+        SoundManager.instance = null;
+    }
+}
 
-  private shutdown(): void {
-    this.sounds.forEach(sound => {
-      if (sound.isPlaying) {
-        sound.stop();
-      }
-    });
-    this.sounds.clear();
-  }
+// Add to window for global access if in browser environment
+if (typeof window !== 'undefined') {
+    (window as any).SoundManager = SoundManager;
 }

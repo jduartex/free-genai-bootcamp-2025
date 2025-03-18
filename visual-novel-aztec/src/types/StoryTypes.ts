@@ -1,56 +1,59 @@
-export interface DialogWord {
-  word: string;
-  start: number;
-  end: number;
-}
+/**
+ * Types used for story content and dialog
+ */
 
-export interface DialogChoice {
-  english: string;
-  japanese: string;
-  next_id: string;
-  puzzle_answer?: number;
-}
-
+// Dialog entry in a scene
 export interface DialogEntry {
-  speakerId: string;
-  audio?: string;
-  japanese: string;
-  english: string;
-  words?: DialogWord[];
-  default_next_id?: string;
-  choices?: DialogChoice[];
-  ends?: boolean;
+  character: string;  // Character ID
+  text: string;       // Text spoken
+  emotion?: string;   // Optional emotion for character portrait
+  translation?: string; // Optional Japanese/English translation
+  choices?: DialogChoice[]; // Optional choices for player
 }
 
-export interface VocabularyEntry {
-  word: string;
-  romaji: string;
-  translation: string;
-  usage: string;
-  example: string;
+// A player choice in a dialog
+export interface DialogChoice {
+  text: string;       // Text of the choice
+  nextId?: string;    // ID of next dialog entry or scene (optional)
+  condition?: string; // Conditional requirement (optional)
+  effect?: string;    // Effect of choosing this option (optional)
 }
 
-export interface TimerConfig {
-  initial: number;  // In seconds
-  penalty: number;  // In seconds
+// A scene in the story
+export interface StoryScene {
+  id: string;                // Scene identifier
+  background: string;        // Background image
+  music?: string;            // Background music (optional)
+  ambience?: string;         // Ambient sounds (optional)
+  initialDialog: string;     // ID of first dialog entry
+  dialog: Record<string, DialogEntry>; // Map of dialog entries
 }
 
+// The entire story data structure
 export interface StoryData {
-  id: string;
-  title: string;
-  location_id: string;
-  character_id?: string;
-  startsAt: string;
-  timer?: TimerConfig;
-  dialog: Record<string, DialogEntry>;
-  vocabulary?: VocabularyEntry[];
+  title: string;            // Title of the story
+  author: string;           // Author name
+  version: string;          // Version number
+  language: string;         // Primary language
+  scenes: StoryScene[];     // Array of scenes
+  characters: Record<string, Character>; // Character definitions
+  items: Record<string, Item>; // Inventory items
 }
 
-export interface GameState {
-  currentScene: string;
-  currentDialog: string;
-  remainingTime: number;
-  collectedItems: string[];
-  solvedPuzzles: string[];
-  unlockedHints: string[];
+// Character definition
+export interface Character {
+  name: string;        // Character's display name
+  portrait: string;    // Default portrait image
+  variants?: Record<string, string>; // Emotion variants
+  description?: string; // Character description
+  voiceId?: string;    // Voice ID for speech synthesis
+}
+
+// Inventory item definition
+export interface Item {
+  id: string;          // Item identifier
+  name: string;        // Display name
+  description: string; // Item description
+  image: string;       // Item image
+  usableIn?: string[]; // Scenes where this item can be used
 }

@@ -1,14 +1,22 @@
 import Phaser from 'phaser';
-import { VocabularyTracker } from '../components/VocabularyTracker.js';
-import { VocabularyEntry } from '../types/StoryTypes.js';
+import { VocabularyTracker } from '../utils/VocabularyTracker.js';
+
+// Define VocabularyEntry interface
+interface VocabularyEntry {
+  word: string;
+  translation: string;
+  example: string;
+  mastered: boolean;
+  lastReviewed?: number;
+}
 
 export class PracticeScene extends Phaser.Scene {
+  private score = 0;
+  private scoreText!: Phaser.GameObjects.Text;
+  private wordText!: Phaser.GameObjects.Text;
   private currentWord!: VocabularyEntry;
   private words: VocabularyEntry[] = [];
-  private wordText!: Phaser.GameObjects.Text;
   private choices: Phaser.GameObjects.Container[] = [];
-  private score: number = 0;
-  private scoreText!: Phaser.GameObjects.Text;
   
   constructor() {
     super({ key: 'PracticeScene' });
@@ -84,13 +92,13 @@ export class PracticeScene extends Phaser.Scene {
     ).setOrigin(0.5);
     
     // Show first question
-    this.showNextQuestion();
+    this.showNextWord();
     
     // Add return button
     this.createReturnButton();
   }
   
-  private showNextQuestion(): void {
+  showNextWord(): void {
     // Clear previous choices
     this.choices.forEach(choice => choice.destroy());
     this.choices = [];
@@ -121,7 +129,7 @@ export class PracticeScene extends Phaser.Scene {
     this.createChoices();
   }
   
-  private createChoices(): void {
+  createChoices(): void {
     // Get all vocabulary for wrong answers
     const allVocab = VocabularyTracker.getKnownVocabulary();
     
@@ -172,7 +180,7 @@ export class PracticeScene extends Phaser.Scene {
           bg.fillColor = 0x333333;
         })
         .on('pointerdown', () => {
-          this.checkAnswer(choice);
+          this.checkAnswer(choiceButton);
         });
       
       choiceButton.add([bg, text]);
@@ -180,10 +188,10 @@ export class PracticeScene extends Phaser.Scene {
     });
   }
   
-  private checkAnswer(selectedAnswer: string): void {
+  checkAnswer(choice: Phaser.GameObjects.Container): void {
     const correctAnswer = this.currentWord.translation;
     
-    if (selectedAnswer === correctAnswer) {
+    if (choice.getAll().some(item => item instanceof Phaser.GameObjects.Text && item.text === correctAnswer)) {
       // Correct answer
       this.score += 10;
       this.scoreText.setText(`Score: ${this.score}`);
@@ -211,10 +219,10 @@ export class PracticeScene extends Phaser.Scene {
     }
   }
   
-  private showFeedback(correct: boolean, correctAnswer: string): void {
+  showFeedback(correct: boolean, correctAnswer: string): void {
     // Disable choice buttons
     this.choices.forEach(choice => {
-      choice.list.forEach(item => {
+      choice.getAll().forEach(item => {
         if (item instanceof Phaser.GameObjects.Rectangle) {
           item.disableInteractive();
         }
@@ -249,11 +257,11 @@ export class PracticeScene extends Phaser.Scene {
     // Next question after delay
     this.time.delayedCall(2000, () => {
       feedbackText.destroy();
-      this.showNextQuestion();
+      this.showNextWord();
     });
   }
   
-  private createReturnButton(): void {
+  createReturnButton(): void {
     const returnButton = this.add.rectangle(
       this.cameras.main.width / 2,
       this.cameras.main.height - 50,

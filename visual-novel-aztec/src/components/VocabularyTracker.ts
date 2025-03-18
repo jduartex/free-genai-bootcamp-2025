@@ -7,58 +7,25 @@ interface VocabStats {
 }
 
 export class VocabularyTracker {
-  private static vocabulary: Map<string, VocabularyEntry & VocabStats> = new Map();
+  private static vocabulary: Map<string, number> = new Map();
   
-  static addVocabulary(entry: VocabularyEntry): void {
-    const wordId = entry.word;
-    
-    if (this.vocabulary.has(wordId)) {
-      // Update existing entry
-      const existing = this.vocabulary.get(wordId)!;
-      existing.exposures += 1;
-      existing.lastSeen = Date.now();
-    } else {
-      // Add new entry
-      this.vocabulary.set(wordId, {
-        ...entry,
-        exposures: 1,
-        lastSeen: Date.now(),
-        mastered: false
-      });
-    }
-    
+  static addWord(word: string, count: number = 1): void {
+    const currentCount = this.vocabulary.get(word) || 0;
+    this.vocabulary.set(word, currentCount + count);
     this.save();
   }
   
-  static markAsMastered(wordId: string): void {
-    if (this.vocabulary.has(wordId)) {
-      const entry = this.vocabulary.get(wordId)!;
-      entry.mastered = true;
-      this.save();
-    }
+  static getWords(): Map<string, number> {
+    return new Map(this.vocabulary);
   }
   
-  static getSpacedRepetitionWords(count: number = 5): VocabularyEntry[] {
-    // Get words due for review based on spaced repetition algorithm
-    const now = Date.now();
-    const allWords = Array.from(this.vocabulary.values());
-    
-    // Sort by a priority function that considers time since last seen and exposures
-    const sortedWords = allWords
-      .filter(word => !word.mastered)
-      .sort((a, b) => {
-        const timeFactorA = (now - a.lastSeen) / (a.exposures * 86400000); // days in ms
-        const timeFactorB = (now - b.lastSeen) / (b.exposures * 86400000);
-        return timeFactorB - timeFactorA; // Higher score = higher priority
-      });
-      
-    return sortedWords.slice(0, count);
+  static hasWord(word: string): boolean {
+    return this.vocabulary.has(word);
   }
   
-  static getKnownVocabulary(): VocabularyEntry[] {
-    return Array.from(this.vocabulary.values())
-      .filter(word => word.mastered)
-      .map(({ exposures, lastSeen, mastered, ...rest }) => rest);
+  static clear(): void {
+    this.vocabulary.clear();
+    this.save();
   }
   
   static save(): void {

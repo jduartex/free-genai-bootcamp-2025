@@ -1,4 +1,4 @@
-import { NodeVoiceGenerator } from '../../tools/node-voice-generator.js';
+import { NodeVoiceGenerator } from '../../tools/node-voice-generator';
 import * as dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import path from 'path';

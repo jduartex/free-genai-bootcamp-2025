@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 // Fix imports for AWS SDK compatibility with ESM
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';

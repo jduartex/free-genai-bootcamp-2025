@@ -2,15 +2,17 @@
  * Cache for generated assets to reduce API calls
  */
 export class AssetCache {
+  private cache: Map<string, any>;
+  private maxCacheSize: number;
   private static instance: AssetCache;
-  private cache: Map<string, string> = new Map();
-  private maxCacheSize: number = 50;
   
-  private constructor() {
+  constructor() {
+    this.cache = new Map();
+    this.maxCacheSize = 50;
     this.loadFromLocalStorage();
   }
   
-  public static getInstance(): AssetCache {
+  static getInstance(): AssetCache {
     if (!AssetCache.instance) {
       AssetCache.instance = new AssetCache();
     }
@@ -20,25 +22,23 @@ export class AssetCache {
   /**
    * Get an asset from the cache
    */
-  public get(key: string): string | undefined {
+  get(key: string): any {
     return this.cache.get(key);
   }
   
   /**
    * Store an asset in the cache
    */
-  public set(key: string, value: string): void {
+  set(key: string, value: any): void {
     // Prune cache if it gets too large
     if (this.cache.size >= this.maxCacheSize) {
       // Fix: Add null check to handle potential undefined key
       const keyIterator = this.cache.keys();
       const firstKeyResult = keyIterator.next();
-      
       if (!firstKeyResult.done && firstKeyResult.value) {
         this.cache.delete(firstKeyResult.value);
       }
     }
-    
     this.cache.set(key, value);
     this.saveToLocalStorage();
   }
@@ -46,13 +46,12 @@ export class AssetCache {
   /**
    * Save cache to localStorage
    */
-  private saveToLocalStorage(): void {
+  saveToLocalStorage(): void {
     try {
-      const cacheObj: Record<string, string> = {};
+      const cacheObj: Record<string, any> = {};
       this.cache.forEach((value, key) => {
         cacheObj[key] = value;
       });
-      
       localStorage.setItem('aztecEscape_assetCache', JSON.stringify(cacheObj));
     } catch (error) {
       console.warn('Failed to save asset cache to localStorage:', error);
@@ -62,12 +61,11 @@ export class AssetCache {
   /**
    * Load cache from localStorage
    */
-  private loadFromLocalStorage(): void {
+  loadFromLocalStorage(): void {
     try {
       const cachedData = localStorage.getItem('aztecEscape_assetCache');
       if (cachedData) {
-        const cacheObj = JSON.parse(cachedData) as Record<string, string>;
-        
+        const cacheObj = JSON.parse(cachedData);
         Object.entries(cacheObj).forEach(([key, value]) => {
           this.cache.set(key, value);
         });
