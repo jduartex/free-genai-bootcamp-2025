@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import fs from 'fs';
 import path from 'path';
-import { mappings } from '@/utils/Mappings';
+import { BACKGROUND_MAPPINGS, CHARACTER_MAPPINGS, mappings } from '../utils/Mappings';
 
 export class LoadScene extends Phaser.Scene {
   private loadingText!: Phaser.GameObjects.Text;
@@ -72,9 +72,9 @@ export class LoadScene extends Phaser.Scene {
   }
 
   private loadGameAssets(): void {
-    // Get list of locations from mappings
-    const locations = mappings.locations || {};
-    const characterNames = mappings.characterNames || {};
+    // Get list of locations from mappings or use BACKGROUND_MAPPINGS as fallback
+    const locations = mappings?.locations || BACKGROUND_MAPPINGS;
+    const characterNames = mappings?.characterNames || CHARACTER_MAPPINGS;
     
     // Load background scenes
     this.loadingText.setText('Loading backgrounds...');

@@ -1,0 +1,14 @@
+{
+    "characterNames": {
+        "tlaloc": "Tlaloc",
+        "citlali": "Citlali",
+        "diego": "Guard Diego",
+        "narrator": "Narrator"
+    },
+    "locations": {
+        "prison-cell": "Spanish Prison Cell",
+        "aztec-village": "Aztec Village (Flashback)",
+        "spanish-invasion": "Spanish Invasion (Flashback)",
+        "hidden-tunnel": "Escape Tunnel"
+    }
+}

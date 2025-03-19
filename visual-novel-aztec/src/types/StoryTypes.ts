@@ -1,46 +1,107 @@
 /**
- * Types used for story content and dialog
+ * Story data structure definitions
  */
 
-// Dialog entry in a scene
-export interface DialogEntry {
-  character: string;  // Character ID
-  text: string;       // Text spoken
-  emotion?: string;   // Optional emotion for character portrait
-  translation?: string; // Optional Japanese/English translation
-  choices?: DialogChoice[]; // Optional choices for player
+/**
+ * Word data with timing information for lip sync
+ */
+export interface WordData {
+  word: string;
+  start: number; // Start time in seconds
+  end?: number;   // End time in seconds
 }
 
-// A player choice in a dialog
+/**
+ * Vocabulary entry for Japanese words
+ */
+export interface VocabularyEntry {
+  term: string;
+  reading?: string;
+  meaning: string;
+  notes?: string;
+  seen?: boolean;
+  mastered?: boolean;
+  examples?: string[];
+  level?: 'N5' | 'N4' | 'N3' | 'N2' | 'N1';
+}
+
+/**
+ * Dialog choice option
+ */
 export interface DialogChoice {
-  text: string;       // Text of the choice
-  nextId?: string;    // ID of next dialog entry or scene (optional)
-  condition?: string; // Conditional requirement (optional)
-  effect?: string;    // Effect of choosing this option (optional)
+  id: string;
+  japanese: string;
+  english: string;
+  nextId: string;  // The ID to navigate to when selected
+  puzzle_answer?: boolean;  // Whether this is the correct answer for a puzzle
+  requires_item?: string;   // Item ID required to select this choice
+  gives_item?: string;      // Item ID given when this choice is selected
 }
 
-// A scene in the story
-export interface StoryScene {
-  id: string;                // Scene identifier
-  background: string;        // Background image
-  music?: string;            // Background music (optional)
-  ambience?: string;         // Ambient sounds (optional)
-  initialDialog: string;     // ID of first dialog entry
-  dialog: Record<string, DialogEntry>; // Map of dialog entries
+/**
+ * Dialog entry structure
+ */
+export interface DialogEntry {
+  speakerId: string;
+  japanese: string;
+  english: string;
+  default_next_id?: string;
+  choices?: DialogChoice[];
+  words?: WordData[];
+  effect?: string;
+  requires?: string[];
 }
 
-// The entire story data structure
+/**
+ * Location data structure
+ */
+export interface Location {
+  id: string;
+  name: string;
+  description: string;
+  background: string;
+  hotspots?: any[];
+  objects?: any[];
+}
+
+/**
+ * Story game state
+ */
+export interface GameState {
+  currentSceneId: string;
+  currentDialogId: string;
+  inventory: string[];
+  flags: Record<string, boolean>;
+  visitedLocations: string[];
+  timeRemaining: number;
+  score: number;
+  hintsUsed: number;
+  vocabularySeen: string[];
+}
+
+/**
+ * Complete story data structure
+ */
 export interface StoryData {
-  title: string;            // Title of the story
-  author: string;           // Author name
-  version: string;          // Version number
-  language: string;         // Primary language
-  scenes: StoryScene[];     // Array of scenes
-  characters: Record<string, Character>; // Character definitions
-  items: Record<string, Item>; // Inventory items
+  id: string;
+  title: string;
+  author?: string;
+  version?: string;
+  language?: string;
+  background?: string;
+  location_id?: string;
+  startsAt?: string;
+  timer?: number;
+  dialog?: Record<string, DialogEntry>;
+  locations?: Record<string, Location>;
+  vocabulary?: Record<string, VocabularyEntry>;
+  scenes?: any[];
+  initialState?: GameState;
 }
 
-// Character definition
+/**
+ * Character definition
+ */
 export interface Character {
   name: string;        // Character's display name
   portrait: string;    // Default portrait image
@@ -49,7 +110,9 @@ export interface Character {
   voiceId?: string;    // Voice ID for speech synthesis
 }
 
-// Inventory item definition
+/**
+ * Inventory item definition
+ */
 export interface Item {
   id: string;          // Item identifier
   name: string;        // Display name

@@ -71,7 +71,22 @@ export class DialogueScene extends Phaser.Scene {
 
   init(data: DialogSceneData): void {
     this.currentStoryData = data.storyData;
-    this.currentEntry = this.currentStoryData.dialog[data.dialogId]; // Fix: Ensure currentEntry is assigned
+    
+    // Add null checking to prevent "object is possibly undefined" error
+    if (this.currentStoryData.dialog && data.dialogId in this.currentStoryData.dialog) {
+      this.currentEntry = this.currentStoryData.dialog[data.dialogId];
+    } else {
+      console.error(`Dialog entry not found for ID: ${data.dialogId}`);
+      // Create a minimal default entry to prevent errors - without the invalid 'id' property
+      this.currentEntry = {
+        // Remove invalid 'id' property 
+        speakerId: 'narrator',
+        japanese: 'エラー：ダイアログが見つかりません。',
+        english: 'Error: Dialog not found.',
+        default_next_id: 'start'
+      };
+    }
+    
     this.dialogId = data.dialogId;
     
     // Check if we have spine animations
@@ -440,7 +455,7 @@ export class DialogueScene extends Phaser.Scene {
     this.scene.stop();
     
     // Emit event to tell GameScene to move to next dialog
-    this.scene.get('GameScene').events.emit('dialogueComplete', choice.next_id);
+    this.scene.get('GameScene').events.emit('dialogueComplete', choice.nextId);
   }
 
   private setupVocabularyHighlighting(): void {
@@ -452,7 +467,8 @@ export class DialogueScene extends Phaser.Scene {
   private setupVocabularyTooltips(): void {
     // Get vocabulary words for this scene
     const vocabulary = this.currentStoryData.vocabulary;
-    if (!vocabulary || vocabulary.length === 0) return;
+    // Fix the type checking issue - check if vocabulary exists and it's not an empty object
+    if (!vocabulary || Object.keys(vocabulary).length === 0) return;
     
     // Create interactive areas for each word in the dialog
     // This would allow clicking on words to see translations
@@ -544,7 +560,7 @@ export class DialogueScene extends Phaser.Scene {
   private createSilentAudioPlaceholder(audioKey: string): void {
     try {
       // This is a valid base64-encoded silent MP3 file (0.5 seconds)
-      const silentAudioBase64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADQgD///////////////////////////////////////////8AAAA8TEFNRTMuMTAwAQAAAAAAAAAAABSAJAJAQgAAgAAAA0L2YLwxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
+      const silentAudioBase64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADQgD///////////////////////////////////////////8AAAA8TEFNRTMuMTAwAQAAAAAAAAAAABSAJAJAQgAAgAAAA0L2YLwxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
       
       // Create a temporary Audio element from the base64 string
       const tempAudio = new Audio(silentAudioBase64);
@@ -784,7 +800,7 @@ export class DialogueScene extends Phaser.Scene {
       // First, stop any tween animation if it exists
       if (this.speakingTween) {
         this.speakingTween.stop();
-        this.speakingTween = undefined;
+        this.speakingTween = null;
         
         // Reset character portrait scale if needed
         if (this.characterPortrait) {

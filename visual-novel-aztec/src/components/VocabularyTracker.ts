@@ -7,15 +7,21 @@ interface VocabStats {
 }
 
 export class VocabularyTracker {
-  private static vocabulary: Map<string, number> = new Map();
+  // Change the value type from number to VocabStats
+  private static vocabulary: Map<string, VocabStats> = new Map();
   
   static addWord(word: string, count: number = 1): void {
-    const currentCount = this.vocabulary.get(word) || 0;
-    this.vocabulary.set(word, currentCount + count);
+    const currentStats = this.vocabulary.get(word) || { exposures: 0, lastSeen: Date.now(), mastered: false };
+    // Update the exposures count
+    currentStats.exposures += count;
+    // Update the last seen timestamp
+    currentStats.lastSeen = Date.now();
+    
+    this.vocabulary.set(word, currentStats);
     this.save();
   }
   
-  static getWords(): Map<string, number> {
+  static getWords(): Map<string, VocabStats> {
     return new Map(this.vocabulary);
   }
   

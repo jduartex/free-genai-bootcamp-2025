@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// @ts-ignore: Using Node.js-specific imports
 import { BedrockAssetGenerator } from '../src/utils/BedrockAssetGenerator.js';
 import path from 'path';
 import { fileURLToPath } from 'url';

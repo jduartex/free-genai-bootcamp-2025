@@ -17,6 +17,34 @@ export class GameScene extends Phaser.Scene {
     super({ key: 'GameScene' });
   }
 
+  // Helper method declarations - updated to avoid accessing non-existent properties
+  private isEndingDialog(dialogId: string): boolean {
+    const dialog = this.currentStoryData?.dialog?.[dialogId];
+    // Use safer property checks
+    if (!dialog) return false;
+    
+    // Use type assertion to check for potential ending flags
+    const anyDialog = dialog as any;
+    return anyDialog.is_ending === true || 
+           anyDialog.ends === true ||
+           anyDialog.final === true || 
+           anyDialog.ending === true || 
+           !dialog.default_next_id;
+  }
+
+  private getTimerPenalty(): number {
+    // Access timer data safely using type assertion
+    try {
+      const timer = this.currentStoryData.timer as any;
+      if (timer && typeof timer === 'object' && timer.penalty !== undefined) {
+        return Number(timer.penalty) || 0;
+      }
+    } catch (error) {
+      console.warn('Failed to get timer penalty:', error);
+    }
+    return 0; // Default no penalty
+  }
+
   init(data: { sceneId: string; dialogId: string; remainingTime?: number }): void {
     // Initialize AssetLoader
     this.assetLoader = new AssetLoader(this);
@@ -31,30 +59,58 @@ export class GameScene extends Phaser.Scene {
     
     this.currentStoryData = storyData;
     
-    // Initialize game state
-    this.gameState = {
-      currentScene: data.sceneId,
-      currentDialog: data.dialogId,
-      remainingTime: data.remainingTime ?? storyData.timer?.initial ?? 3600,
-      collectedItems: [],
-      solvedPuzzles: [],
-      unlockedHints: []
+    // First create object with all required GameState properties
+    const gameStateInit: GameState = {
+      currentSceneId: data.sceneId,
+      currentDialogId: data.dialogId,
+      timeRemaining: data.remainingTime ?? this.getInitialTime(storyData),
+      inventory: [],
+      flags: {},               // Add missing required properties
+      visitedLocations: [],
+      score: 0,
+      hintsUsed: 0,
+      vocabularySeen: []
     };
+    
+    // Initialize with the proper type
+    this.gameState = gameStateInit;
+    
+    // Add any additional properties we need for backwards compatibility
+    (this.gameState as any).solvedPuzzles = [];
+    (this.gameState as any).unlockedHints = [];
+  }
+
+  // Helper method to safely get initial time - updated to handle type issues
+  private getInitialTime(storyData: StoryData): number {
+    try {
+      const timer = storyData.timer as any;
+      if (!timer) return 3600;
+      
+      if (typeof timer === 'object' && timer.initial !== undefined) {
+        return Number(timer.initial) || 3600;
+      } else if (typeof timer === 'number') {
+        return timer;
+      }
+    } catch (error) {
+      console.warn('Failed to get initial time:', error);
+    }
+    return 3600; // Default value
   }
 
   create(): void {
-    // Setup background based on location
-    this.setupBackground(this.currentStoryData.location_id);
+    // Setup background based on location - making sure location_id is a string
+    const locationId = this.currentStoryData.location_id || 'default-location';
+    this.setupBackground(locationId);
     
     // Start dialogue scene
     this.scene.launch('DialogueScene', {
-      dialogId: this.gameState.currentDialog,
+      dialogId: this.gameState.currentDialogId,
       storyData: this.currentStoryData
     });
 
     // Start UI scene with timer
     this.scene.launch('UIScene', {
-      remainingTime: this.gameState.remainingTime,
+      remainingTime: this.gameState.timeRemaining,  // Changed from remainingTime to timeRemaining
       timerConfig: this.currentStoryData.timer
     });
 
@@ -67,11 +123,16 @@ export class GameScene extends Phaser.Scene {
     // Start ambient audio
     this.setupAudio();
 
-    // Save initial game state
+    // Update visited locations
+    if (!this.gameState.visitedLocations.includes(locationId)) {
+      this.gameState.visitedLocations.push(locationId);
+    }
+
+    // Save initial game state with non-null parameters
     saveGameProgress(
-      this.gameState.currentScene,
-      this.gameState.currentDialog,
-      this.gameState.remainingTime
+      this.gameState.currentSceneId,
+      this.gameState.currentDialogId,
+      this.gameState.timeRemaining
     );
   }
 
@@ -121,6 +182,11 @@ export class GameScene extends Phaser.Scene {
         0x333344
       );
     }
+
+    // Mark this location as visited
+    if (!this.gameState.visitedLocations.includes(locationId)) {
+      this.gameState.visitedLocations.push(locationId);
+    }
   }
 
   private setupEventListeners(): void {
@@ -132,17 +198,17 @@ export class GameScene extends Phaser.Scene {
           return;
         }
         
-        this.gameState.currentDialog = nextDialogId;
+        this.gameState.currentDialogId = nextDialogId;
         
         // Save progress
         saveGameProgress(
-          this.gameState.currentScene,
-          this.gameState.currentDialog,
-          this.gameState.remainingTime
+          this.gameState.currentSceneId,
+          this.gameState.currentDialogId,
+          this.gameState.timeRemaining
         );
         
         // Check if we need to update the scene
-        if (this.currentStoryData?.dialog?.[nextDialogId]?.ends) {
+        if (this.isEndingDialog(nextDialogId)) {
           this.handleEndOfScene();
           return;
         }
@@ -164,7 +230,7 @@ export class GameScene extends Phaser.Scene {
                 speakerId: 'system',
                 japanese: 'エラーが発生しました。',
                 english: 'An error occurred.',
-                default_next_id: this.gameState.currentDialog
+                default_next_id: this.gameState.currentDialogId
               }
             }
           }
@@ -180,16 +246,17 @@ export class GameScene extends Phaser.Scene {
           return;
         }
         
-        this.gameState.solvedPuzzles.push(puzzleId);
+        // Access solvedPuzzles property with type assertion
+        (this.gameState as any).solvedPuzzles.push(puzzleId);
         
         // Play success sound safely
         this.playSoundSafe('success', 0.7);
         
         // Save progress
         saveGameProgress(
-          this.gameState.currentScene,
-          this.gameState.currentDialog,
-          this.gameState.remainingTime
+          this.gameState.currentSceneId,
+          this.gameState.currentDialogId,
+          this.gameState.timeRemaining
         );
       } catch (error) {
         console.error('Error in puzzleSolved handler:', error);
@@ -199,9 +266,10 @@ export class GameScene extends Phaser.Scene {
     // Listen for wrong answers
     this.events.on('puzzleWrong', () => {
       // Apply time penalty
-      if (this.currentStoryData.timer?.penalty) {
-        this.gameState.remainingTime -= this.currentStoryData.timer.penalty;
-        this.events.emit('updateTimer', this.gameState.remainingTime);
+      const penalty = this.getTimerPenalty();
+      if (penalty > 0) {
+        this.gameState.timeRemaining -= penalty;
+        this.events.emit('updateTimer', this.gameState.timeRemaining);
         
         // Play fail sound safely
         this.playSoundSafe('fail', 0.5);
@@ -210,7 +278,7 @@ export class GameScene extends Phaser.Scene {
     
     // Listen for timer updates
     this.events.on('timerTick', (remainingTime: number) => {
-      this.gameState.remainingTime = remainingTime;
+      this.gameState.timeRemaining = remainingTime;  // Changed from remainingTime to timeRemaining
       
       // Check for game over condition
       if (remainingTime <= 0) {
@@ -233,7 +301,7 @@ export class GameScene extends Phaser.Scene {
               speakerId: 'diego',
               japanese: "時間切れだ！急げ！",
               english: "Time's up! Hurry!",
-              default_next_id: this.gameState.currentDialog
+              default_next_id: this.gameState.currentDialogId
             }
           }
         }
@@ -250,19 +318,31 @@ export class GameScene extends Phaser.Scene {
     this.events.on('requestHint', (hintLevel: number) => {
       // Apply time cost for hint
       const hintCost = hintLevel * 60; // 1, 2, or 3 minutes
-      this.gameState.remainingTime -= hintCost;
-      this.events.emit('updateTimer', this.gameState.remainingTime);
+      this.gameState.timeRemaining -= hintCost;
+      this.events.emit('updateTimer', this.gameState.timeRemaining);
       
-      // Record that hint was used
-      const currentDialogId = this.gameState.currentDialog;
-      this.gameState.unlockedHints.push(`${currentDialogId}_hint${hintLevel}`);
+      // Increment hints used counter
+      this.gameState.hintsUsed++;
+      
+      // Record that hint was used - using type assertion for unlockedHints
+      const currentDialogId = this.gameState.currentDialogId;
+      (this.gameState as any).unlockedHints.push(`${currentDialogId}_hint${hintLevel}`);
       
       // Display hint (this would be implemented in DialogueScene)
       this.events.emit('showHint', currentDialogId, hintLevel);
     });
+
+    // Add event listener for vocabulary words
+    this.events.on('vocabularyDiscovered', (word: string) => {
+      if (!this.gameState.vocabularySeen.includes(word)) {
+        this.gameState.vocabularySeen.push(word);
+        // Maybe give some points for discovering new words
+        this.gameState.score += 5;
+      }
+    });
   }
 
-  // Add helper method to safely play sounds
+  // Helper method to safely play sounds
   private playSoundSafe(key: string, volume: number = 0.5): void {
     try {
       if (this.sound && !this.sound.locked && this.cache.audio.exists(key)) {
@@ -307,7 +387,8 @@ export class GameScene extends Phaser.Scene {
       'window',
       'まど (Window)',
       () => {
-        if (!this.gameState.solvedPuzzles.includes('puzzle1')) {
+        // Use type assertion to access solvedPuzzles
+        if (!(this.gameState as any).solvedPuzzles.includes('puzzle1')) {
           this.events.emit('dialogueComplete', 'puzzle1-intro');
         } else {
           this.showExaminedMessage('window', 'たいよう');
@@ -324,10 +405,11 @@ export class GameScene extends Phaser.Scene {
       'floor-pattern',
       'ゆかのもよう (Floor Pattern)',
       () => {
-        if (this.gameState.solvedPuzzles.includes('puzzle1') && 
-            !this.gameState.solvedPuzzles.includes('puzzle2')) {
+        // Use type assertion to access solvedPuzzles
+        if ((this.gameState as any).solvedPuzzles.includes('puzzle1') && 
+            !(this.gameState as any).solvedPuzzles.includes('puzzle2')) {
           this.events.emit('dialogueComplete', 'puzzle2-intro');
-        } else if (this.gameState.solvedPuzzles.includes('puzzle2')) {
+        } else if ((this.gameState as any).solvedPuzzles.includes('puzzle2')) {
           this.showExaminedMessage('floor', 'わし');
         } else {
           this.showTooEarlyMessage();
@@ -358,12 +440,13 @@ export class GameScene extends Phaser.Scene {
       'door',
       'ドア (Door)',
       () => {
-        if (this.gameState.solvedPuzzles.includes('puzzle1') && 
-            this.gameState.solvedPuzzles.includes('puzzle2') && 
-            this.gameState.solvedPuzzles.includes('puzzle3') &&
-            !this.gameState.solvedPuzzles.includes('puzzle4')) {
+        // Use type assertion to access solvedPuzzles
+        if ((this.gameState as any).solvedPuzzles.includes('puzzle1') && 
+            (this.gameState as any).solvedPuzzles.includes('puzzle2') && 
+            (this.gameState as any).solvedPuzzles.includes('puzzle3') &&
+            !(this.gameState as any).solvedPuzzles.includes('puzzle4')) {
           this.events.emit('dialogueComplete', 'puzzle4-intro');
-        } else if (this.gameState.solvedPuzzles.includes('puzzle4')) {
+        } else if ((this.gameState as any).solvedPuzzles.includes('puzzle4')) {
           this.events.emit('dialogueComplete', 'final-scene');
         } else {
           this.showExaminedMessage('door');
@@ -382,10 +465,11 @@ export class GameScene extends Phaser.Scene {
       'temple',
       'てら (Temple)',
       () => {
-        if (this.gameState.solvedPuzzles.includes('puzzle2') && 
-            !this.gameState.solvedPuzzles.includes('puzzle3')) {
+        // Use type assertion to access solvedPuzzles
+        if ((this.gameState as any).solvedPuzzles.includes('puzzle2') && 
+            !(this.gameState as any).solvedPuzzles.includes('puzzle3')) {
           this.events.emit('dialogueComplete', 'puzzle3-question');
-        } else if (this.gameState.solvedPuzzles.includes('puzzle3')) {
+        } else if ((this.gameState as any).solvedPuzzles.includes('puzzle3')) {
           this.scene.launch('DialogueScene', {
             dialogId: 'temple-examined',
             storyData: {
@@ -395,7 +479,7 @@ export class GameScene extends Phaser.Scene {
                   speakerId: 'citlali',
                   japanese: "神殿には7本の柱がある。「なな」という数字を表しています。",
                   english: "The temple has 7 pillars. It represents the number 'nana'.",
-                  default_next_id: this.gameState.currentDialog
+                  default_next_id: this.gameState.currentDialogId
                 }
               }
             }
@@ -505,6 +589,8 @@ export class GameScene extends Phaser.Scene {
 
   // Helper methods to show messages
   private showExaminedMessage(objectType: string, relatedWord?: string): void {
+    const word = relatedWord || '';
+    
     const messages: Record<string, {
       speakerId: string;
       japanese: string;
@@ -513,27 +599,27 @@ export class GameScene extends Phaser.Scene {
     }> = {
       'window': {
         speakerId: "narrator",
-        japanese: `窓にある文字は「${relatedWord || 'たいよう'}」と読めます。`,
-        english: `The symbols on the window spell '${relatedWord || 'taiyō'}' (sun).`,
-        default_next_id: this.gameState.currentDialog
+        japanese: `窓にある文字は「${word || 'たいよう'}」と読めます。`,
+        english: `The symbols on the window spell '${word || 'taiyō'}' (sun).`,
+        default_next_id: this.gameState.currentDialogId
       },
       'floor': {
         speakerId: "narrator",
         japanese: `床には鷲の絵が描かれています。「${relatedWord || 'わし'}」という言葉を表しています。`,
         english: `An eagle is drawn on the floor. It represents the word '${relatedWord || 'washi'}'.`,
-        default_next_id: this.gameState.currentDialog
+        default_next_id: this.gameState.currentDialogId  // Changed from currentDialog to currentDialogId
       },
       'bed': {
         speakerId: "tlaloc",
         japanese: "この硬いベッドでは眠れない。でも今は休んでいる場合ではない。",
         english: "I can't sleep on this hard bed. But now is not the time to rest.",
-        default_next_id: this.gameState.currentDialog
+        default_next_id: this.gameState.currentDialogId  // Changed from currentDialog to currentDialogId
       },
       'door': {
         speakerId: "tlaloc",
         japanese: "ドアには4つの数字を入力する鍵がかかっている。すべての謎を解かなければならない。",
         english: "The door has a lock that requires 4 numbers. We must solve all the puzzles.",
-        default_next_id: this.gameState.currentDialog
+        default_next_id: this.gameState.currentDialogId  // Changed from currentDialog to currentDialogId
       }
     };
     
@@ -553,6 +639,15 @@ export class GameScene extends Phaser.Scene {
         }
       }
     });
+
+    // If there's a related word, add it to vocabulary
+    if (relatedWord) {
+      if (!this.gameState.vocabularySeen.includes(relatedWord)) {
+        this.gameState.vocabularySeen.push(relatedWord);
+        this.gameState.score += 10; // Reward for learning vocabulary
+      }
+      this.events.emit('vocabularyDiscovered', relatedWord);
+    }
   }
 
   private showTooEarlyMessage(): void {
@@ -565,7 +660,7 @@ export class GameScene extends Phaser.Scene {
             speakerId: "citlali",
             japanese: "まずは窓の近くを調べましょう。",
             english: "Let's first examine near the window.",
-            default_next_id: this.gameState.currentDialog
+            default_next_id: this.gameState.currentDialogId  // Changed from currentDialog to currentDialogId
           }
         }
       }
@@ -582,19 +677,19 @@ export class GameScene extends Phaser.Scene {
           speakerId: characterId,
           japanese: "助けが必要ですか？",
           english: "Do you need help?",
-          default_next_id: this.gameState.currentDialog
+          default_next_id: this.gameState.currentDialogId  // Changed from currentDialog to currentDialogId
         },
         {
           speakerId: characterId,
           japanese: "この先には危険がありますよ。",
           english: "There is danger ahead.",
-          default_next_id: this.gameState.currentDialog
+          default_next_id: this.gameState.currentDialogId  // Changed from currentDialog to currentDialogId
         },
         {
           speakerId: characterId,
           japanese: "早く行きましょう、時間がありません。",
           english: "Let's go quickly, we don't have much time.",
-          default_next_id: this.gameState.currentDialog
+          default_next_id: this.gameState.currentDialogId  // Changed from currentDialog to currentDialogId
         }
       ];
       
