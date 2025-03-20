@@ -137,7 +137,7 @@ export function getCharacterName(characterId: string): string {
   const mappings: Record<string, string> = {
     tlaloc: "Tlaloc",
     citlali: "Citlali", 
-    diego: "Guard Diego",
+    guard: "Guard Diego",  // Changed from 'diego' to 'guard'
     narrator: "Narrator"
   };
   

@@ -151,8 +151,8 @@ export class AssetManager {
       this.ensureAsset(key, 'image');
     });
     
-    // Check characters
-    ['tlaloc', 'citlali', 'diego', 'narrator'].forEach(key => {
+    // Check characters - updated 'diego' to 'guard' to match actual filename
+    ['tlaloc', 'citlali', 'guard', 'narrator'].forEach(key => {
       this.ensureAsset(key, 'image');
     });
     
