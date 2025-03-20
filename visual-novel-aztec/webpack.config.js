@@ -57,8 +57,9 @@ export default {
   plugins: [
     new CleanWebpackPlugin(),
     new HtmlWebpackPlugin({
-      template: './src/index.html',
-      title: 'Aztec Escape'
+      template: path.resolve(__dirname, 'src/template/index.html'),
+      filename: 'index.html',
+      inject: true
     }),
     new CopyWebpackPlugin({
       patterns: [

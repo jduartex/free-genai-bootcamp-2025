@@ -21,68 +21,87 @@ interface AssetMappings {
 }
 
 export function preloadAssets(scene: Phaser.Scene): void {
-  // Background images
-  scene.load.image('prison-cell', 'assets/scenes/prison-cell.jpg');
-  scene.load.image('aztec-village', 'assets/scenes/aztec-village.jpg');
-  scene.load.image('spanish-invasion', 'assets/scenes/spanish-invasion.jpg');
-  scene.load.image('hidden-tunnel', 'assets/scenes/hidden-tunnel.jpg');
+  // Preload essential assets
+  scene.load.setPath('/assets');
   
-  // Character images
-  scene.load.image('tlaloc', 'assets/characters/tlaloc.png');
-  scene.load.image('citlali', 'assets/characters/citlali.png');
-  scene.load.image('diego', 'assets/characters/diego.png');
-  
-  // UI elements
-  scene.load.image('dialog-box', 'assets/ui/dialog_box.png');
-  scene.load.image('timer', 'assets/ui/timer.png');
-  scene.load.image('button', 'assets/ui/button.png');
-  scene.load.image('button-hover', 'assets/ui/button_hover.png');
-  scene.load.image('inventory-icon', 'assets/ui/inventory_icon.png');
-  scene.load.image('help-icon', 'assets/ui/help_icon.png');
-  
-  // Interactive objects
-  scene.load.image('window', 'assets/objects/window.png');
-  scene.load.image('floor-pattern', 'assets/objects/floor_pattern.png');
-  scene.load.image('bed', 'assets/objects/bed.png');
-  scene.load.image('door', 'assets/objects/door.png');
-  scene.load.image('temple', 'assets/objects/temple.png');
-  scene.load.image('return-arrow', 'assets/ui/return_arrow.png');
-  scene.load.image('exit', 'assets/objects/exit.png');
-  
-  // Audio
-  scene.load.audio('theme', 'assets/audio/theme.mp3');
-  scene.load.audio('click', 'assets/audio/click.mp3');
-  scene.load.audio('hover', 'assets/audio/hover.mp3');
-  scene.load.audio('success', 'assets/audio/success.mp3');
-  scene.load.audio('fail', 'assets/audio/fail.mp3');
-  scene.load.audio('warning', 'assets/audio/warning.mp3');
-  scene.load.audio('pickup', 'assets/audio/pickup.mp3');
-  scene.load.audio('prison-ambience', 'assets/audio/prison_ambience.mp3');
-  scene.load.audio('village-ambience', 'assets/audio/village_ambience.mp3');
-  scene.load.audio('battle-ambience', 'assets/audio/battle_ambience.mp3');
-  scene.load.audio('tunnel-ambience', 'assets/audio/tunnel_ambience.mp3');
-
-  const assets = [
-    { key: 'prison-cell', path: 'assets/scenes/prison-cell.jpg' },
-    { key: 'aztec-village', path: 'assets/scenes/aztec-village.jpg' },
-    { key: 'spanish-invasion', path: 'assets/scenes/spanish-invasion.jpg' },
-    { key: 'hidden-tunnel', path: 'assets/scenes/hidden-tunnel.jpg' },
-    { key: 'dialog-box', path: 'assets/ui/dialog_box.png' },
-    { key: 'timer', path: 'assets/ui/timer.png' },
-    { key: 'button', path: 'assets/ui/button.png' },
-    { key: 'button-hover', path: 'assets/ui/button_hover.png' }
-  ];
-
-  assets.forEach(({ key, path }) => {
-    if (!scene.textures.exists(key)) {
-      console.warn(`Asset missing: ${path}, creating placeholder.`);
-      scene.add.graphics()
-        .fillStyle(0x888888, 1)
-        .fillRect(0, 0, 512, 512)
-        .generateTexture(key, 512, 512)
-        .destroy();
+  // Add error handler for missing assets
+  scene.load.on('loaderror', (file: Phaser.Loader.File) => {
+    console.warn(`Asset missing: ${file.url}, creating placeholder.`);
+    
+    // Create a placeholder asset based on file type
+    if (file.type === 'image') {
+      createImagePlaceholder(scene, file.key);
+    } else if (file.type === 'audio') {
+      createAudioPlaceholder(scene, file.key);
     }
   });
+  
+  // Basic UI assets
+  scene.load.image('button', 'ui/button.png');
+  scene.load.image('button-hover', 'ui/button-hover.png');
+  scene.load.image('dialog-box', 'ui/dialog-box.png');
+  
+  // Basic sound effects
+  scene.load.audio('click', 'audio/click.mp3');
+  scene.load.audio('theme', 'audio/theme.mp3');
+}
+
+// Create a placeholder image in memory
+function createImagePlaceholder(scene: Phaser.Scene, key: string): void {
+  const canvas = document.createElement('canvas');
+  canvas.width = 200;
+  canvas.height = 200;
+  
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    // Determine color based on asset type
+    let bgColor = '#444444';
+    if (key.includes('button')) bgColor = '#446644';
+    if (key.includes('character')) bgColor = '#664444';
+    if (key.includes('scene')) bgColor = '#444466';
+    
+    // Fill background
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Add text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Missing: ${key}`, canvas.width / 2, canvas.height / 2);
+    
+    // Add to texture manager
+    scene.textures.addCanvas(key, canvas);
+    console.log(`Created placeholder for: ${key}`);
+  }
+}
+
+// Create a placeholder audio in memory
+function createAudioPlaceholder(scene: Phaser.Scene, key: string): void {
+  // Create minimal silent WebAudio buffer
+  try {
+    // Type guard to check if we're using WebAudioSoundManager
+    const soundManager = scene.sound;
+    if ('context' in soundManager && soundManager.context) {
+      const audioContext = soundManager.context;
+      const buffer = audioContext.createBuffer(1, 22050, 22050);
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      
+      // Add to cache
+      scene.cache.audio.add(key, buffer);
+      console.log(`Created silent audio placeholder for: ${key}`);
+    } else {
+      // Fallback for other sound managers
+      console.log(`Creating dummy audio placeholder for: ${key} (no WebAudio context available)`);
+      
+      // Create a dummy object that can be added to cache
+      const dummyBuffer = { duration: 0.5, numberOfChannels: 1 };
+      scene.cache.audio.add(key, dummyBuffer);
+    }
+  } catch (error) {
+    console.error('Failed to create audio placeholder:', error);
+  }
 }
 
 /**

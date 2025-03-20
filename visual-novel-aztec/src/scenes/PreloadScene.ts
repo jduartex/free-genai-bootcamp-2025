@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { AssetLoader, preloadAssets } from '../utils/AssetLoader';
 import { loadStoryData } from '../utils/StoryLoader';
 import { setupGlobalErrorHandlers } from '../utils/ErrorHandler';
+import { generateUIAssets } from '../utils/UIAssetGenerator';
+import { AssetManager } from '../utils/AssetManager';
 
 export class PreloadScene extends Phaser.Scene {
   private loadingBar!: Phaser.GameObjects.Graphics;
@@ -38,8 +40,15 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   create(): void {
-    // This runs after preload is complete, but we'll start the game
-    // using the callback from load.on('complete') to ensure everything is ready
+    // This runs after preload is complete
+    // Generate UI assets if they're missing
+    generateUIAssets(this);
+    
+    // Initialize the AssetManager with this scene
+    const assetManager = AssetManager.getInstance(this);
+    
+    // Verify all required assets exist
+    assetManager.verifyRequiredAssets();
   }
 
   private createLoadingUI(): void {
@@ -100,6 +109,9 @@ export class PreloadScene extends Phaser.Scene {
       await loadStoryData();
       await this.assetLoader.loadAssetManifest();
       await this.assetLoader.loadMappings();
+      
+      // Make sure UI assets are generated
+      generateUIAssets(this);
       
       // Proceed to menu
       this.scene.start('MenuScene');

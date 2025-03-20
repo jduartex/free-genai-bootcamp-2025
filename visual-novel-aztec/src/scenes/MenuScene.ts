@@ -146,6 +146,25 @@ export class MenuScene extends Phaser.Scene {
     } catch (error: unknown) {
       console.error('Failed to create background music:', error);
     }
+
+    // Add audio unlock button for mobile
+    const unlockAudio = this.add.text(
+      this.cameras.main.width - 20,
+      20,
+      '🔊',
+      {
+        fontFamily: 'Arial',
+        fontSize: '24px',
+        color: '#ffffff',
+        backgroundColor: '#333333',
+        padding: { x: 10, y: 10 }
+      }
+    )
+    .setOrigin(1, 0)
+    .setInteractive({ useHandCursor: true })
+    .on('pointerdown', () => {
+      this.unlockAudio();
+    });
   }
 
   private createButton(
@@ -234,5 +253,42 @@ export class MenuScene extends Phaser.Scene {
   private showCredits(): void {
     // In a more complete implementation, this would show credits
     console.log('Credits');
+  }
+
+  private unlockAudio(): void {
+    if (this.sound.locked) {
+      // Try to unlock audio
+      this.sound.unlock();
+      
+      console.log('Attempting to unlock audio...');
+      
+      // Play a silent sound to unlock audio on iOS/Safari
+      this.sound.play('click', { volume: 0.1 });
+      
+      // Try to start background music again
+      this.startBackgroundMusic();
+    } else {
+      console.log('Audio already unlocked');
+      this.startBackgroundMusic();
+    }
+  }
+
+  private startBackgroundMusic(): void {
+    try {
+      if (this.backgroundMusic) {
+        if (!this.backgroundMusic.isPlaying) {
+          this.backgroundMusic.play();
+          console.log('Background music started');
+        } else {
+          console.log('Background music is already playing');
+        }
+      } else {
+        console.log('Creating new background music');
+        this.backgroundMusic = this.sound.add('theme', { loop: true, volume: 0.5 });
+        this.backgroundMusic.play();
+      }
+    } catch (error) {
+      console.error('Error playing background music:', error);
+    }
   }
 }

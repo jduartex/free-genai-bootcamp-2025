@@ -1,4 +1,128 @@
 import Phaser from 'phaser';
+import fs from 'fs';
+import path from 'path';
+
+/**
+ * Utility to generate placeholder assets for development
+ */
+export class PlaceholderGenerator {
+  /**
+   * Generate placeholder images for missing assets
+   * @param baseDir The base public directory
+   */
+  static generatePlaceholders(baseDir: string): void {
+    console.log('Generating placeholder assets...');
+    
+    const scenes = [
+      'prison-cell', 
+      'aztec-village', 
+      'spanish-invasion', 
+      'hidden-tunnel'
+    ];
+    
+    const characters = [
+      'tlaloc', 
+      'citlali', 
+      'diego', 
+      'narrator'
+    ];
+    
+    const ui = [
+      'dialog-box', 
+      'timer', 
+      'button', 
+      'button-hover', 
+      'inventory-icon', 
+      'help-icon'
+    ];
+    
+    const objects = [
+      'window', 
+      'floor-pattern', 
+      'bed', 
+      'door', 
+      'temple', 
+      'return-arrow', 
+      'exit'
+    ];
+    
+    // Generate scene placeholders
+    scenes.forEach(scene => {
+      this.generatePlaceholderImage(
+        path.join(baseDir, 'assets', 'scenes', `${scene}.jpg`),
+        800, 600, `Scene: ${scene}`, '#444466'
+      );
+    });
+    
+    // Generate character placeholders
+    characters.forEach(character => {
+      this.generatePlaceholderImage(
+        path.join(baseDir, 'assets', 'characters', `${character}.png`),
+        300, 500, `Character: ${character}`, '#664444'
+      );
+    });
+    
+    // Generate UI placeholders
+    ui.forEach(element => {
+      this.generatePlaceholderImage(
+        path.join(baseDir, 'assets', 'ui', `${element}.png`),
+        200, 100, `UI: ${element}`, '#446644'
+      );
+    });
+    
+    // Generate object placeholders
+    objects.forEach(object => {
+      this.generatePlaceholderImage(
+        path.join(baseDir, 'assets', 'objects', `${object}.png`),
+        100, 100, `Object: ${object}`, '#444444'
+      );
+    });
+    
+    // Generate empty audio files
+    this.generateEmptyAudioFiles(baseDir);
+    
+    console.log('Placeholder generation complete!');
+  }
+
+  /**
+   * Generate an HTML5 canvas-based placeholder image and save it
+   */
+  private static generatePlaceholderImage(
+    filePath: string, 
+    width: number, 
+    height: number, 
+    text: string,
+    bgColor: string = '#333333'
+  ): void {
+    // This would typically use node-canvas in Node.js
+    // For browser use, we'd need to create placeholders another way
+    console.log(`Would generate placeholder: ${filePath}`);
+    // In production, would actually create the file here
+  }
+
+  /**
+   * Generate empty audio files
+   */
+  private static generateEmptyAudioFiles(baseDir: string): void {
+    const audioFiles = [
+      'prison_ambience.mp3',
+      'village_ambience.mp3',
+      'battle_ambience.mp3',
+      'tunnel_ambience.mp3',
+      'click.mp3',
+      'hover.mp3',
+      'success.mp3',
+      'fail.mp3',
+      'pickup.mp3',
+      'theme.mp3'
+    ];
+    
+    audioFiles.forEach(file => {
+      console.log(`Would generate audio placeholder: ${path.join(baseDir, 'assets', 'audio', file)}`);
+      // In production, would create a silent MP3 here
+    });
+  }
+}
 
 export function generatePlaceholders(scene: Phaser.Scene): void {
   // Generate placeholder backgrounds

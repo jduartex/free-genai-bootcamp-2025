@@ -42,6 +42,7 @@
     "@esotericsoftware/spine-phaser": "^4.2.15",
     "aws-sdk": "^2.1377.0",
     "axios": "^1.4.0",
+    "canvas": "^3.1.0",
     "dotenv": "^16.4.7",
     "phaser": "^3.60.0",
     "uuid": "^9.0.0",
