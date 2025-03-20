@@ -3,6 +3,7 @@ import { getScene, saveGameProgress } from '../utils/StoryLoader';
 import { InteractiveObject } from '../components/InteractiveObject';
 import { StoryData, GameState } from '../types/StoryTypes';
 import { AssetLoader } from '../utils/AssetLoader';
+import { AudioManager } from '../utils/AudioManager';
 
 export class GameScene extends Phaser.Scene {
   // Declare properties with proper types
@@ -160,12 +161,36 @@ export class GameScene extends Phaser.Scene {
     try {
       // Check if texture exists
       if (!this.textures.exists(bgTextureKey)) {
-        console.warn(`Background texture ${bgTextureKey} not found, using placeholder`);
-        // Create a placeholder if it doesn't exist
-        this.assetLoader.createPlaceholder(bgTextureKey, this.cameras.main.width, this.cameras.main.height);
+        console.log(`Background texture ${bgTextureKey} not found, attempting to load directly`);
+        
+        // Try to load the texture directly first before creating a placeholder
+        this.load.image(bgTextureKey, `/assets/scenes/${bgTextureKey}.png`);
+        this.load.once('filecomplete-image-' + bgTextureKey, () => {
+          console.log(`Successfully loaded background: ${bgTextureKey}`);
+          if (!this.background) {
+            // Create the background now that the texture is loaded
+            this.background = this.add.image(
+              this.cameras.main.width / 2,
+              this.cameras.main.height / 2,
+              bgTextureKey
+            ).setDisplaySize(this.cameras.main.width, this.cameras.main.height);
+          }
+        });
+        this.load.once('loaderror', () => {
+          console.error(`Failed to load background: ${bgTextureKey}`);
+          // Now create a placeholder if loading failed
+          if (!this.background) {
+            this.background = this.createPlaceholderBackground(bgTextureKey);
+          }
+        });
+        this.load.start();
+        
+        // Create a temporary placeholder while loading
+        this.background = this.createPlaceholderBackground(bgTextureKey);
+        return;
       }
       
-      // Create the background
+      // Create the background since the texture exists
       this.background = this.add.image(
         this.cameras.main.width / 2,
         this.cameras.main.height / 2,
@@ -174,19 +199,24 @@ export class GameScene extends Phaser.Scene {
     } catch (error) {
       console.error(`Error setting up background for ${locationId}:`, error);
       // Fallback to a simple colored rectangle
-      this.background = this.add.rectangle(
-        this.cameras.main.width / 2,
-        this.cameras.main.height / 2,
-        this.cameras.main.width,
-        this.cameras.main.height,
-        0x333344
-      );
+      this.background = this.createPlaceholderBackground(bgTextureKey);
     }
 
     // Mark this location as visited
     if (!this.gameState.visitedLocations.includes(locationId)) {
       this.gameState.visitedLocations.push(locationId);
     }
+  }
+
+  // Helper method to create a placeholder background
+  private createPlaceholderBackground(key: string): Phaser.GameObjects.Rectangle {
+    return this.add.rectangle(
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2,
+      this.cameras.main.width,
+      this.cameras.main.height,
+      0x333344
+    );
   }
 
   private setupEventListeners(): void {
@@ -542,26 +572,55 @@ export class GameScene extends Phaser.Scene {
   
   private setupAudio(): void {
     try {
+      // Map location to ambient sound
+      const ambientMap: Record<string, string> = {
+        'prison-cell': 'prison_ambience',
+        'aztec-village': 'village_ambience',
+        'spanish-invasion': 'battle_ambience',
+        'hidden-tunnel': 'tunnel_ambience'
+      };
+      
+      const locationId = this.currentStoryData.location_id || 'prison-cell';
+      const ambientKey = ambientMap[locationId] || 'prison_ambience';
+      
       // Set up background music with error handling
-      if (!this.sound.get('ambient')) {
-        if (this.cache.audio.exists('ambient')) {
-          const music = this.sound.add('ambient', {
+      if (!this.sound.get(ambientKey)) {
+        // Check if the sound exists in cache
+        if (this.cache.audio.exists(ambientKey)) {
+          const music = this.sound.add(ambientKey, {
             volume: 0.3,
             loop: true
           });
           
           music.once('error', (err: Error) => {
-            console.error('Error playing ambient sound:', err);
+            console.error(`Error playing ambient sound: ${ambientKey}`, err);
           });
           
           if (!this.sound.locked) {
             music.play();
+            this.ambientSound = music;
           } else {
             // Wait for sound to be unlocked
             this.sound.once('unlocked', () => {
               music.play();
+              this.ambientSound = music;
             });
           }
+        } else {
+          // Try loading the sound with full path
+          const ambientPath = '/assets/' + AudioManager.getAudioPath('', `${ambientKey}.mp3`);
+          console.log(`Loading ambient sound: ${ambientKey} from ${ambientPath}`);
+          
+          this.load.audio(ambientKey, ambientPath);
+          this.load.once('complete', () => {
+            const music = this.sound.add(ambientKey, {
+              volume: 0.3,
+              loop: true
+            });
+            music.play();
+            this.ambientSound = music;
+          });
+          this.load.start();
         }
       }
     } catch (error) {

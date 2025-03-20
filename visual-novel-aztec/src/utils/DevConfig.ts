@@ -19,6 +19,9 @@ export const DevConfig = {
   
   // Toggle between development and production assets
   useProductionAssets: false,
+  
+  // Toggle to use optimized audio files
+  useOptimizedAudio: true,
 };
 
 /**

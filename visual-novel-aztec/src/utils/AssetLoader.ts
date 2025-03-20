@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { AudioManager } from './AudioManager';
 
 // Define specific types for asset entries
 interface AssetEntry {
@@ -21,9 +22,6 @@ interface AssetMappings {
 }
 
 export function preloadAssets(scene: Phaser.Scene): void {
-  // Preload essential assets
-  scene.load.setPath('/assets');
-  
   // Add error handler for missing assets
   scene.load.on('loaderror', (file: Phaser.Loader.File) => {
     console.warn(`Asset missing: ${file.url}, creating placeholder.`);
@@ -36,14 +34,14 @@ export function preloadAssets(scene: Phaser.Scene): void {
     }
   });
   
-  // Basic UI assets
-  scene.load.image('button', 'ui/button.png');
-  scene.load.image('button-hover', 'ui/button-hover.png');
-  scene.load.image('dialog-box', 'ui/dialog-box.png');
+  // Basic UI assets - use absolute paths instead of relative
+  scene.load.image('button', '/assets/ui/button.png');
+  scene.load.image('button-hover', '/assets/ui/button-hover.png');
+  scene.load.image('dialog-box', '/assets/ui/dialog-box.png');
   
-  // Basic sound effects
-  scene.load.audio('click', 'audio/click.mp3');
-  scene.load.audio('theme', 'audio/theme.mp3');
+  // Basic sound effects - use AudioManager with full paths
+  scene.load.audio('click', '/assets/' + AudioManager.getAudioPath('', 'click.mp3'));
+  scene.load.audio('theme', '/assets/' + AudioManager.getAudioPath('', 'theme.mp3'));
 }
 
 // Create a placeholder image in memory
@@ -214,6 +212,48 @@ export class AssetLoader {
   }
   
   /**
+   * Load common audio files
+   */
+  loadAudioFiles(): void {
+    const audioFiles = [
+      { id: 'click', file: 'click.mp3' },
+      { id: 'theme', file: 'theme.mp3' },
+      { id: 'hover', file: 'hover.mp3' },
+      { id: 'success', file: 'success.mp3' },
+      { id: 'fail', file: 'fail.mp3' }
+    ];
+    
+    console.log(`Loading ${audioFiles.length} audio files...`);
+    
+    // Load each audio file with full path
+    for (const audio of audioFiles) {
+      const path = '/assets/' + AudioManager.getAudioPath('', audio.file);
+      console.log(`Loading audio: ${audio.id} from ${path}`);
+      this.scene.load.audio(audio.id, path);
+    }
+    
+    // Also load ambient sounds
+    this.loadAmbientSounds();
+  }
+  
+  /**
+   * Load ambient sounds
+   */
+  loadAmbientSounds(): void {
+    const ambientSounds = [
+      { id: 'prison_ambience', file: 'prison_ambience.mp3' },
+      { id: 'village_ambience', file: 'village_ambience.mp3' },
+      { id: 'battle_ambience', file: 'battle_ambience.mp3' },
+      { id: 'tunnel_ambience', file: 'tunnel_ambience.mp3' }
+    ];
+    
+    // Load each ambient sound with optimized path
+    for (const sound of ambientSounds) {
+      this.scene.load.audio(sound.id, AudioManager.getAudioPath('', sound.file));
+    }
+  }
+  
+  /**
    * Get background IDs and paths from manifest or default mappings
    */
   private getBackgrounds(): Array<AssetEntry> {
@@ -225,17 +265,19 @@ export class AssetLoader {
     }
 
     if (this.mappings?.locations) {
+      // Use .png extension to match the actual files
       return Object.keys(this.mappings.locations).map((id) => ({
         id,
-        path: `assets/scenes/${id}.jpg`
+        path: `assets/scenes/${id}.png`
       }));
     }
 
+    // Updated default paths to use .png extension
     return [
-      { id: 'prison-cell', path: 'assets/scenes/prison-cell.jpg' },
-      { id: 'aztec-village', path: 'assets/scenes/aztec-village.jpg' },
-      { id: 'spanish-invasion', path: 'assets/scenes/spanish-invasion.jpg' },
-      { id: 'hidden-tunnel', path: 'assets/scenes/hidden-tunnel.jpg' }
+      { id: 'prison-cell', path: 'assets/scenes/prison-cell.png' },
+      { id: 'aztec-village', path: 'assets/scenes/aztec-village.png' },
+      { id: 'spanish-invasion', path: 'assets/scenes/spanish-invasion.png' },
+      { id: 'hidden-tunnel', path: 'assets/scenes/hidden-tunnel.png' }
     ];
   }
   

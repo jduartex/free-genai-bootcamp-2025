@@ -2,30 +2,55 @@
   "backgrounds": [
     {
       "sceneName": "aztec-village",
-      "imagePath": "assets/scenes/aztec-village.html"
+      "imagePath": "assets/scenes/aztec-village.png"
     },
     {
       "sceneName": "hidden-tunnel",
-      "imagePath": "assets/scenes/hidden-tunnel.html"
+      "imagePath": "assets/scenes/hidden-tunnel.png"
     },
     {
       "sceneName": "prison-cell",
-      "imagePath": "assets/scenes/prison-cell.html"
+      "imagePath": "assets/scenes/prison-cell.png"
     },
     {
       "sceneName": "spanish-invasion",
-      "imagePath": "assets/scenes/spanish-invasion.html"
+      "imagePath": "assets/scenes/spanish-invasion.png"
     }
   ],
-  "characters": [],
+  "characters": [
+    {
+      "characterName": "tlaloc",
+      "imagePath": "assets/characters/tlaloc.png"
+    },
+    {
+      "characterName": "citlali",
+      "imagePath": "assets/characters/citlali.png"
+    },
+    {
+      "characterName": "guard",
+      "imagePath": "assets/characters/guard.png"
+    }
+  ],
   "ui": [
     {
       "elementName": "button-default",
-      "imagePath": "assets/ui/button-default.png"
+      "imagePath": "assets/ui/button.png"
+    },
+    {
+      "elementName": "button-hover",
+      "imagePath": "assets/ui/button-hover.png"
     },
     {
       "elementName": "dialog-box",
       "imagePath": "assets/ui/dialog-box.png"
+    },
+    {
+      "elementName": "help-button",
+      "imagePath": "assets/ui/help-icon.png"
+    },
+    {
+      "elementName": "timer",
+      "imagePath": "assets/ui/timer.png"
     },
     {
       "elementName": "menu-background",
@@ -36,11 +61,27 @@
   "audio": [
     {
       "soundName": "battle-ambience",
-      "soundPath": "assets/audio/battle-ambience.mp3"
+      "soundPath": "assets/audio/optimized/battle-ambience.mp3"
     },
     {
       "soundName": "click",
-      "soundPath": "assets/audio/click.mp3"
+      "soundPath": "assets/audio/optimized/click.mp3"
+    },
+    {
+      "soundName": "prison-ambience",
+      "soundPath": "assets/audio/optimized/prison-ambience.mp3"
+    },
+    {
+      "soundName": "theme",
+      "soundPath": "assets/audio/optimized/theme.mp3"
+    },
+    {
+      "soundName": "tunnel-ambience",
+      "soundPath": "assets/audio/optimized/tunnel-ambience.mp3"
+    },   
+    {
+      "soundName": "village-ambience",
+      "soundPath": "assets/audio/optimized/village-ambience.mp3"
     },
     {
       "soundName": "fail",
@@ -55,28 +96,12 @@
       "soundPath": "assets/audio/pickup.mp3"
     },
     {
-      "soundName": "prison-ambience",
-      "soundPath": "assets/audio/prison-ambience.mp3"
-    },
-    {
       "soundName": "success",
       "soundPath": "assets/audio/success.mp3"
     },
     {
-      "soundName": "theme",
-      "soundPath": "assets/audio/theme.mp3"
-    },
-    {
-      "soundName": "tunnel-ambience",
-      "soundPath": "assets/audio/tunnel-ambience.mp3"
-    },
-    {
       "soundName": "unlock",
       "soundPath": "assets/audio/unlock.mp3"
-    },
-    {
-      "soundName": "village-ambience",
-      "soundPath": "assets/audio/village-ambience.mp3"
     },
     {
       "soundName": "warning",

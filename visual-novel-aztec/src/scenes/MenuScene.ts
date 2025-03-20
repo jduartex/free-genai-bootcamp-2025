@@ -147,24 +147,72 @@ export class MenuScene extends Phaser.Scene {
       console.error('Failed to create background music:', error);
     }
 
-    // Add audio unlock button for mobile
+    // Add better audio unlock button for mobile
     const unlockAudio = this.add.text(
       this.cameras.main.width - 20,
       20,
-      '🔊',
+      '🔊 Enable Audio',
       {
         fontFamily: 'Arial',
-        fontSize: '24px',
+        fontSize: '18px',
         color: '#ffffff',
         backgroundColor: '#333333',
-        padding: { x: 10, y: 10 }
+        padding: { x: 10, y: 5 }
       }
     )
     .setOrigin(1, 0)
     .setInteractive({ useHandCursor: true })
     .on('pointerdown', () => {
       this.unlockAudio();
+      
+      // Change button text to show success
+      unlockAudio.setText('✅ Audio Enabled');
+      
+      // Hide the button after a delay
+      this.time.delayedCall(2000, () => {
+        unlockAudio.setVisible(false);
+      });
     });
+    
+    // Add a background music note indicator
+    const musicIndicator = this.add.text(
+      this.cameras.main.width - 20,
+      60,
+      '♫ Music: OFF',
+      {
+        fontFamily: 'Arial',
+        fontSize: '16px',
+        color: '#ffffff',
+        backgroundColor: '#555555',
+        padding: { x: 10, y: 5 }
+      }
+    )
+    .setOrigin(1, 0)
+    .setInteractive({ useHandCursor: true })
+    .on('pointerdown', () => {
+      this.toggleMusic();
+      
+      // Update indicator text
+      const isPlaying = this.backgroundMusic && this.backgroundMusic.isPlaying;
+      musicIndicator.setText(`♫ Music: ${isPlaying ? 'ON' : 'OFF'}`);
+      musicIndicator.setBackgroundColor(isPlaying ? '#555555' : '#333333');
+    });
+  }
+  
+  private toggleMusic(): void {
+    try {
+      if (this.backgroundMusic) {
+        if (this.backgroundMusic.isPlaying) {
+          this.backgroundMusic.pause();
+        } else {
+          this.backgroundMusic.play();
+        }
+      } else {
+        this.startBackgroundMusic();
+      }
+    } catch (error) {
+      console.error('Error toggling music:', error);
+    }
   }
 
   private createButton(

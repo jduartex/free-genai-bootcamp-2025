@@ -4,6 +4,8 @@ import { loadStoryData } from '../utils/StoryLoader';
 import { setupGlobalErrorHandlers } from '../utils/ErrorHandler';
 import { generateUIAssets } from '../utils/UIAssetGenerator';
 import { AssetManager } from '../utils/AssetManager';
+import { AudioManager } from '../utils/AudioManager';
+import { DevConfig } from '../utils/DevConfig';
 
 export class PreloadScene extends Phaser.Scene {
   private loadingBar!: Phaser.GameObjects.Graphics;
@@ -18,6 +20,9 @@ export class PreloadScene extends Phaser.Scene {
   preload(): void {
     // Setup error handlers
     setupGlobalErrorHandlers();
+    
+    // Initialize AudioManager based on DevConfig
+    AudioManager.setUseOptimizedAudio(DevConfig.useOptimizedAudio);
     
     // Create loading UI
     this.createLoadingUI();
@@ -110,8 +115,20 @@ export class PreloadScene extends Phaser.Scene {
       await this.assetLoader.loadAssetManifest();
       await this.assetLoader.loadMappings();
       
+      // Initialize AudioManager with the manifest
+      const manifest = await this.loadManifestData();
+      if (manifest) {
+        AudioManager.initializeWithManifest(manifest);
+      }
+      
+      // Fix paths in asset manifest if loaded
+      this.fixAssetManifestPaths();
+      
       // Make sure UI assets are generated
       generateUIAssets(this);
+      
+      // Add audio unlock button
+      this.addAudioUnlockButton();
       
       // Proceed to menu
       this.scene.start('MenuScene');
@@ -124,5 +141,59 @@ export class PreloadScene extends Phaser.Scene {
         this.scene.start('MenuScene');
       });
     }
+  }
+  
+  /**
+   * Load manifest data directly to fix any issues
+   */
+  private async loadManifestData(): Promise<any> {
+    try {
+      const response = await fetch('/assets/asset-manifest.json');
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.warn('Error loading manifest directly:', error);
+    }
+    return null;
+  }
+  
+  /**
+   * Fix paths in the asset manifest if needed
+   */
+  private fixAssetManifestPaths(): void {
+    // Check if we need to fix extensions in scene paths
+    if (this.assetLoader && (this.assetLoader as any).assetManifest) {
+      const manifest = (this.assetLoader as any).assetManifest;
+      
+      // Fix scene file extensions if needed
+      if (manifest.backgrounds) {
+        for (const bg of manifest.backgrounds) {
+          // Fix HTML extensions (error from previous implementation)
+          if (bg.imagePath && bg.imagePath.endsWith('.html')) {
+            console.log(`Fixing incorrect image path extension: ${bg.imagePath}`);
+            bg.imagePath = bg.imagePath.replace('.html', '.png'); // Use .png instead of .jpg
+          }
+          
+          // Add log for debugging what extensions we have in the manifest
+          console.log(`Background path in manifest: ${bg.sceneName} -> ${bg.imagePath}`);
+        }
+      }
+      
+      console.log('Fixed asset manifest paths if needed');
+    }
+  }
+  
+  /**
+   * Add an audio unlock button to help with browser audio restrictions
+   */
+  private addAudioUnlockButton(): void {
+    // Only import if available - using dynamic import to avoid issues
+    import('../utils/AudioUnlockManager').then(module => {
+      const AudioUnlockManager = module.AudioUnlockManager;
+      AudioUnlockManager.addUnlockButton(this);
+    }).catch(error => {
+      console.warn('Could not load AudioUnlockManager:', error);
+    });
   }
 }
