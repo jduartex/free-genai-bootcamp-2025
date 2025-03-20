@@ -108,5 +108,42 @@
       "soundPath": "assets/audio/warning.mp3"
     }
   ],
+  "dialogue": [
+    {
+      "characterName": "tlaloc",
+      "dialogueFiles": [
+        {
+          "dialogueName": "tlaloc-introduction",
+          "dialoguePath": "assets/audio/optimized/dialogue/tlaloc-introduction.mp3"
+        },
+        {
+          "dialogueName": "tlaloc-warning",
+          "dialoguePath": "assets/audio/optimized/dialogue/tlaloc-warning.mp3"
+        }
+      ]
+    },
+    {
+      "characterName": "citlali",
+      "dialogueFiles": [
+        {
+          "dialogueName": "citlali-greeting",
+          "dialoguePath": "assets/audio/optimized/dialogue/citlali-greeting.mp3"
+        },
+        {
+          "dialogueName": "citlali-secret",
+          "dialoguePath": "assets/audio/optimized/dialogue/citlali-secret.mp3"
+        }
+      ]
+    },
+    {
+      "characterName": "guard",
+      "dialogueFiles": [
+        {
+          "dialogueName": "guard-alert",
+          "dialoguePath": "assets/audio/optimized/dialogue/guard-alert.mp3"
+        }
+      ]
+    }
+  ],
   "generatedAt": "2025-03-18T19:11:32.566Z"
 }

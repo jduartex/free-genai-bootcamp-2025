@@ -4,6 +4,7 @@ import { InteractiveObject } from '../components/InteractiveObject';
 import { StoryData, GameState } from '../types/StoryTypes';
 import { AssetLoader } from '../utils/AssetLoader';
 import { AudioManager } from '../utils/AudioManager';
+import { DialogueAudioManager } from '../core/DialogueAudioManager';
 
 export class GameScene extends Phaser.Scene {
   // Declare properties with proper types
@@ -13,6 +14,7 @@ export class GameScene extends Phaser.Scene {
   private gameState!: GameState;
   private ambientSound!: Phaser.Sound.BaseSound;
   private assetLoader!: AssetLoader;
+  private dialogueAudioManager!: DialogueAudioManager;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -135,6 +137,9 @@ export class GameScene extends Phaser.Scene {
       this.gameState.currentDialogId,
       this.gameState.timeRemaining
     );
+
+    // Initialize dialogue audio manager
+    this.dialogueAudioManager = new DialogueAudioManager(this);
   }
 
   update(time: number, delta: number): void {
@@ -769,5 +774,17 @@ export class GameScene extends Phaser.Scene {
     } catch (error) {
       console.error('Failed to generate dialogue:', error);
     }
+  }
+
+  // Example method to handle character dialogue
+  showDialogue(character: string, text: string, dialogueType?: string) {
+    // ...existing code for displaying text...
+    
+    // Play associated audio if dialogueType is provided
+    if (dialogueType) {
+      this.dialogueAudioManager.playCharacterDialogue(character, dialogueType);
+    }
+    
+    // ...existing code...
   }
 }
