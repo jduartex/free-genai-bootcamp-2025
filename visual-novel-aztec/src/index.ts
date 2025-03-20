@@ -40,9 +40,9 @@ function startGame() {
   const game = new Phaser.Game(GameConfig);
   
   // Add all scenes
+  game.scene.add('MenuScene', MenuScene);
   game.scene.add('PreloadScene', PreloadScene);
   game.scene.add('LoadScene', LoadScene);
-  game.scene.add('MenuScene', MenuScene);
   game.scene.add('GameScene', GameScene);
   game.scene.add('DialogueScene', DialogueScene);
   game.scene.add('SettingsScene', SettingsScene);
@@ -50,7 +50,7 @@ function startGame() {
   game.scene.add('CreditsScene', CreditsScene);
   
   // Start with the preload scene
-  game.scene.start('PreloadScene');
+  game.scene.start('MenuScene');
   
   // Store game instance in window for debugging
   if (typeof window !== 'undefined') {

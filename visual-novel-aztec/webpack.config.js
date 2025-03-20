@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 export default {
   mode: 'development',
-  entry: './src/index.ts',
+  entry: './src/main.ts',
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].[contenthash].js'
@@ -18,7 +18,7 @@ export default {
   module: {
     rules: [
       {
-        test: /\.ts$/,
+        test: /\.tsx?$/,
         use: 'ts-loader',
         exclude: /node_modules/
       },
@@ -29,7 +29,7 @@ export default {
     ]
   },
   resolve: {
-    extensions: ['.ts', '.js'],
+    extensions: ['.tsx', '.ts', '.js'],
     alias: {
       '@': path.resolve(__dirname, 'src'),
       'process': 'process/browser'
@@ -56,15 +56,24 @@ export default {
   },
   plugins: [
     new CleanWebpackPlugin(),
+    // Use the src/index.html as template
     new HtmlWebpackPlugin({
-      template: path.resolve(__dirname, 'src/template/index.html'),
+      template: './src/index.html',
       filename: 'index.html',
       inject: true
     }),
     new CopyWebpackPlugin({
       patterns: [
         { from: 'src/assets', to: 'assets', noErrorOnMissing: true },
-        { from: 'public', to: '.', noErrorOnMissing: true } // Ensure public folder is copied
+        { 
+          from: 'public', 
+          to: '.', 
+          noErrorOnMissing: true,
+          // Add a globPattern to exclude index.html from being copied
+          globOptions: {
+            ignore: ['**/index.html']
+          }
+        }
       ]
     }),
     new webpack.ProvidePlugin({
@@ -77,7 +86,8 @@ export default {
   ],
   optimization: {
     splitChunks: {
-      chunks: 'all'
+      chunks: 'all',
+      name: 'vendors'
     }
   }
 };

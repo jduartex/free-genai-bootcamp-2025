@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aztec Escape - Japanese Learning Adventure</title>
+  <title>Aztec Escape</title>
   <style>
     body {
       margin: 0;
@@ -13,108 +13,187 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
-      font-family: 'Noto Sans JP', sans-serif;
+      font-family: Arial, sans-serif;
+      color: white;
     }
+    
+    /* Remove custom font declarations since they're not available */
+    
     #game-container {
-      width: 100%;
-      max-width: 1280px;
-      height: 720px;
-      margin: auto;
       position: relative;
-      overflow: hidden;
+      width: 1280px;
+      height: 720px;
+      max-width: 100%;
+      max-height: 100vh;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
     }
-    canvas {
-      margin: auto;
-      display: block;
-    }
-    .loading-screen {
-      position: absolute;
+    
+    #loading-screen {
+      position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
       background-color: #000;
-      color: #fff;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
-      flex-direction: column;
+      z-index: 100;
     }
-    .progress-bar {
-      width: 80%;
+    
+    #loading-bar-container {
+      width: 300px;
       height: 20px;
       background-color: #333;
-      margin-top: 20px;
       border-radius: 10px;
+      margin-top: 20px;
       overflow: hidden;
     }
-    .progress {
-      width: 0%;
+    
+    #loading-bar {
+      width: 0;
       height: 100%;
-      background-color: #4CAF50;
-      transition: width 0.2s ease;
+      background-color: #4a6c6f;
+      transition: width 0.3s;
     }
-    #audio-unlock {
+    
+    canvas {
+      display: block;
+    }
+
+    #scene-debug {
       position: fixed;
-      bottom: 20px;
+      bottom: 10px;
+      left: 10px;
+      font-size: 12px;
+      background: rgba(0,0,0,0.7);
+      padding: 5px;
+      display: none;
+    }
+    
+    #game-error {
+      position: fixed;
+      top: 0;
       left: 0;
       right: 0;
-      text-align: center;
-      background-color: rgba(0,0,0,0.7);
+      bottom: 0;
+      background-color: rgba(0,0,0,0.9);
       color: white;
-      padding: 15px;
-      display: none; /* Hidden by default */
-      z-index: 9999;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 101;
     }
-    #audio-unlock button {
-      background-color: #4CAF50;
+    
+    #error-reload {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #4a6c6f;
       color: white;
       border: none;
-      padding: 10px 20px;
       border-radius: 5px;
       cursor: pointer;
       font-size: 16px;
-      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <div id="game-container">
-    <div id="loading-screen" class="loading-screen">
-      <h1>Aztec Escape</h1>
-      <p>Loading game resources...</p>
-      <div class="progress-bar">
-        <div id="progress" class="progress"></div>
-      </div>
+  <!-- Initial loading screen (shown before Phaser loads) -->
+  <div id="loading-screen">
+    <h1>Aztec Escape</h1>
+    <p>Loading game...</p>
+    <div id="loading-bar-container">
+      <div id="loading-bar"></div>
     </div>
   </div>
   
-  <!-- Audio unlock banner for mobile -->
-  <div id="audio-unlock">
-    <p>Tap the button below to enable sound</p>
-    <button id="unlock-audio-button">Enable Audio</button>
+  <!-- Game container -->
+  <div id="game-container"></div>
+  
+  <!-- Debug info (only visible during development) -->
+  <div id="scene-debug">Current scene: <span id="current-scene">MenuScene</span></div>
+  
+  <!-- Error message -->
+  <div id="game-error">
+    <h1>Game Error</h1>
+    <p id="error-message">An error occurred while loading the game.</p>
+    <button id="error-reload" onclick="window.location.reload()">Reload Game</button>
   </div>
   
   <script>
-    // Detect mobile browsers that might need audio unlocking
-    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-      document.getElementById('audio-unlock').style.display = 'block';
-      
-      // Add click handler
-      document.getElementById('unlock-audio-button').addEventListener('click', function() {
-        // Create and immediately play an empty sound to unlock audio
-        const unlockSound = new Audio();
-        unlockSound.play().catch(() => {});
-        
-        // Hide the banner
-        document.getElementById('audio-unlock').style.display = 'none';
-        
-        // Tell the game audio is unlocked
-        if (window.game) {
-          window.game.events.emit('audioUnlocked');
+    // Force the game to start with MenuScene
+    window.initialScene = 'MenuScene';
+    
+    // Initial loading animation
+    let progress = 0;
+    const loadingBar = document.getElementById('loading-bar');
+    const loadingInterval = setInterval(() => {
+      progress += Math.random() * 2;
+      if (progress > 90) progress = 90; // Keep at 90% until game takes over
+      loadingBar.style.width = progress + '%';
+    }, 100);
+    
+    // Listen for game ready event to hide the loading screen
+    document.addEventListener('gameReady', () => {
+      clearInterval(loadingInterval);
+      loadingBar.style.width = '100%';
+      setTimeout(() => {
+        document.getElementById('loading-screen').style.display = 'none';
+      }, 500);
+    });
+    
+    // Dispatch the gameReady event when the game is loaded
+    window.addEventListener('load', () => {
+      // Give a small delay to ensure the game has started loading
+      setTimeout(() => {
+        document.dispatchEvent(new Event('gameReady'));
+      }, 1500);
+    });
+    
+    // Add scene debugging helper - accessible via console
+    window.showCurrentScene = function() {
+      const debug = document.getElementById('scene-debug');
+      debug.style.display = 'block';
+    };
+
+    // Helper function to notify that MenuScene is ready
+    window.notifyMenuSceneReady = function() {
+      document.dispatchEvent(new Event('gameReady'));
+      console.log('MenuScene is ready and visible');
+    };
+    
+    // Check if custom fonts are available - always return false since we don't have them
+    window.checkFontsLoaded = function() {
+      console.log('Using system fonts only - custom fonts not available');
+      return { crimson: false, noto: false };
+    };
+    
+    // Show error UI if there's an error
+    window.showGameError = function(message) {
+      document.getElementById('error-message').textContent = message || 'An error occurred loading the game.';
+      document.getElementById('game-error').style.display = 'flex';
+    };
+    
+    // Add global error handling
+    window.addEventListener('error', function(event) {
+      console.error('Caught global error:', event.error);
+      window.showGameError('An error occurred: ' + event.message);
+    });
+    
+    // Emergency menu show function for console use
+    window.showMenuImmediate = function() {
+      const game = document.querySelector('canvas')?.parentElement?.__PHASER_GAME__;
+      if (game && game.scene) {
+        const menuScene = game.scene.getScene('MenuScene');
+        if (menuScene && menuScene.forceShowMenu) {
+          menuScene.forceShowMenu();
+          return true;
         }
-      });
-    }
+      }
+      return false;
+    };
   </script>
 </body>
 </html>

@@ -3,259 +3,270 @@ import { loadGameProgress } from '../utils/StoryLoader';
 
 export class MenuScene extends Phaser.Scene {
   private titleText!: Phaser.GameObjects.Text;
-  private startButton!: Phaser.GameObjects.Container; // Fixed type
-  private continueButton!: Phaser.GameObjects.Container; // Fixed type
-  private optionsButton!: Phaser.GameObjects.Container; // Fixed type
-  private creditsButton!: Phaser.GameObjects.Container; // Fixed type
+  private startButton!: Phaser.GameObjects.Container;
+  private continueButton!: Phaser.GameObjects.Container; 
+  private optionsButton!: Phaser.GameObjects.Container;
+  private creditsButton!: Phaser.GameObjects.Container;
   private backgroundMusic!: Phaser.Sound.BaseSound;
+  private themeMusicKey: string = 'menu-theme';
+  private assetsLoaded: boolean = false;
 
   constructor() {
     super({ key: 'MenuScene' });
   }
 
-  create(): void {
-    // Add background image
-    this.add.image(this.cameras.main.width / 2, this.cameras.main.height / 2, 'aztec-village')
-      .setOrigin(0.5)
-      .setDisplaySize(this.cameras.main.width, this.cameras.main.height)
-      .setAlpha(0.5);
+  preload(): void {
+    console.log('MenuScene preload starting');
     
-    // Add overlay for better text contrast
-    const overlay = this.add.rectangle(
-      this.cameras.main.width / 2, 
-      this.cameras.main.height / 2,
-      this.cameras.main.width,
-      this.cameras.main.height,
-      0x000000,
-      0.7
-    );
-
-    // Create title text
-    this.titleText = this.add.text(
-      this.cameras.main.width / 2,
-      100,
-      'AZTEC ESCAPE',
-      {
-        fontFamily: 'Crimson Text',
-        fontSize: '64px',
-        color: '#ffffff',
-        stroke: '#000000',
-        strokeThickness: 4
-      }
-    ).setOrigin(0.5);
-
-    // Subtitle
-    this.add.text(
-      this.cameras.main.width / 2,
-      160,
-      'A Japanese Language Learning Adventure',
-      {
-        fontFamily: 'Noto Sans JP',
-        fontSize: '24px',
-        color: '#ffffff',
-        stroke: '#000000',
-        strokeThickness: 2
-      }
-    ).setOrigin(0.5);
-
-    // Create buttons
-    const buttonY = 260;
-    const buttonSpacing = 80;
-    const buttonStyle = {
-      fontFamily: 'Noto Sans JP',
-      fontSize: '28px',
-      color: '#ffffff'
-    };
-
-    // New Game Button
-    this.startButton = this.createButton(
-      this.cameras.main.width / 2,
-      buttonY,
-      'Start New Game',
-      buttonStyle,
-      () => {
-        this.startGame();
-      }
-    );
-
-    // Check for saved game
-    const savedGame = loadGameProgress();
+    // Preload critical UI assets first
+    this.load.image('button', 'assets/ui/button-default.png');
+    this.load.image('button-hover', 'assets/ui/button-hover.png');
     
-    // Continue Button (only if save exists)
-    if (savedGame) {
-      this.continueButton = this.createButton(
-        this.cameras.main.width / 2,
-        buttonY + buttonSpacing,
-        'Continue Game',
-        buttonStyle,
-        () => {
-          this.continueGame();
-        }
-      );
-    }
-
-    // Options Button
-    this.optionsButton = this.createButton(
-      this.cameras.main.width / 2,
-      buttonY + buttonSpacing * (savedGame ? 2 : 1),
-      'Options',
-      buttonStyle,
-      () => {
-        this.showOptions();
-      }
-    );
-
-    // Credits Button
-    this.creditsButton = this.createButton(
-      this.cameras.main.width / 2,
-      buttonY + buttonSpacing * (savedGame ? 3 : 2),
-      'Credits',
-      buttonStyle,
-      () => {
-        this.showCredits();
-      }
-    );
-
-    // Add some animation to the title
-    this.tweens.add({
-      targets: this.titleText,
-      y: 110,
-      duration: 2000,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
-
-    // Play background music - adding safety checks
-    try {
-      if (this.cache.audio.exists('theme')) {
-        this.backgroundMusic = this.sound.add('theme', { loop: true, volume: 0.5 });
-        if (this.backgroundMusic) {
-          try {
-            // The play method returns a boolean, not a Promise, so we can't use .catch()
-            this.backgroundMusic.play();
-          } catch (error: unknown) {
-            console.warn('Error playing theme music:', error);
-          }
-        }
-      } else {
-        console.warn('Theme music not found in cache, using silent placeholder');
-        // Create a silent background music object
-        this.backgroundMusic = this.sound.add('click', { loop: true, volume: 0 });
-      }
-    } catch (error: unknown) {
-      console.error('Failed to create background music:', error);
-    }
-
-    // Add better audio unlock button for mobile
-    const unlockAudio = this.add.text(
-      this.cameras.main.width - 20,
-      20,
-      '🔊 Enable Audio',
-      {
-        fontFamily: 'Arial',
-        fontSize: '18px',
-        color: '#ffffff',
-        backgroundColor: '#333333',
-        padding: { x: 10, y: 5 }
-      }
-    )
-    .setOrigin(1, 0)
-    .setInteractive({ useHandCursor: true })
-    .on('pointerdown', () => {
-      this.unlockAudio();
-      
-      // Change button text to show success
-      unlockAudio.setText('✅ Audio Enabled');
-      
-      // Hide the button after a delay
-      this.time.delayedCall(2000, () => {
-        unlockAudio.setVisible(false);
-      });
-    });
+    // Create a loading event to track when preload completes
+    this.load.on('complete', this.handlePreloadComplete, this);
     
-    // Add a background music note indicator
-    const musicIndicator = this.add.text(
-      this.cameras.main.width - 20,
-      60,
-      '♫ Music: OFF',
-      {
-        fontFamily: 'Arial',
-        fontSize: '16px',
-        color: '#ffffff',
-        backgroundColor: '#555555',
-        padding: { x: 10, y: 5 }
-      }
-    )
-    .setOrigin(1, 0)
-    .setInteractive({ useHandCursor: true })
-    .on('pointerdown', () => {
-      this.toggleMusic();
-      
-      // Update indicator text
-      const isPlaying = this.backgroundMusic && this.backgroundMusic.isPlaying;
-      musicIndicator.setText(`♫ Music: ${isPlaying ? 'ON' : 'OFF'}`);
-      musicIndicator.setBackgroundColor(isPlaying ? '#555555' : '#333333');
-    });
+    console.log('MenuScene preload assets started');
   }
-  
-  private toggleMusic(): void {
+
+  private handlePreloadComplete(): void {
+    console.log('MenuScene preload completed, assets now available');
+    this.assetsLoaded = true;
+    
+    // Only try to play music if we're already in create (scene is active)
+    if (this.scene.isActive()) {
+      this.setupBackgroundMusic();
+    }
+  }
+
+  create(): void {
+    console.log('🎮 SIMPLE MENUSCENE CREATE STARTING');
+    
     try {
-      if (this.backgroundMusic) {
-        if (this.backgroundMusic.isPlaying) {
-          this.backgroundMusic.pause();
-        } else {
+      // Load theme music separately from other assets to avoid the race condition
+      this.loadThemeMusic();
+      
+      // Add background image - using try-catch for robustness
+      try {
+        this.add.rectangle(
+          this.cameras.main.width / 2,
+          this.cameras.main.height / 2,
+          this.cameras.main.width,
+          this.cameras.main.height,
+          0x223344
+        );
+      } catch (error) {
+        console.warn('Failed to create background, fallback to solid color');
+        this.add.rectangle(
+          this.cameras.main.width / 2,
+          this.cameras.main.height / 2,
+          this.cameras.main.width,
+          this.cameras.main.height,
+          0x223344
+        );
+      }
+      
+      // Add overlay for better text contrast
+      const overlay = this.add.rectangle(
+        this.cameras.main.width / 2, 
+        this.cameras.main.height / 2,
+        this.cameras.main.width,
+        this.cameras.main.height,
+        0x000000,
+        0.7
+      );
+
+      // Create title text - using system fonts for reliability
+      this.titleText = this.add.text(
+        this.cameras.main.width / 2,
+        100,
+        'AZTEC ESCAPE',
+        {
+          fontFamily: 'Georgia, Times, serif',
+          fontSize: '64px',
+          color: '#ffffff',
+          stroke: '#000000',
+          strokeThickness: 4
+        }
+      ).setOrigin(0.5);
+
+      // Subtitle
+      this.add.text(
+        this.cameras.main.width / 2,
+        160,
+        'A Japanese Language Learning Adventure',
+        {
+          fontFamily: 'Arial, Helvetica, sans-serif',
+          fontSize: '24px',
+          color: '#ffffff',
+          stroke: '#000000',
+          strokeThickness: 2
+        }
+      ).setOrigin(0.5);
+
+      // Create buttons
+      const buttonY = 260;
+      const buttonSpacing = 80;
+      const buttonStyle = {
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        fontSize: '28px',
+        color: '#ffffff'
+      };
+
+      // Simple rectangle buttons that don't depend on textures
+      const createSimpleButton = (x: number, y: number, text: string, callback: () => void) => {
+        const container = this.add.container(x, y);
+        const bg = this.add.rectangle(0, 0, 300, 60, 0x4a6c6f, 0.8)
+          .setStrokeStyle(2, 0xffffff)
+          .setInteractive({ useHandCursor: true })
+          .on('pointerdown', callback)
+          .on('pointerover', () => { 
+            bg.setFillStyle(0x5d8a8f);
+            buttonText.setScale(1.1);
+          })
+          .on('pointerout', () => {
+            bg.setFillStyle(0x4a6c6f);
+            buttonText.setScale(1.0);
+          });
+        
+        const buttonText = this.add.text(0, 0, text, buttonStyle).setOrigin(0.5);
+        container.add([bg, buttonText]);
+        return container;
+      };
+
+      // New Game Button
+      this.startButton = createSimpleButton(
+        this.cameras.main.width / 2,
+        buttonY,
+        'Start New Game',
+        () => { this.startGame(); }
+      );
+
+      // Check for saved game
+      const savedGame = loadGameProgress();
+      
+      // Continue Button (only if save exists)
+      if (savedGame) {
+        this.continueButton = createSimpleButton(
+          this.cameras.main.width / 2,
+          buttonY + buttonSpacing,
+          'Continue Game',
+          () => { this.continueGame(); }
+        );
+      }
+
+      // Options Button
+      this.optionsButton = createSimpleButton(
+        this.cameras.main.width / 2,
+        buttonY + buttonSpacing * (savedGame ? 2 : 1),
+        'Options',
+        () => { this.showOptions(); }
+      );
+
+      // Credits Button
+      this.creditsButton = createSimpleButton(
+        this.cameras.main.width / 2,
+        buttonY + buttonSpacing * (savedGame ? 3 : 2),
+        'Credits',
+        () => { this.showCredits(); }
+      );
+
+      // Add some animation to the title
+      this.tweens.add({
+        targets: this.titleText,
+        y: 110,
+        duration: 2000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+
+      // If preload has completed, set up background music
+      if (this.assetsLoaded) {
+        this.setupBackgroundMusic();
+      }
+      
+      // Notify that MenuScene is ready
+      if (window.notifyMenuSceneReady) {
+        console.log('Notifying that MenuScene is ready');
+        window.notifyMenuSceneReady();
+      }
+      
+      console.log('🎮 MENU BUTTONS SHOULD NOW BE VISIBLE');
+    } catch (error) {
+      console.error('Fatal error in MenuScene create:', error);
+      
+      // Emergency fallback UI if everything else fails
+      this.add.text(
+        this.cameras.main.width / 2, 
+        this.cameras.main.height / 2,
+        'ERROR LOADING MENU\nClick anywhere to start game',
+        {
+          fontFamily: 'Arial',
+          fontSize: '32px',
+          color: '#ffffff',
+          align: 'center'
+        }
+      )
+      .setOrigin(0.5)
+      .setInteractive()
+      .on('pointerdown', () => {
+        this.scene.start('GameScene', { sceneId: 'scene001', dialogId: 'x00' });
+      });
+    }
+  }
+
+  private loadThemeMusic(): void {
+    console.log('Loading theme music');
+    
+    // Use a different key to avoid conflicts
+    this.load.audio(this.themeMusicKey, 'assets/audio/theme.mp3');
+    
+    // Set up a one-time event handler for when this particular file loads
+    this.load.once('filecomplete-audio-' + this.themeMusicKey, () => {
+      console.log(`Theme music '${this.themeMusicKey}' loaded successfully`);
+      this.setupBackgroundMusic();
+    });
+    
+    // Handle errors specifically for theme music
+    this.load.once('loaderror', (file: any) => {
+      if (file.key === this.themeMusicKey) {
+        console.warn('Failed to load theme music, trying alternative');
+        // Try alternative version
+        this.load.audio('alt-theme', 'assets/audio/alt-theme.mp3');
+        this.themeMusicKey = 'alt-theme';
+        this.load.start();
+      }
+    });
+    
+    // Start loading just this specific asset
+    this.load.start();
+  }
+
+  private setupBackgroundMusic(): void {
+    try {
+      // Only proceed if the audio is actually in the cache
+      if (this.cache.audio.exists(this.themeMusicKey)) {
+        console.log(`Creating sound from cache key: ${this.themeMusicKey}`);
+        
+        // Actually create the sound
+        this.backgroundMusic = this.sound.add(this.themeMusicKey, { 
+          loop: true, 
+          volume: 0.5 
+        });
+        
+        // Play it with error handling
+        try {
           this.backgroundMusic.play();
+          console.log('Background music started successfully');
+        } catch (error) {
+          console.warn('Error playing background music:', error);
         }
       } else {
-        this.startBackgroundMusic();
+        console.warn(`Theme music '${this.themeMusicKey}' not found in cache`);
       }
     } catch (error) {
-      console.error('Error toggling music:', error);
+      console.error('Error setting up background music:', error);
     }
-  }
-
-  private createButton(
-    x: number, 
-    y: number, 
-    text: string, 
-    style: Phaser.Types.GameObjects.Text.TextStyle, 
-    callback: () => void
-  ): Phaser.GameObjects.Container {
-    // Create container for button elements
-    const button = this.add.container(x, y);
-    
-    // Create background
-    const bg = this.add.image(0, 0, 'button')
-      .setDisplaySize(300, 60)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', callback)
-      .on('pointerover', () => {
-        bg.setTexture('button-hover');
-        buttonText.setScale(1.1);
-        
-        // Play sound only if it exists and is properly loaded
-        if (this.sound.get('click') && this.cache.audio.exists('click')) {
-          try {
-            this.sound.play('click', { volume: 0.5 });
-          } catch (e) {
-            console.warn('Could not play sound: click', e);
-          }
-        }
-      })
-      .on('pointerout', () => {
-        bg.setTexture('button');
-        buttonText.setScale(1.0);
-      });
-    
-    // Create text
-    const buttonText = this.add.text(0, 0, text, style)
-      .setOrigin(0.5);
-    
-    // Add elements to container
-    button.add([bg, buttonText]);
-    
-    return button;
   }
 
   private startGame(): void {
@@ -301,42 +312,5 @@ export class MenuScene extends Phaser.Scene {
   private showCredits(): void {
     // In a more complete implementation, this would show credits
     console.log('Credits');
-  }
-
-  private unlockAudio(): void {
-    if (this.sound.locked) {
-      // Try to unlock audio
-      this.sound.unlock();
-      
-      console.log('Attempting to unlock audio...');
-      
-      // Play a silent sound to unlock audio on iOS/Safari
-      this.sound.play('click', { volume: 0.1 });
-      
-      // Try to start background music again
-      this.startBackgroundMusic();
-    } else {
-      console.log('Audio already unlocked');
-      this.startBackgroundMusic();
-    }
-  }
-
-  private startBackgroundMusic(): void {
-    try {
-      if (this.backgroundMusic) {
-        if (!this.backgroundMusic.isPlaying) {
-          this.backgroundMusic.play();
-          console.log('Background music started');
-        } else {
-          console.log('Background music is already playing');
-        }
-      } else {
-        console.log('Creating new background music');
-        this.backgroundMusic = this.sound.add('theme', { loop: true, volume: 0.5 });
-        this.backgroundMusic.play();
-      }
-    } catch (error) {
-      console.error('Error playing background music:', error);
-    }
   }
 }

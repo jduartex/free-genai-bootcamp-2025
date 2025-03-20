@@ -1,22 +1,110 @@
+import Phaser from 'phaser';
+
 /**
  * Manages audio file paths and loading with optimized version support
  */
 export class AudioManager {
-  private static _useOptimizedAudio: boolean = true;
+  private static instance: AudioManager;
+  private scene: Phaser.Scene | null = null;
+  private sounds: Map<string, Phaser.Sound.BaseSound> = new Map();
+  private isMuted: boolean = false;
+  private static useOptimizedAudio: boolean = true;
   private static _initialized: boolean = false;
   
   /**
-   * Set whether to use optimized audio files
+   * Get the singleton instance of AudioManager
    */
-  public static setUseOptimizedAudio(value: boolean): void {
-    this._useOptimizedAudio = value;
+  public static getInstance(): AudioManager {
+    if (!AudioManager.instance) {
+      AudioManager.instance = new AudioManager();
+    }
+    return AudioManager.instance;
   }
   
+  /**
+   * Initialize with a scene
+   */
+  public init(scene: Phaser.Scene): void {
+    this.scene = scene;
+    console.log('AudioManager initialized with scene:', scene.scene.key);
+    
+    // Pre-load essential sounds if they don't exist
+    this.preloadEssentialSounds();
+  }
+  
+  /**
+   * Preload essential sound effects that are needed immediately
+   */
+  private preloadEssentialSounds(): void {
+    if (!this.scene) return;
+    
+    // Check if we need to load the theme
+    if (!this.scene.cache.audio.exists('theme')) {
+      console.log('AudioManager: Preloading theme music');
+      this.scene.load.audio('theme', 'assets/audio/theme.mp3');
+      
+      // Wait for load completion to add them to our sounds map
+      this.scene.load.once('complete', () => {
+        console.log('AudioManager: Essential sounds loaded');
+      });
+      
+      // Start the loading process
+      this.scene.load.start();
+    }
+  }
+  
+  /**
+   * Play a sound with error handling
+   */
+  public playSound(key: string, config?: Phaser.Types.Sound.SoundConfig): Phaser.Sound.BaseSound | null {
+    if (!this.scene || this.isMuted) return null;
+    
+    try {
+      // Check if sound exists in cache
+      if (!this.scene.cache.audio.exists(key)) {
+        console.warn(`Sound "${key}" not found in cache`);
+        return null;
+      }
+      
+      // Get from our map or create
+      let sound = this.sounds.get(key);
+      if (!sound) {
+        sound = this.scene.sound.add(key, config);
+        this.sounds.set(key, sound);
+      }
+      
+      sound.play();
+      return sound;
+    } catch (error) {
+      console.error(`Error playing sound "${key}":`, error);
+      return null;
+    }
+  }
+  
+  /**
+   * Set whether to use optimized audio paths
+   */
+  public static setUseOptimizedAudio(value: boolean): void {
+    AudioManager.useOptimizedAudio = value;
+  }
+  
+  /**
+   * Get the path for an audio file, potentially using optimized version
+   */
+  public static getAudioPath(basePath: string, filename: string): string {
+    if (AudioManager.useOptimizedAudio) {
+      const extension = filename.split('.').pop();
+      const name = filename.substring(0, filename.lastIndexOf('.'));
+      return `audio/optimized/${name}.${extension}`;
+    }
+    return `${basePath}${filename}`;
+  }
+
   /**
    * Get whether optimized audio is enabled
    */
   public static getUseOptimizedAudio(): boolean {
-    return this._useOptimizedAudio;
+    return this.useOptimizedAudio;
   }
 
   /**
@@ -28,38 +116,6 @@ export class AudioManager {
       console.log('AudioManager: Initializing with manifest data');
       this._initialized = true;
     }
-  }
-  
-  /**
-   * Get the path for an audio file, using optimized version if available
-   * @param category The audio category (can be empty for root audio folder)
-   * @param filename The audio filename with extension
-   * @returns The path to the audio file
-   */
-  public static getAudioPath(category: string, filename: string): string {
-    // Normalize the filename to handle both formats (with - or _)
-    const normalizedFilename = this.normalizeFilename(filename);
-    
-    let result = '';
-    if (this._useOptimizedAudio) {
-      // For optimized audio, all files go in the optimized folder
-      // but we preserve the subdirectory structure
-      if (category && category !== '') {
-        result = `audio/optimized/${category}/${normalizedFilename}`;
-      } else {
-        result = `audio/optimized/${normalizedFilename}`;
-      }
-    } else {
-      // For original audio, use the standard directory structure
-      if (category && category !== '') {
-        result = `audio/${category}/${normalizedFilename}`;
-      } else {
-        result = `audio/${normalizedFilename}`;
-      }
-    }
-    
-    console.log(`AudioManager.getAudioPath(${category}, ${filename}) => ${result}`);
-    return result;
   }
   
   /**
@@ -111,3 +167,5 @@ export class AudioManager {
     return filename;
   }
 }
+
+export default AudioManager;

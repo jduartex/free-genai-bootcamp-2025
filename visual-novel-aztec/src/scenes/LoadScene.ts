@@ -4,8 +4,6 @@ import path from 'path';
 import { BACKGROUND_MAPPINGS, CHARACTER_MAPPINGS, mappings } from '../utils/Mappings';
 
 export class LoadScene extends Phaser.Scene {
-  private loadingText!: Phaser.GameObjects.Text;
-  private progressBar!: Phaser.GameObjects.Graphics;
   private assetManifest: any = null;
 
   constructor() {
@@ -13,37 +11,31 @@ export class LoadScene extends Phaser.Scene {
   }
 
   preload(): void {
-    // Create loading UI
-    this.createLoadingUI();
-    
-    // Track loading progress
+    // Track loading progress - no UI, just events
     this.load.on('progress', (value: number) => {
-      this.progressBar.clear();
-      this.progressBar.fillStyle(0xffffff, 1);
-      this.progressBar.fillRect(
-        this.cameras.main.width / 4, 
-        this.cameras.main.height / 2, 
-        (this.cameras.main.width / 2) * value, 
-        30
-      );
-      this.loadingText.setText(`Loading assets: ${Math.floor(value * 100)}%`);
+      // Notify MenuScene of progress
+      this.events.emit('progress', value);
+    });
+    
+    // Add complete listener
+    this.load.on('complete', () => {
+      console.log('Asset loading complete');
+      this.events.emit('complete');
     });
 
     // Load our manifest file if it exists in browser-safe manner
     this.loadAssetManifest().then(() => {
       // Load the assets
       this.loadGameAssets();
+      
+      // Explicitly start the loader
+      this.load.start();
     });
   }
 
   create(): void {
-    this.loadingText.setText('Starting game...');
-    
-    // Fade out and show the menu
-    this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => {
-      this.scene.start('MenuScene');
-    });
+    // No need to do anything here as we'll stay in the background
+    console.log("LoadScene create completed");
   }
 
   private async loadAssetManifest(): Promise<void> {
@@ -77,7 +69,7 @@ export class LoadScene extends Phaser.Scene {
     const characterNames = mappings?.characterNames || CHARACTER_MAPPINGS;
     
     // Load background scenes
-    this.loadingText.setText('Loading backgrounds...');
+    console.log('Loading backgrounds...');
     
     // Load each scene background
     Object.keys(locations).forEach(locationId => {
@@ -86,7 +78,7 @@ export class LoadScene extends Phaser.Scene {
     });
     
     // Load character portraits
-    this.loadingText.setText('Loading characters...');
+    console.log('Loading characters...');
     
     // Load each character
     Object.keys(characterNames).forEach(characterId => {
@@ -95,7 +87,7 @@ export class LoadScene extends Phaser.Scene {
     });
     
     // Load UI elements
-    this.loadingText.setText('Loading UI elements...');
+    console.log('Loading UI elements...');
     this.load.image('dialog-box', 'assets/ui/dialog-box.png');
     this.load.image('button-default', 'assets/ui/button-default.png');
     this.load.image('menu-background', 'assets/ui/menu-background.png');
@@ -143,52 +135,5 @@ export class LoadScene extends Phaser.Scene {
       this.textures.addCanvas(key, canvas);
       console.log(`Created placeholder for: ${key}`);
     }
-  }
-
-  private createLoadingUI(): void {
-    // Background
-    this.add.rectangle(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2,
-      this.cameras.main.width,
-      this.cameras.main.height,
-      0x000000
-    );
-    
-    // Title
-    this.add.text(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 3,
-      'Aztec Escape',
-      {
-        fontFamily: 'Arial',
-        fontSize: '32px',
-        color: '#ffffff'
-      }
-    ).setOrigin(0.5);
-    
-    // Loading text
-    this.loadingText = this.add.text(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2 - 50,
-      'Loading assets: 0%',
-      {
-        fontFamily: 'Arial',
-        fontSize: '24px',
-        color: '#ffffff'
-      }
-    ).setOrigin(0.5);
-    
-    // Progress bar background
-    this.add.rectangle(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2,
-      this.cameras.main.width / 2,
-      30,
-      0x666666
-    ).setOrigin(0.5);
-    
-    // Progress bar
-    this.progressBar = this.add.graphics();
   }
 }
