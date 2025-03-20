@@ -525,9 +525,9 @@ export class DialogueScene extends Phaser.Scene {
     
     // Add a few more alternatives for backwards compatibility
     alternatives.push(
-      `/assets/audio/dialogue/${audioKey}.mp3`,
-      `/assets/audio/dialogue/${audioKey}.mp3`,
-      `/assets/audio/dialogue/${audioKey}.mp3`
+      `/assets/audio/optimized/dialogue/${audioKey}.mp3`,
+      `/assets/audio/optimized/dialogue/${audioKey}.mp3`,
+      `/assets/audio/optimized/dialogue/${audioKey}.mp3`
     );
     
     console.log(`🔍 Trying alternative audio paths for: ${audioKey}`);

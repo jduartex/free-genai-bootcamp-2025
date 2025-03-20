@@ -54,7 +54,7 @@ This guide provides detailed instructions for creating assets for your Aztec Esc
 - **Sample Rate**: 44.1 kHz
 - **Bit Depth**: 16-bit
 - **Duration**: Short, typically <2 seconds for UI sounds
-- **Location**: Save in `public/assets/audio/`
+- **Location**: Save in `public/assets/audio/optimized/`
 
 ### Background Music
 - **Format**: MP3
@@ -62,14 +62,14 @@ This guide provides detailed instructions for creating assets for your Aztec Esc
 - **Bit Depth**: 16-bit
 - **Duration**: 2-3 minutes, with loop points
 - **Theme**: Aztec-inspired, mysterious, adventurous
-- **Location**: Save in `public/assets/audio/`
+- **Location**: Save in `public/assets/audio/optimized/`
 
 ### Voice Acting
 - **Format**: MP3
 - **Sample Rate**: 44.1 kHz
 - **Naming Convention**: `[sceneId]_[dialogId]_[language].mp3`
 - **Example**: `scene001_x001_ja.mp3` for Japanese voice of dialog x001 in scene001
-- **Location**: Save in `public/assets/audio/dialogue/`
+- **Location**: Save in `public/assets/audio/optimized/dialogue/`
 
 ## Resources
 

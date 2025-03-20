@@ -9,8 +9,8 @@ const __dirname = path.dirname(__filename);
 
 // Define the audio directories
 const audioDir = path.resolve(__dirname, '../public/assets/audio');
-const dialogueDir = path.resolve(__dirname, '../public/assets/audio/dialogue');
-const voicesDir = path.resolve(__dirname, '../public/assets/audio/voices');
+const dialogueDir = path.resolve(__dirname, '../public/assets/audio/optimized/dialogue');
+const voicesDir = path.resolve(__dirname, '../public/assets/audio/optimized/voices');
 
 // Create a single optimized directory for all audio files
 const optimizedDir = path.join(audioDir, 'optimized');

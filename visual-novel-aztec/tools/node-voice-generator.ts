@@ -13,7 +13,7 @@ const projectRoot = process.cwd();
 export class NodeVoiceGenerator {
   private static polly: PollyClient;
   private static initialized = false;
-  private static outputDir = path.resolve(projectRoot, 'public/assets/audio/voices');
+  private static outputDir = path.resolve(projectRoot, 'public/assets/audio/optimized/voices');
 
   /**
    * Initialize the AWS SDK with credentials

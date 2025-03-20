@@ -42,10 +42,10 @@ const expectedAssets = {
   audio: [
     'click.wav',
     'theme.mp3',
-    'prison_ambience.mp3',
-    'village_ambience.mp3',
-    'battle_ambience.mp3',
-    'tunnel_ambience.mp3'
+    'prison-ambience.mp3',
+    'village-ambience.mp3',
+    'battle-ambience.mp3',
+    'tunnel-ambience.mp3'
   ]
 };
 

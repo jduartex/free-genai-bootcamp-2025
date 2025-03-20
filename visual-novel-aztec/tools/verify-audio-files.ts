@@ -10,7 +10,7 @@ async function verifyAudioFiles() {
   console.log('Verifying dialogue audio files...');
   
   // Get audio directory
-  const audioDir = path.resolve(__dirname, '../public/assets/audio/dialogue');
+  const audioDir = path.resolve(__dirname, '../public/assets/audio/optimized/dialogue');
   
   // Check if directory exists
   if (!fs.existsSync(audioDir)) {

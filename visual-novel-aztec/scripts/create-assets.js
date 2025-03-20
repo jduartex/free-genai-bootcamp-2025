@@ -53,10 +53,10 @@ const assets = {
   audio: [
     { name: 'click.mp3', description: 'A short click sound for UI interactions' },
     { name: 'theme.mp3', description: 'Aztec-themed background music, mysterious and atmospheric' },
-    { name: 'prison_ambience.mp3', description: 'Ambient sound of a prison (chains, distant sounds)' },
-    { name: 'village_ambience.mp3', description: 'Ambient sound of a village (people, animals)' },
-    { name: 'battle_ambience.mp3', description: 'Sounds of battle (weapons, shouting)' },
-    { name: 'tunnel_ambience.mp3', description: 'Echoing, dripping water sounds in a tunnel' }
+    { name: 'prison-ambience.mp3', description: 'Ambient sound of a prison (chains, distant sounds)' },
+    { name: 'village-ambience.mp3', description: 'Ambient sound of a village (people, animals)' },
+    { name: 'battle-ambience.mp3', description: 'Sounds of battle (weapons, shouting)' },
+    { name: 'tunnel-ambience.mp3', description: 'Echoing, dripping water sounds in a tunnel' }
   ]
 };
 
