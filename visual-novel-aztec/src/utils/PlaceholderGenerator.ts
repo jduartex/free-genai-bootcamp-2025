@@ -105,10 +105,10 @@ export class PlaceholderGenerator {
    */
   private static generateEmptyAudioFiles(baseDir: string): void {
     const audioFiles = [
-      'prison_ambience.mp3',
-      'village_ambience.mp3',
-      'battle_ambience.mp3',
-      'tunnel_ambience.mp3',
+      'prison-ambience.mp3',
+      'village-ambience.mp3',
+      'battle-ambience.mp3',
+      'tunnel-ambience.mp3',
       'click.mp3',
       'hover.mp3',
       'success.mp3',

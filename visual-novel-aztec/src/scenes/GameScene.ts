@@ -579,14 +579,14 @@ export class GameScene extends Phaser.Scene {
     try {
       // Map location to ambient sound
       const ambientMap: Record<string, string> = {
-        'prison-cell': 'prison_ambience',
+        'prison-cell': 'prison-ambience',
         'aztec-village': 'village_ambience',
         'spanish-invasion': 'battle_ambience',
         'hidden-tunnel': 'tunnel_ambience'
       };
       
       const locationId = this.currentStoryData.location_id || 'prison-cell';
-      const ambientKey = ambientMap[locationId] || 'prison_ambience';
+      const ambientKey = ambientMap[locationId] || 'prison-ambience';
       
       // Set up background music with error handling
       if (!this.sound.get(ambientKey)) {

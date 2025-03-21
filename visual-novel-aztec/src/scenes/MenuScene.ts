@@ -219,7 +219,7 @@ export class MenuScene extends Phaser.Scene {
     console.log('Loading theme music');
     
     // Use a different key to avoid conflicts
-    this.load.audio(this.themeMusicKey, 'assets/audio/theme.mp3');
+    this.load.audio(this.themeMusicKey, 'assets/audio/optimized/theme.mp3');
     
     // Set up a one-time event handler for when this particular file loads
     this.load.once('filecomplete-audio-' + this.themeMusicKey, () => {

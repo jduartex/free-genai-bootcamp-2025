@@ -41,7 +41,7 @@ export class AudioManager {
     // Check if we need to load the theme
     if (!this.scene.cache.audio.exists('theme')) {
       console.log('AudioManager: Preloading theme music');
-      this.scene.load.audio('theme', 'assets/audio/theme.mp3');
+      this.scene.load.audio('theme', 'assets/audio/optimized/theme.mp3');
       
       // Wait for load completion to add them to our sounds map
       this.scene.load.once('complete', () => {

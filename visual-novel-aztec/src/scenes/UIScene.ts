@@ -41,6 +41,25 @@ export class UIScene extends Phaser.Scene {
     };
   }
 
+  preload(): void {
+    // Preload UI sounds
+    try {
+      console.log('UIScene: Loading UI sounds');
+      this.load.audio('click', 'assets/audio/optimized/click.mp3');
+      
+      // Add fallback path if the optimized version fails
+      this.load.once('loaderror', (file: any) => {
+        if (file.key === 'click') {
+          console.warn('Failed to load optimized click sound, trying fallback path');
+          this.load.audio('click', 'assets/audio/click.mp3');
+          this.load.start();
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to preload UI sounds:', error);
+    }
+  }
+
   create(): void {
     // Create timer display
     this.timerImage = this.add.image(
@@ -375,7 +394,7 @@ export class UIScene extends Phaser.Scene {
       this.scene.get('GameScene').events.emit('requestHint', hintLevel);
       
       // Play feedback sound
-      this.sound.play('click', { volume: 0.5 });
+      this.playSafeUISound('click', 0.5);
       
       // Close the help menu after selecting a hint
       const helpElements = this.children.getAll().filter(obj => 
@@ -477,7 +496,7 @@ export class UIScene extends Phaser.Scene {
           slot.setStrokeStyle(1, 0xffffff);
         })
         .on('pointerdown', () => {
-          this.sound.play('click', { volume: 0.5 });
+          this.playSafeUISound('click', 0.5);
           this.showItemDetail(item.id);
         });
         
@@ -638,8 +657,8 @@ export class UIScene extends Phaser.Scene {
     // Add to inventory
     this.inventoryItems.push(newItem);
     
-    // Play pickup sound
-    this.sound.play('pickup', { volume: 0.5 });
+    // Play pickup sound safely
+    this.playSafeUISound('pickup', 0.5);
     
     // Show notification
     this.showNotification(`Added ${newItem.name} to inventory!`);
@@ -798,5 +817,29 @@ export class UIScene extends Phaser.Scene {
         this.scene.get('GameScene').events.emit('timerTick', this.remainingTime);
       }
     }, 1000) as unknown as NodeJS.Timeout;
+  }
+
+  // Add a safe method to play UI sounds
+  private playSafeUISound(key: string, volume: number = 0.5): void {
+    try {
+      if (this.cache.audio.exists(key)) {
+        this.sound.play(key, { volume });
+      } else {
+        console.warn(`Sound "${key}" not found in cache - attempting to load it now`);
+        
+        // Try to load it on demand
+        this.load.audio(key, `assets/audio/optimized/${key}.mp3`);
+        
+        this.load.once('complete', () => {
+          if (this.cache.audio.exists(key)) {
+            this.sound.play(key, { volume });
+          }
+        });
+        
+        this.load.start();
+      }
+    } catch (error) {
+      console.warn(`Failed to play sound "${key}":`, error);
+    }
   }
 }

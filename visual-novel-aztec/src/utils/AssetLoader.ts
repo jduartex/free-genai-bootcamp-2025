@@ -40,8 +40,8 @@ export function preloadAssets(scene: Phaser.Scene): void {
   scene.load.image('dialog-box', '/assets/ui/dialog-box.png');
   
   // Basic sound effects - use AudioManager with full paths
-  scene.load.audio('click', '/assets/' + AudioManager.getAudioPath('', 'click.mp3'));
-  scene.load.audio('theme', '/assets/' + AudioManager.getAudioPath('', 'theme.mp3'));
+  scene.load.audio('click', '/assets/audio/optimized/' + AudioManager.getAudioPath('', 'click.mp3'));
+  scene.load.audio('theme', '/assets/audio/optimized/' + AudioManager.getAudioPath('', 'theme.mp3'));
 }
 
 // Create a placeholder image in memory
@@ -227,7 +227,7 @@ export class AssetLoader {
     
     // Load each audio file with full path
     for (const audio of audioFiles) {
-      const path = '/assets/' + AudioManager.getAudioPath('', audio.file);
+      const path = '/assets/audio/optimized/' + AudioManager.getAudioPath('', audio.file);
       console.log(`Loading audio: ${audio.id} from ${path}`);
       this.scene.load.audio(audio.id, path);
     }
@@ -241,10 +241,10 @@ export class AssetLoader {
    */
   loadAmbientSounds(): void {
     const ambientSounds = [
-      { id: 'prison_ambience', file: 'prison_ambience.mp3' },
-      { id: 'village_ambience', file: 'village_ambience.mp3' },
-      { id: 'battle_ambience', file: 'battle_ambience.mp3' },
-      { id: 'tunnel_ambience', file: 'tunnel_ambience.mp3' }
+      { id: 'prison-ambience', file: 'prison-ambience.mp3' },
+      { id: 'village-ambience', file: 'village-ambience.mp3' },
+      { id: 'battle-ambience', file: 'battle-ambience.mp3' },
+      { id: 'tunnel-ambience', file: 'tunnel-ambience.mp3' }
     ];
     
     // Load each ambient sound with optimized path
