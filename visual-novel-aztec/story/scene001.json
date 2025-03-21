@@ -1,0 +1,299 @@
+{
+    "id": "scene001",
+    "title": "Imprisoned",
+    "location_id": "prison-cell",
+    "character_id": "tlaloc",
+    "startsAt": "x00",
+    "timer": {
+        "initial": 3600,
+        "penalty": 300
+    },
+    "dialog": {
+        "x00": {
+            "speakerId": "narrator",
+            "japanese": "...",
+            "english": "...",
+            "default_next_id": "000"
+        },
+        "000": {
+            "speakerId": "narrator",
+            "audio": "intro-narration",
+            "japanese": "あなたは暗い牢屋で目を覚ます。光が小さな窓から差し込み、二人のアステカ人が囚われているのが見える。",
+            "words": [
+                {"word": "あなた", "start": 0.1, "end": 0.5},
+                {"word": "は", "start": 0.5, "end": 0.7},
+                {"word": "暗い", "start": 0.7, "end": 1.2},
+                {"word": "牢屋", "start": 1.2, "end": 1.8},
+                {"word": "で", "start": 1.8, "end": 2.0},
+                {"word": "目を覚ます", "start": 2.0, "end": 3.0},
+                {"word": "光", "start": 3.2, "end": 3.5},
+                {"word": "が", "start": 3.5, "end": 3.7},
+                {"word": "小さな", "start": 3.7, "end": 4.3},
+                {"word": "窓", "start": 4.3, "end": 4.6},
+                {"word": "から", "start": 4.6, "end": 4.9},
+                {"word": "差し込み、", "start": 4.9, "end": 5.5},
+                {"word": "二人の", "start": 5.6, "end": 6.1},
+                {"word": "アステカ人", "start": 6.1, "end": 7.0},
+                {"word": "が", "start": 7.0, "end": 7.2},
+                {"word": "囚われている", "start": 7.2, "end": 8.2},
+                {"word": "のが", "start": 8.2, "end": 8.5},
+                {"word": "見える。", "start": 8.5, "end": 9.0}
+            ],
+            "english": "You wake up in a dark prison cell. Light streams in from a small window, revealing two Aztec prisoners.",
+            "default_next_id": "001"
+        },
+        "001": {
+            "speakerId": "tlaloc",
+            "japanese": "目が覚めたか。私はトラロックだ。そしてこれは私の妻のシトラリだ。スペイン人に捕らえられてから3日目だ。",
+            "english": "You're awake. I am Tlaloc, and this is my wife Citlali. It's been three days since the Spanish captured us.",
+            "default_next_id": "002"
+        },
+        "002": {
+            "speakerId": "citlali",
+            "japanese": "あなたは日本から来たのね。あなたの言葉を私たちに教えてくれた人がいた。助けてくれる？",
+            "english": "You're from Japan, aren't you? Someone taught us your language. Will you help us?",
+            "choices": [
+                {
+                    "english": "Yes, I'll help you escape.",
+                    "japanese": "はい、脱出を手伝います。",
+                    "next_id": "003"
+                },
+                {
+                    "english": "How did you learn Japanese?",
+                    "japanese": "どうやって日本語を学んだのですか？",
+                    "next_id": "004"
+                }
+            ]
+        },
+        "003": {
+            "speakerId": "tlaloc",
+            "japanese": "ありがとう。スペイン人は私たちを処刑すると言っている。残り時間は1時間だけだ。",
+            "english": "Thank you. The Spanish say they will execute us. We have only one hour left.",
+            "default_next_id": "005"
+        },
+        "004": {
+            "speakerId": "citlali",
+            "japanese": "遠い東の国から来た商人がいました。彼が私たちに日本語を教えてくれたんです。今、私たちには助けが必要です。残り時間は1時間だけです。",
+            "english": "There was a merchant from a far eastern land. He taught us Japanese. Now, we need help. We have only one hour left.",
+            "default_next_id": "005"
+        },
+        "005": {
+            "speakerId": "tlaloc",
+            "japanese": "ドアには暗号の鍵がかかっている。4つの謎を解いて数字を見つけなければならない。各数字は1から9までの間だ。",
+            "english": "The door has a coded lock. We must solve four puzzles to find the numbers. Each number is between 1 and 9.",
+            "default_next_id": "006"
+        },
+        "006": {
+            "speakerId": "citlali",
+            "japanese": "最初の謎は部屋の中にある。窓の近くを調べてみて。",
+            "english": "The first puzzle is in the room. Look near the window.",
+            "default_next_id": "puzzle1-intro"
+        },
+        "puzzle1-intro": {
+            "speakerId": "narrator",
+            "japanese": "あなたは窓の近くにいくつかの奇妙な記号が刻まれているのを見つけた。日本語の単語を意味しているようだ。",
+            "english": "You find strange symbols carved near the window. They seem to represent Japanese words.",
+            "default_next_id": "puzzle1-question"
+        },
+        "puzzle1-question": {
+            "speakerId": "narrator",
+            "japanese": "「太陽」という単語のひらがなはどれですか？",
+            "english": "Which hiragana spells the word for 'sun'?",
+            "choices": [
+                {
+                    "english": "たいよう",
+                    "japanese": "たいよう",
+                    "next_id": "puzzle1-correct",
+                    "puzzle_answer": 1
+                },
+                {
+                    "english": "つきよる",
+                    "japanese": "つきよる",
+                    "next_id": "puzzle1-wrong"
+                },
+                {
+                    "english": "ほしぞら",
+                    "japanese": "ほしぞら",
+                    "next_id": "puzzle1-wrong"
+                }
+            ]
+        },
+        "puzzle1-correct": {
+            "speakerId": "citlali",
+            "japanese": "正解！壁に数字の「1」が浮かび上がった！",
+            "english": "Correct! The number '1' appears on the wall!",
+            "default_next_id": "puzzle2-intro"
+        },
+        "puzzle1-wrong": {
+            "speakerId": "tlaloc",
+            "japanese": "違う...スペイン人の足音が近づいてきた。彼らは時間を5分減らした！",
+            "english": "Wrong... I hear Spanish footsteps. They've reduced our time by 5 minutes!",
+            "default_next_id": "puzzle1-question"
+        },
+        "puzzle2-intro": {
+            "speakerId": "tlaloc",
+            "japanese": "次の謎は床にある石のパターンだ。",
+            "english": "The next puzzle is in the stone pattern on the floor.",
+            "default_next_id": "puzzle2-question"
+        },
+        "puzzle2-question": {
+            "speakerId": "narrator",
+            "japanese": "床に描かれた動物の名前は日本語で何ですか？",
+            "english": "What is the Japanese name for the animal drawn on the floor?",
+            "choices": [
+                {
+                    "english": "いぬ (dog)",
+                    "japanese": "いぬ",
+                    "next_id": "puzzle2-wrong"
+                },
+                {
+                    "english": "ねこ (cat)",
+                    "japanese": "ねこ",
+                    "next_id": "puzzle2-wrong"
+                },
+                {
+                    "english": "わし (eagle)",
+                    "japanese": "わし",
+                    "next_id": "puzzle2-correct",
+                    "puzzle_answer": 5
+                }
+            ]
+        },
+        "puzzle2-correct": {
+            "speakerId": "citlali",
+            "japanese": "正解！今度は「5」の数字が浮かび上がった！",
+            "english": "Correct! This time the number '5' appears!",
+            "default_next_id": "puzzle3-intro"
+        },
+        "puzzle2-wrong": {
+            "speakerId": "tlaloc",
+            "japanese": "違う...時間がどんどん減っていく！",
+            "english": "Wrong... Our time is decreasing rapidly!",
+            "default_next_id": "puzzle2-question"
+        },
+        "puzzle3-intro": {
+            "speakerId": "citlali",
+            "japanese": "第三の謎は私たちの記憶の中にある。私たちの村の記憶を見せてあげよう。",
+            "english": "The third puzzle is in our memories. Let me show you a memory of our village.",
+            "default_next_id": "puzzle3-question"
+        },
+        "puzzle3-question": {
+            "speakerId": "narrator",
+            "japanese": "アステカの神殿の柱の数はいくつですか？",
+            "english": "How many pillars does the Aztec temple have?",
+            "choices": [
+                {
+                    "english": "よん (4)",
+                    "japanese": "よん",
+                    "next_id": "puzzle3-wrong"
+                },
+                {
+                    "english": "なな (7)",
+                    "japanese": "なな",
+                    "next_id": "puzzle3-correct",
+                    "puzzle_answer": 7
+                },
+                {
+                    "english": "きゅう (9)",
+                    "japanese": "きゅう",
+                    "next_id": "puzzle3-wrong"
+                }
+            ]
+        },
+        "puzzle3-correct": {
+            "speakerId": "tlaloc",
+            "japanese": "正解！三つ目の数字は「7」だ！",
+            "english": "Correct! The third number is '7'!",
+            "default_next_id": "puzzle4-intro"
+        },
+        "puzzle3-wrong": {
+            "speakerId": "citlali",
+            "japanese": "違う...もう一度見てみて。",
+            "english": "Wrong... Look again.",
+            "default_next_id": "puzzle3-question"
+        },
+        "puzzle4-intro": {
+            "speakerId": "tlaloc",
+            "japanese": "最後の謎はドア自体にある。近づいて見てみろ。",
+            "english": "The final puzzle is on the door itself. Go closer and look.",
+            "default_next_id": "puzzle4-question"
+        },
+        "puzzle4-question": {
+            "speakerId": "narrator",
+            "japanese": "ドアに刻まれた文字を組み合わせるとどんな言葉になりますか？",
+            "english": "What word do the characters carved on the door form?",
+            "choices": [
+                {
+                    "english": "じゆう (freedom)",
+                    "japanese": "じゆう",
+                    "next_id": "puzzle4-correct",
+                    "puzzle_answer": 3
+                },
+                {
+                    "english": "きぼう (hope)",
+                    "japanese": "きぼう",
+                    "next_id": "puzzle4-wrong"
+                },
+                {
+                    "english": "ちから (strength)",
+                    "japanese": "ちから",
+                    "next_id": "puzzle4-wrong"
+                }
+            ]
+        },
+        "puzzle4-correct": {
+            "speakerId": "citlali",
+            "japanese": "正解！最後の数字は「3」！鍵の組み合わせは「1573」だ！",
+            "english": "Correct! The last number is '3'! The lock combination is '1573'!",
+            "default_next_id": "final-scene"
+        },
+        "puzzle4-wrong": {
+            "speakerId": "tlaloc",
+            "japanese": "違う...もう時間がほとんどない！",
+            "english": "Wrong... We're almost out of time!",
+            "default_next_id": "puzzle4-question"
+        },
+        "final-scene": {
+            "speakerId": "narrator",
+            "japanese": "あなたは数字「1573」を鍵に入力した。カチッという音がして、ドアが開いた。",
+            "english": "You enter the numbers '1573' into the lock. With a click, the door opens.",
+            "default_next_id": "escape"
+        },
+        "escape": {
+            "speakerId": "tlaloc",
+            "japanese": "やった！自由だ！急いで、この隠し通路を通って村まで戻ろう。あなたの助けに感謝する。",
+            "english": "We did it! We're free! Quickly, let's take this hidden passage back to the village. Thank you for your help.",
+            "ends": true
+        }
+    },
+    "vocabulary": [
+        {
+            "word": "たいよう",
+            "romaji": "taiyō",
+            "translation": "sun",
+            "usage": "The bright sun shines through the window",
+            "example": "太陽が明るく輝いている。(The sun is shining brightly.)"
+        },
+        {
+            "word": "わし",
+            "romaji": "washi",
+            "translation": "eagle",
+            "usage": "The eagle was an important symbol in Aztec culture",
+            "example": "わしが空高く飛んでいる。(The eagle is flying high in the sky.)"
+        },
+        {
+            "word": "なな",
+            "romaji": "nana",
+            "translation": "seven",
+            "usage": "Counting objects",
+            "example": "神殿には柱が七本ある。(The temple has seven pillars.)"
+        },
+        {
+            "word": "じゆう",
+            "romaji": "jiyū",
+            "translation": "freedom",
+            "usage": "The concept of liberty or being free",
+            "example": "自由のために戦う。(Fighting for freedom.)"
+        }
+    ]
+}

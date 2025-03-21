@@ -1,0 +1,64 @@
+# Character Profile: Diego (Spanish Guard)
+
+## Basic Information
+- **Full Name**: Diego Alvarez de Castilla
+- **Gender**: Male
+- **Age**: 40
+- **Nationality**: Spanish
+- **Occupation**: Prison Guard, Former Conquistador
+
+## Physical Appearance
+- **Height**: 175 cm
+- **Build**: Stocky, muscular but beginning to soften with age
+- **Hair**: Dark brown, graying at temples, kept short
+- **Facial Features**: Weather-beaten face, prominent scar across left cheek, thick mustache
+- **Attire**: Spanish military uniform (simplified for prison duty), leather armor pieces, metal helmet worn when on formal duty
+- **Distinguishing Marks**: Burn scar on right forearm, missing part of left ear
+
+## Personality
+- Stern but not sadistic
+- Follows orders without question
+- Slightly weary of colonial life
+- Religious, frequently references God
+- Occasionally shows small hints of empathy, quickly suppressed
+- Drinks to cope with memories of conquest
+
+## Background
+- Former soldier who participated in the initial conquest
+- Reassigned to prison duty after injury limited his combat effectiveness
+- Has a family back in Spain he hasn't seen in years
+- Carries guilt about some of the atrocities he witnessed
+- Views himself as merely doing his duty to Crown and Church
+
+## Voice Characteristics
+- Deep, authoritative tone
+- Spanish accent when speaking Japanese
+- Tends to bark orders and announcements
+- Voice echoes through corridors when making time announcements
+- Occasionally mumbles prayers or curses under breath
+
+## Game Role
+- **Primary Function**: Creates time pressure by announcing remaining time
+- **Secondary Function**: Provides narrative tension and obstacles
+- Only heard through the cell door, never actually seen by player
+- Performs regular checks at intervals (30 min, 15 min, 5 min remaining)
+- Makes occasional comments about the prisoners' fate
+
+## Key Dialogue Examples
+- "¡Escuchen! Treinta minutos antes de la ejecución." (Listen! Thirty minutes before execution.)
+- "The captain wants to question you again before the end. Pray that you have something useful to tell him."
+- "I can hear you moving in there. Save your strength. No one escapes this prison."
+- "Fifteen minutes remaining. Make peace with your gods."
+- "Five minutes. The priest is here if you wish for last rites."
+
+## Character Development
+- If players make significant progress, his tone may shift slightly to grudging respect
+- Can be heard arguing with another guard about the treatment of prisoners
+- May reveal small bits of information about the outside world that hint at possible escape routes
+- Final interaction depends on player success/failure
+
+## Notes for Voice Acting
+- Maintain consistent Spanish accent throughout Japanese dialogue
+- Voice should sound as if coming through thick wooden door
+- Emphasize weariness rather than cruelty
+- Volume and urgency increases as time runs short

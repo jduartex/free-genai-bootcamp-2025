@@ -1,0 +1,63 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+yarn.lock
+package-lock.json
+
+# Build outputs
+/dist
+/build
+/out
+/.next
+
+# Testing
+/coverage
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor directories and files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs
+*.log
+
+# Game-specific files
+*.bak
+/temp
+/assets/raw
+/audio/raw
+
+# Audio files - ignore all by default
+*.mp3
+*.wav
+*.ogg
+
+# AI-generated audio files
+/public/assets/audio/dialogue/*.mp3
+
+# Exception: Keep essential audio assets in version control
+!public/assets/audio/music/*.mp3
+!public/assets/audio/sfx/*.mp3
+!public/assets/audio/ui/*.mp3
+
+# Local development files
+local.settings.json
+dev-notes.md
+
+# Backup files
+*.backup
+*~

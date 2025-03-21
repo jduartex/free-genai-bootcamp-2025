@@ -1,0 +1,53 @@
+{
+  "id": "scene002",
+  "title": "The Escape",
+  "location_id": "hidden-tunnel",
+  "character_id": "tlaloc",
+  "startsAt": "tunnel001",
+  "timer": {
+    "initial": 1800,
+    "penalty": 180
+  },
+  "dialog": {
+    "tunnel001": {
+      "speakerId": "tlaloc",
+      "japanese": "やった！自由だ！しかし、まだ安全ではない。",
+      "english": "We did it! We're free! But we're not safe yet.",
+      "default_next_id": "tunnel002"
+    },
+    "tunnel002": {
+      "speakerId": "citlali",
+      "japanese": "このトンネルは村につながっているはずです。急ぎましょう！",
+      "english": "This tunnel should lead to our village. Let's hurry!",
+      "default_next_id": "tunnel003"
+    },
+    "tunnel003": {
+      "speakerId": "narrator",
+      "japanese": "トンネルの先に光が見えてきた...",
+      "english": "You see light at the end of the tunnel...",
+      "default_next_id": "final001"
+    },
+    "final001": {
+      "speakerId": "tlaloc",
+      "japanese": "ついに！この先は自由だ。あなたの助けに感謝します。",
+      "english": "Finally! Freedom lies ahead. Thank you for your help.",
+      "ends": true
+    }
+  },
+  "vocabulary": [
+    {
+      "word": "トンネル",
+      "romaji": "tonneru",
+      "translation": "tunnel",
+      "usage": "A passage through or under an obstacle",
+      "example": "トンネルを通って山の反対側に行きます。(We go to the other side of the mountain through the tunnel.)"
+    },
+    {
+      "word": "つながる",
+      "romaji": "tsunagaru",
+      "translation": "to be connected",
+      "usage": "Linking two places or things",
+      "example": "この道は駅につながっています。(This road is connected to the station.)"
+    }
+  ]
+}
